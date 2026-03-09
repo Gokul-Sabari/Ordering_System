@@ -595,16 +595,15 @@
 
 
 
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { fetchLink } from "./fetchComponent";
+
 const BROWN = "#4a2c1a";
 const BROWN_DARK = "#3a1f0e";
 const BROWN_LIGHT = "#6b3f23";
@@ -617,19 +616,16 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  
+
   useEffect(() => {
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-
         const response = await fetchLink({ 
           address: `pos/retailerMasterOpt?limit=10000000&page=1` 
         });
         
-        
         if (response?.success && Array.isArray(response.data)) {
-          
           const sanitizedData = response.data.map(customer => ({
             ...customer,
             Short_Name: customer.Short_Name ? customer.Short_Name.replace(/\u0004/g, '').trim() : '',
@@ -673,7 +669,7 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
     setSearchTerm(customer.Short_Name || "");
     setIsOpen(false);
     onChange(customer.Customer_Id);
-    
+
     if (onCustomerSelect) {
       onCustomerSelect({
         broker: customer.Broker?.trim() || "",
@@ -682,7 +678,9 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
         customerName: customer.Short_Name || "",
         mobileNo: customer.Mobile_No || "",
         address: customer.Address || "",
-        city: customer.City || ""
+        city: customer.City || "",
+        Broker_Id: customer.Broker_Id || "",
+        Transporter_Id: customer.Transporter_Id || ""
       });
     }
   };
@@ -709,19 +707,8 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
             boxSizing: "border-box"
           }}
         />
-        {/* {loading && (
-          <div style={{
-            position: "absolute",
-            right: "10px",
-            top: "50%",
-            transform: "translateY(-50%)"
-          }}>
-            <span style={{ color: BROWN }}>Loading...</span>
-          </div>
-        )} */}
       </div>
 
-      {/* Dropdown Results */}
       {isOpen && searchTerm && (
         <div style={{
           position: "absolute",
@@ -794,11 +781,11 @@ export default function CartPage() {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState({});
   const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1); 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   
-  // Form states
   const [contactNumber, setContactNumber] = useState("");
   const [brokerName, setBrokerName] = useState("");
   const [customer, setCustomer] = useState("");
@@ -806,23 +793,68 @@ export default function CartPage() {
   const [shippingAddress, setShippingAddress] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedDetails, setSelectedDetails] = useState([]);
+  
+  const getProductPackGet = (productId) => {
+    const product = allProducts.find(p => p.id === productId) || products.find(p => p.id === productId);
+    return product?.packGet || 1;
+  };
 
-  // Handle customer selection
+  const loadAllProducts = async () => {
+    try {
+      const response = await fetchLink({
+        address: 'products?limit=1000'
+      });
+      
+      if (response?.success && Array.isArray(response.data)) {
+        setAllProducts(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading all products:", error);
+    }
+  };
+
+  const enhancedCartItems = useMemo(() => {
+    return Object.entries(cartItems)
+      .filter(([_, qty]) => qty > 0)
+      .map(([productId, qty]) => {
+        const product = products.find(p => p.id === productId) || {};
+        const packGet = getProductPackGet(productId);
+        const kgs = qty * packGet;
+        const amount = (product.price || 0) * qty * packGet;
+        
+        return {
+          ...product,
+          id: productId,
+          quantity: qty,
+          packGet,
+          kgs,
+          amount,
+          price: product.price || 0,
+          total: amount
+        };
+      });
+  }, [cartItems, products, allProducts]);
+
+  const totalItems = enhancedCartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalKgs = enhancedCartItems.reduce((sum, item) => sum + item.kgs, 0);
+  const subtotalAmount = enhancedCartItems.reduce((sum, item) => sum + item.amount, 0);
+  const taxRate = 12;
+  const taxAmount = subtotalAmount * (taxRate / 100);
+  const totalAmountWithTax = subtotalAmount;
+
   const handleCustomerSelect = (customerData) => {
     setCustomer(customerData.customerId);
     setBrokerName(customerData.broker || "");
     setTransporter(customerData.transporter || "");
     setContactNumber(customerData.mobileNo || "");
-    
-    // Auto-fill addresses if available
+    setSelectedDetails(customerData);
     if (customerData.address) {
       setShippingAddress(customerData.address);
       setDeliveryAddress(customerData.address);
     }
-    
   };
 
-  // Rest of your existing useEffect hooks and functions remain the same...
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -834,10 +866,12 @@ export default function CartPage() {
 
   useEffect(() => {
     loadCartData();
+    loadAllProducts();
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         loadCartData();
+        loadAllProducts();
       }
     };
 
@@ -897,7 +931,7 @@ export default function CartPage() {
   };
 
   const continueShopping = () => {
-    navigate('/pos');
+    navigate('/');
   };
 
   const handleProceed = () => {
@@ -908,8 +942,7 @@ export default function CartPage() {
     setStep(1);
   };
 
-  const handleCheckout = () => {
-    // Validate required fields
+  const handleCheckout = async () => {
     if (!contactNumber) {
       toast.error("Please enter contact number");
       return;
@@ -918,42 +951,174 @@ export default function CartPage() {
       toast.error("Please select a customer");
       return;
     }
-    
-    // Create order object with all details
-    const orderData = {
-      customerId: customer,
-      brokerName,
-      transporter,
-      contactNumber,
-      shippingAddress,
-      deliveryAddress,
-      description,
-      items: cartItemsList,
-      totalAmount,
-      totalItems,
-      orderDate: new Date().toISOString()
+
+    const now = new Date();
+    const formattedDate = now.toISOString().slice(0, 19).replace('T', ' ');
+    const formattedDateOnly = now.toISOString().split('T')[0];
+
+    const parseData = JSON.parse(localStorage.getItem('userData') || '{}');
+    const storage = JSON.parse(localStorage.getItem('user') || '{}');
+
+    const totalBeforeTax = enhancedCartItems.reduce((sum, item) => sum + item.amount, 0);
+    const totalTax = enhancedCartItems.reduce((sum, item) => {
+      const taxRate = item.taxRate || 12;
+      return sum + (item.amount * (taxRate / 100));
+    }, 0);
+    const totalInvoiceValue = totalBeforeTax + totalTax;
+    const totalKgsValue = enhancedCartItems.reduce((sum, item) => sum + item.kgs, 0);
+
+    const generalInfo = {
+      So_Date: formattedDateOnly,
+      Retailer_Id: parseInt(customer),
+      Sales_Person_Id: storage?.user?.SalesPersonId || 0,
+      Branch_Id: storage?.user?.BranchId || parseData?.BranchId || 2,
+      VoucherType: "173",
+      GST_Inclusive: 2,
+      IS_IGST: 0,
+      CSGT_Total: (totalTax / 2).toFixed(2),
+      SGST_Total: (totalTax / 2).toFixed(2),
+      IGST_Total: "0.00",
+      Round_off: "0.00",
+      Total_Before_Tax: totalBeforeTax.toFixed(2),
+      Total_Tax: totalTax.toFixed(2),
+      Total_Invoice_value: totalInvoiceValue.toFixed(2),
+      Narration: description || "",
+      isConverted: 0,
+      Cancel_status: 1,
+      Created_by: parseData?.UserId || storage?.user?.UserId || 1,
+      Created_on: formattedDate,
+      Trans_Type: "INSERT",
+      Alter_Id: 0,
+      
+      Customer_Name: selectedDetails?.customerName || "",
+      Ord_Mobile_No: contactNumber,
+      Broker_Name: brokerName || selectedDetails?.Broker || "",
+      Broker_Id: selectedDetails?.Broker_Id ? parseInt(selectedDetails.Broker_Id) : null,
+      Transporter_Name: transporter || selectedDetails?.Transporter || "",
+      Transporter_Id: selectedDetails?.Transporter_Id ? parseInt(selectedDetails.Transporter_Id) : null,
+      Shipp_Address: shippingAddress || selectedDetails?.Address || "",
+      Deliv_Address: deliveryAddress || shippingAddress || selectedDetails?.Address || "",
+      Total_Kgs: totalKgsValue.toFixed(2),
+      Total_Items: enhancedCartItems.length
     };
-    console.log("customer",customer)
-    toast.success("Order placed successfully!");
-  };
 
-  const getProductDetails = (productId) => {
-    return products.find(p => p.id === productId) || {};
-  };
+    const stockInfo = enhancedCartItems.map((item, index) => {
+      const taxRate = item.taxRate || 12;
+      const cgstSgstRate = taxRate / 2;
+      const taxableAmount = item.amount;
+      const taxAmount = taxableAmount * (taxRate / 100);
+      const cgstSgstAmount = taxAmount / 2;
+      const finalAmount = taxableAmount + taxAmount;
 
-  const cartItemsList = Object.entries(cartItems)
-    .filter(([_, qty]) => qty > 0)
-    .map(([productId, qty]) => {
-      const product = getProductDetails(productId);
-      return { 
-        ...product, 
-        quantity: qty, 
-        total: (product.price || 0) * qty 
+      return {
+        So_Date: formattedDateOnly,
+        S_No: index + 1,
+        Item_Id: parseInt(item.id),
+        Bill_Qty: item.kgs.toFixed(2),
+        Taxable_Rate: item.price.toFixed(2),
+        Item_Rate: item.price.toFixed(2),
+        Amount: taxableAmount.toFixed(2),
+        Free_Qty: "0.00",
+        Total_Qty: item.quantity.toString(),
+        Taxble: taxAmount.toFixed(2),
+        HSN_Code: item.hsn || "210690",
+        Unit_Id: item.unitId || 7,
+        Unit_Name: item.unitName || "QTY",
+        Taxable_Amount: taxableAmount.toFixed(2),
+        Tax_Rate: taxRate,
+        Cgst: cgstSgstRate,
+        Cgst_Amo: cgstSgstAmount.toFixed(2),
+        Sgst: cgstSgstRate,
+        Sgst_Amo: cgstSgstAmount.toFixed(2),
+        Igst: 0,
+        Igst_Amo: "0.00",
+        Final_Amo: finalAmount.toFixed(2),
+        Created_on: formattedDate,
+        
+        Product_Id: parseInt(item.id),
+        Product_Name: item.name,
+        Quantity: item.quantity,
+        Price: item.price,
+        Total: taxableAmount.toFixed(2),
+        Weight: item.kgs.toString(),
+        Unit: item.unit || "QTY",
+        PackGet: item.packGet
       };
     });
 
-  const totalAmount = cartItemsList.reduce((sum, item) => sum + item.total, 0);
-  const totalItems = cartItemsList.reduce((sum, item) => sum + item.quantity, 0);
+    const saleData = {
+      generalInfo: generalInfo,
+      stockInfo: stockInfo,
+      totalAmount: totalInvoiceValue,
+      totalItems: enhancedCartItems.length,
+      totalKgs: totalKgsValue.toFixed(2),
+      customerId: customer,
+      customerName: selectedDetails?.customerName || "",
+      contactNumber: contactNumber,
+      brokerName: brokerName,
+      transporter: transporter,
+      shippingAddress: shippingAddress,
+      deliveryAddress: deliveryAddress,
+      description: description,
+      Created_by: parseData?.UserId || parseData?.user_id || "",
+      Branch_Id: storage?.user?.BranchId || parseData?.BranchId || 2
+    };
+
+    try {
+      const loadingToast = toast.loading("Placing order...");
+
+      const response = await fetchLink({
+        address: `sales/salesInvoice/Whatsapp`,
+        method: 'POST',
+        bodyData: saleData  
+      });
+
+      toast.dismiss(loadingToast);
+
+      if (response?.success) {
+        toast.success(`Order  placed successfully!`);
+        
+        setCartItems([]);
+        localStorage.removeItem('cartItems');
+        localStorage.removeItem('selectedCustomer');
+        
+        const orderId = response.data?.Sales_Order_Id || response.data?.So_Id || response.data?.Pre_Ord_Id;
+        
+        if (orderId) {
+          navigate(`/`, { 
+            state: { 
+              orderId: orderId,
+              customerName: saleData.customerName,
+              orderData: response.data,
+              success: true,
+              message: `Order created successfully`
+            } 
+          });
+        } else {
+          navigate('/', { 
+            state: { 
+              success: true,
+              message: "Order created successfully" 
+            } 
+          });
+        }
+      } else {
+        toast.error(response?.message || "Failed to place order");
+      }
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast.error("Failed to place order: " + (error.message || "Unknown error"));
+    } finally {
+      setContactNumber("");
+      setCustomer("");
+      setSelectedDetails(null);
+      setBrokerName("");
+      setTransporter("");
+      setShippingAddress("");
+      setDeliveryAddress("");
+      setDescription("");
+    }
+  };
 
   if (loading) {
     return (
@@ -969,7 +1134,6 @@ export default function CartPage() {
     );
   }
 
-  // Styles remain the same...
   const mobileStyles = {
     container: {
       maxWidth: "100%",
@@ -977,7 +1141,7 @@ export default function CartPage() {
       padding: "12px 16px",
       background: BG_COLOR,
       minHeight: "100vh",
-      paddingBottom: isMobile && step === 1 && cartItemsList.length > 0 ? '100px' : '20px',
+      paddingBottom: isMobile && step === 1 && enhancedCartItems.length > 0 ? '100px' : '20px',
     },
     header: {
       display: "flex",
@@ -1230,13 +1394,13 @@ export default function CartPage() {
       marginBottom: "30px",
     },
     title: {
-      fontSize: "18px",
+      fontSize: "24px",
       fontWeight: "bold",
       color: BROWN,
       margin: 0,
     },
     continueBtn: {
-      padding: "5px 5px",
+      padding: "10px 20px",
       background: "transparent",
       border: `2px solid ${BROWN}`,
       color: BROWN,
@@ -1271,96 +1435,8 @@ export default function CartPage() {
       paddingBottom: "12px",
       borderBottom: `2px solid ${ACCENT}`,
     },
-    productItem: {
-      display: "flex",
-      padding: "20px",
-      borderBottom: "1px solid #eee",
-      position: "relative",
-    },
-    productImage: {
-      width: "80px",
-      height: "80px",
-      borderRadius: "8px",
-      objectFit: "cover",
-      marginRight: "16px",
-    },
-    productInfo: {
-      flex: 1,
-    },
-    productName: {
-      fontSize: "18px",
-      fontWeight: "600",
-      color: BROWN,
-      margin: "0 0 4px 0",
-    },
-    productTamil: {
-      fontSize: "14px",
-      color: "#666",
-      margin: "0 0 8px 0",
-      fontStyle: "italic",
-    },
-    productPrice: {
-      display: "flex",
-      gap: "16px",
-      marginBottom: "12px",
-    },
-    priceTag: {
-      background: "#f0e9e2",
-      padding: "4px 12px",
-      borderRadius: "20px",
-      fontSize: "14px",
-      color: BROWN,
-    },
-    quantityControl: {
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-      marginTop: "8px",
-    },
-    qtyBtn: {
-      width: "32px",
-      height: "32px",
-      borderRadius: "50%",
-      border: `1px solid ${BROWN_LIGHT}`,
-      background: "#fff",
-      color: BROWN,
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: "18px",
-      transition: "all 0.2s",
-    },
-    qtyValue: {
-      fontSize: "16px",
-      fontWeight: "600",
-      color: BROWN,
-      minWidth: "30px",
-      textAlign: "center",
-    },
-    itemTotal: {
-      fontSize: "16px",
-      fontWeight: "600",
-      color: BROWN,
-      marginLeft: "20px",
-    },
-    deleteBtn: {
-      position: "absolute",
-      top: "20px",
-      right: "20px",
-      color: "#999",
-      cursor: "pointer",
-      transition: "color 0.2s",
-    },
     formGroup: {
       marginBottom: "20px",
-    },
-    label: {
-      display: "block",
-      fontSize: "14px",
-      fontWeight: "500",
-      color: "#666",
-      marginBottom: "6px",
     },
     input: {
       width: "100%",
@@ -1371,15 +1447,6 @@ export default function CartPage() {
       outline: "none",
       transition: "border-color 0.2s",
       boxSizing: "border-box"
-    },
-    select: {
-      width: "100%",
-      padding: "12px",
-      border: "1px solid #ddd",
-      borderRadius: "8px",
-      fontSize: "14px",
-      outline: "none",
-      background: "#fff",
     },
     textarea: {
       width: "100%",
@@ -1432,7 +1499,6 @@ export default function CartPage() {
 
   const styles = isMobile ? mobileStyles : desktopStyles;
 
-  // Mobile Step 2 with Searchable Customer Select
   if (isMobile && step === 2) {
     return (
       <div style={styles.container}>
@@ -1445,9 +1511,7 @@ export default function CartPage() {
           </h1>
         </div>
 
-        {/* Form Fields */}
         <div style={{ marginBottom: "20px" }}>
-          {/* Searchable Customer Select */}
           <div style={styles.formGroup}>
             <SearchableCustomerSelect 
               value={customer}
@@ -1473,11 +1537,7 @@ export default function CartPage() {
               value={brokerName}
               onChange={(e) => setBrokerName(e.target.value)}
               style={styles.input}
-              readOnly // Make it read-only since it's auto-filled
-              // style={{
-              //   ...styles.input,
-              //   backgroundColor: brokerName ? "#f5f0eb" : "#fff"
-              // }}
+              readOnly
             />
           </div>
 
@@ -1488,11 +1548,7 @@ export default function CartPage() {
               value={transporter}
               onChange={(e) => setTransporter(e.target.value)}
               style={styles.input}
-              readOnly // Make it read-only since it's auto-filled
-              // style={{
-              //   ...styles.input,
-              //   backgroundColor: transporter ? "#f5f0eb" : "#fff"
-              // }}
+              readOnly
             />
           </div>
 
@@ -1517,15 +1573,15 @@ export default function CartPage() {
                   Clear ▼
                 </span>
               </div>
-              {cartItemsList.map(item => (
+              {enhancedCartItems.map(item => (
                 <div key={item.id} style={{ 
                   display: "flex", 
                   justifyContent: "space-between",
                   marginBottom: "4px",
                   fontSize: "12px"
                 }}>
-                  <span>• {item.name} x {item.quantity}</span>
-                  <span>₹{item.total}</span>
+                  <span>• {item.name} x {item.quantity} ({item.kgs.toFixed(2)} kg)</span>
+                  <span>₹{item.amount.toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -1559,7 +1615,6 @@ export default function CartPage() {
           </div>
         </div>
 
-        {/* Total and Order Now Button */}
         <div style={{
           position: "sticky",
           bottom: 0,
@@ -1570,15 +1625,58 @@ export default function CartPage() {
         }}>
           <div style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            flexDirection: "column",
+            gap: "8px",
             marginBottom: "16px",
-            fontSize: "18px",
-            fontWeight: "bold",
-            color: BROWN,
           }}>
-            <span>Total:</span>
-            <span>₹{totalAmount}</span>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "14px",
+              color: "#666",
+            }}>
+              <span>Total Items:</span>
+              <span>{totalItems}</span>
+            </div>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "14px",
+              color: "#666",
+            }}>
+              <span>Total Kgs:</span>
+              <span>{totalKgs.toFixed(2)} kg</span>
+            </div>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "14px",
+              color: "#666",
+            }}>
+              <span>Subtotal:</span>
+              <span>₹{subtotalAmount.toFixed(2)}</span>
+            </div>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "14px",
+              color: "#666",
+            }}>
+             
+            </div>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "18px",
+              fontWeight: "bold",
+              color: BROWN,
+              borderTop: "1px dashed #ddd",
+              paddingTop: "8px",
+            }}>
+              <span>Total Amount:</span>
+              <span>₹{totalAmountWithTax.toFixed(2)}</span>
+            </div>
           </div>
 
           <button 
@@ -1592,7 +1690,6 @@ export default function CartPage() {
     );
   }
 
-  // Mobile Step 1
   if (isMobile && step === 1) {
     return (
       <div style={styles.container}>
@@ -1617,63 +1714,208 @@ export default function CartPage() {
           Selection List
         </h2>
 
-        {/* Product Items */}
         <div style={{ marginBottom: "20px" }}>
-          {cartItemsList.map((item) => (
-            <div key={item.id} style={styles.productItem}>
-              <img 
-                src={item.image}
-                alt={item.name}
-                style={styles.productImage}
-                onError={(e) => {
-                  e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=70&h=70&fit=crop";
-                }}
-              />
-              
-              <div style={styles.productInfo}>
-                <h3 style={styles.productName}>{item.name}</h3>
-                <p style={styles.productTamil}>
-                  {item.name}
-                </p>
-                
-                <div style={styles.quantityControl}>
-                  <button 
-                    onClick={() => updateQty(item.id, -1)}
-                    style={styles.qtyBtn}
-                  >
-                    <RemoveIcon style={{ fontSize: "16px" }} />
-                  </button>
+          {enhancedCartItems.map((item) => {
+            return (
+              <div key={item.id} style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 0",
+                borderBottom: "1px dashed #ddd",
+              }}>
+                <div style={{
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "center",
+                  flex: 1,
+                }}>
+                  <img 
+                    src={item.image}
+                    alt={item.name}
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      borderRadius: "6px",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop";
+                    }}
+                  />
                   
-                  <span style={styles.qtyValue}>{item.quantity}</span>
-                  
-                  <button 
-                    onClick={() => updateQty(item.id, 1)}
-                    style={styles.qtyBtn}
-                  >
-                    <AddIcon style={{ fontSize: "16px" }} />
-                  </button>
-                  
-                  <span style={styles.priceTag}>RS.{item.price}</span>
+                  <div>
+                    <h3 style={{
+                      fontSize: "15px",
+                      fontWeight: "600",
+                      color: BROWN,
+                      margin: "0 0 2px 0",
+                    }}>
+                      {item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name}
+                    </h3>
+                    <div style={{
+                      display: "flex",
+                      gap: "8px",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}>
+                      <span style={{
+                        background: "#f0e9e2",
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        fontSize: "12px",
+                        color: BROWN,
+                        display: "inline-block",
+                      }}>
+                        ₹{item.price}/kg
+                      </span>
+                      <span style={{
+                        fontSize: "11px",
+                        color: "#666",
+                      }}>
+                        Pack: {item.packGet || 1}kg
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px",
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    background: "#f5f0eb",
+                    padding: "2px 6px",
+                    borderRadius: "25px",
+                  }}>
+                    <button 
+                      onClick={() => updateQty(item.id, -1)}
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        border: "none",
+                        background: "#fff",
+                        color: BROWN,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      -
+                    </button>
+                    
+                    <span style={{
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: BROWN,
+                      minWidth: "20px",
+                      textAlign: "center",
+                    }}>
+                      {item.quantity}
+                    </span>
+                    
+                    <button 
+                      onClick={() => updateQty(item.id, 1)}
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        border: "none",
+                        background: "#fff",
+                        color: BROWN,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}>
+                    <div style={{
+                      textAlign: "right",
+                    }}>
+                      <span style={{
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: BROWN,
+                        minWidth: "60px",
+                        display: "block",
+                      }}>
+                        ₹{item.amount.toFixed(2)}
+                      </span>
+                      <span style={{
+                        fontSize: "10px",
+                        color: "#999",
+                        display: "block",
+                      }}>
+                        ({item.quantity} × {item.packGet || 1}kg)
+                      </span>
+                    </div>
+                    
+                    <div 
+                      style={{
+                        color: "#999",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "50%",
+                        transition: "all 0.2s",
+                      }}
+                      onClick={() => removeItem(item.id)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#fee";
+                        e.currentTarget.style.color = "#ff4444";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "#999";
+                      }}
+                    >
+                      <DeleteOutlineIcon style={{ fontSize: "18px" }} />
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div 
-                style={styles.deleteBtn}
-                onClick={() => removeItem(item.id)}
-              >
-                <DeleteOutlineIcon style={{ fontSize: "18px" }} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Bottom Bar */}
         <div style={styles.bottomBar}>
           <div style={styles.summaryRow}>
-            <span>{totalItems} Products Selected</span>
-            <span style={{ fontWeight: "bold", color: BROWN }}>
-              Total: ₹{totalAmount}
-            </span>
+            <div>
+              <div>{totalItems} Items Selected</div>
+              <div style={{ fontSize: "12px", color: "#666" }}>
+                Total Weight: {totalKgs.toFixed(2)} kg
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontWeight: "bold", color: BROWN }}>
+                Subtotal: ₹{subtotalAmount.toFixed(2)}
+              </div>
+           
+            </div>
           </div>
           
           <button 
@@ -1688,7 +1930,6 @@ export default function CartPage() {
     );
   }
 
-  // Desktop view
   return (
     <div style={desktopStyles.container}>
       <div style={desktopStyles.header}>
@@ -1709,7 +1950,7 @@ export default function CartPage() {
         </button>
       </div>
 
-      {cartItemsList.length === 0 ? (
+      {enhancedCartItems.length === 0 ? (
         <div style={desktopStyles.emptyCart}>
           <div style={{ fontSize: "64px", marginBottom: "20px" }}>🛒</div>
           <p style={{ fontSize: "18px", color: "#666", marginBottom: "20px" }}>
@@ -1730,176 +1971,198 @@ export default function CartPage() {
         </div>
       ) : (
         <div style={desktopStyles.mainContent}>
-          {/* Left Section - Selection List */}
           <div style={desktopStyles.leftSection}>
             <div style={{ padding: "20px" }}>
               <h2 style={desktopStyles.sectionTitle}>Selection List</h2>
               
-              {cartItemsList.map((item) => (
-                <div key={item.id} style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 0",
-                  borderBottom: "1px dashed #ddd",
-                }}>
-                  {/* Left side - Product Info */}
-                  <div style={{
+              {enhancedCartItems.map((item) => {
+                return (
+                  <div key={item.id} style={{
                     display: "flex",
-                    gap: "12px",
+                    justifyContent: "space-between",
                     alignItems: "center",
-                    flex: 1,
-                  }}>
-                    <img 
-                      src={item.image}
-                      alt={item.name}
-                      style={{
-                        width: "50px",
-                        height: "50px",
-                        borderRadius: "6px",
-                        objectFit: "cover",
-                      }}
-                      onError={(e) => {
-                        e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop";
-                      }}
-                    />
-                    
-                    <div>
-                      <h3 style={{
-                        fontSize: "15px",
-                        fontWeight: "600",
-                        color: BROWN,
-                        margin: "0 0 2px 0",
-                      }}>
-                        {item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name}
-                      </h3>
-                      <span style={{
-                        background: "#f0e9e2",
-                        padding: "2px 8px",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        color: BROWN,
-                        display: "inline-block",
-                      }}>
-                        ₹{item.price}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Right side - Quantity Controls and Total */}
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "16px",
+                    padding: "12px 0",
+                    borderBottom: "1px dashed #ddd",
                   }}>
                     <div style={{
                       display: "flex",
+                      gap: "12px",
                       alignItems: "center",
-                      gap: "8px",
-                      background: "#f5f0eb",
-                      padding: "2px 6px",
-                      borderRadius: "25px",
+                      flex: 1,
                     }}>
-                      <button 
-                        onClick={() => updateQty(item.id, -1)}
+                      <img 
+                        src={item.image}
+                        alt={item.name}
                         style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "50%",
-                          border: "none",
-                          background: "#fff",
-                          color: BROWN,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                          width: "50px",
+                          height: "50px",
+                          borderRadius: "6px",
+                          objectFit: "cover",
                         }}
-                      >
-                        -
-                      </button>
-                      
-                      <span style={{
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        color: BROWN,
-                        minWidth: "20px",
-                        textAlign: "center",
-                      }}>
-                        {item.quantity}
-                      </span>
-                      
-                      <button 
-                        onClick={() => updateQty(item.id, 1)}
-                        style={{
-                          width: "24px",
-                          height: "24px",
-                          borderRadius: "50%",
-                          border: "none",
-                          background: "#fff",
-                          color: BROWN,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        onError={(e) => {
+                          e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop";
                         }}
-                      >
-                        +
-                      </button>
+                      />
+                      
+                      <div>
+                        <h3 style={{
+                          fontSize: "15px",
+                          fontWeight: "600",
+                          color: BROWN,
+                          margin: "0 0 2px 0",
+                        }}>
+                          {item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name}
+                        </h3>
+                        <div style={{
+                          display: "flex",
+                          gap: "8px",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}>
+                          <span style={{
+                            background: "#f0e9e2",
+                            padding: "2px 8px",
+                            borderRadius: "12px",
+                            fontSize: "12px",
+                            color: BROWN,
+                            display: "inline-block",
+                          }}>
+                            ₹{item.price}/kg
+                          </span>
+                          <span style={{
+                            fontSize: "11px",
+                            color: "#666",
+                          }}>
+                            Pack: {item.packGet || 1}kg
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     <div style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
+                      gap: "16px",
                     }}>
-                      <span style={{
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        color: BROWN,
-                        minWidth: "60px",
-                        textAlign: "right",
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        background: "#f5f0eb",
+                        padding: "2px 6px",
+                        borderRadius: "25px",
                       }}>
-                        ₹{item.total}
-                      </span>
-                      
-                      <div 
-                        style={{
-                          color: "#999",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "28px",
-                          height: "28px",
-                          borderRadius: "50%",
-                          transition: "all 0.2s",
-                        }}
-                        onClick={() => removeItem(item.id)}
-                        onMouseEnter={(e) => {
-                          e.target.style.background = "#fee";
-                          e.target.style.color = "#ff4444";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = "transparent";
-                          e.target.style.color = "#999";
-                        }}
-                      >
-                        <DeleteOutlineIcon style={{ fontSize: "18px" }} />
+                        <button 
+                          onClick={() => updateQty(item.id, -1)}
+                          style={{
+                            width: "24px",
+                            height: "24px",
+                            borderRadius: "50%",
+                            border: "none",
+                            background: "#fff",
+                            color: BROWN,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "16px",
+                            fontWeight: "bold",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                          }}
+                        >
+                          -
+                        </button>
+                        
+                        <span style={{
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: BROWN,
+                          minWidth: "20px",
+                          textAlign: "center",
+                        }}>
+                          {item.quantity}
+                        </span>
+                        
+                        <button 
+                          onClick={() => updateQty(item.id, 1)}
+                          style={{
+                            width: "24px",
+                            height: "24px",
+                            borderRadius: "50%",
+                            border: "none",
+                            background: "#fff",
+                            color: BROWN,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "16px",
+                            fontWeight: "bold",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}>
+                        <div style={{
+                          textAlign: "right",
+                        }}>
+                          <span style={{
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            color: BROWN,
+                            minWidth: "60px",
+                            display: "block",
+                          }}>
+                            ₹{item.amount.toFixed(2)}
+                          </span>
+                          <span style={{
+                            fontSize: "10px",
+                            color: "#999",
+                            display: "block",
+                          }}>
+                            ({item.quantity} × {item.packGet || 1}kg)
+                          </span>
+                        </div>
+                        
+                        <div 
+                          style={{
+                            color: "#999",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "28px",
+                            height: "28px",
+                            borderRadius: "50%",
+                            transition: "all 0.2s",
+                          }}
+                          onClick={() => removeItem(item.id)}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#fee";
+                            e.currentTarget.style.color = "#ff4444";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent";
+                            e.currentTarget.style.color = "#999";
+                          }}
+                        >
+                          <DeleteOutlineIcon style={{ fontSize: "18px" }} />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Right Section - Order Details */}
           <div style={desktopStyles.rightSection}>
             <h2 style={desktopStyles.sectionTitle}>Order Details</h2>
             
@@ -1909,7 +2172,6 @@ export default function CartPage() {
               gap: "20px",
               marginBottom: "20px",
             }}>
-              {/* Left Column */}
               <div>
                 <div style={desktopStyles.formGroup}>
                   <SearchableCustomerSelect 
@@ -1952,7 +2214,6 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Right Column */}
               <div>
                 <div style={desktopStyles.formGroup}>
                   <input
@@ -1989,42 +2250,106 @@ export default function CartPage() {
               </div>
             </div>
 
-            {/* Product Summary */}
             <div style={desktopStyles.formGroup}>
               <div style={{
                 background: "#f9f4ef",
-                padding: "12px",
+                padding: "16px",
                 borderRadius: "8px",
-                fontSize: "14px",
-                color: BROWN,
               }}>
-                {cartItemsList.map(item => (
+                <h3 style={{
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  color: BROWN,
+                  margin: "0 0 12px 0",
+                  paddingBottom: "8px",
+                  borderBottom: `1px solid ${ACCENT}`,
+                }}>
+                  Order Summary
+                </h3>
+                
+                {enhancedCartItems.map(item => (
                   <div key={item.id} style={{ 
                     display: "flex", 
                     justifyContent: "space-between",
-                    marginBottom: "4px",
+                    marginBottom: "8px",
+                    fontSize: "13px",
                   }}>
-                    <span>• {item.name} x {item.quantity}</span>
-                    <span>₹{item.total}</span>
+                    <div>
+                      <span>• {item.name}</span>
+                      <span style={{ color: "#666", marginLeft: "4px" }}>
+                        ({item.quantity} × {item.packGet}kg = {item.kgs.toFixed(2)}kg)
+                      </span>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div>₹{item.amount.toFixed(2)}</div>
+                      <div style={{ fontSize: "11px", color: "#666" }}>
+                        ₹{item.price}/kg
+                      </div>
+                    </div>
                   </div>
                 ))}
+                
+                <div style={{
+                  marginTop: "12px",
+                  paddingTop: "12px",
+                  borderTop: "1px dashed #ccc",
+                }}>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "14px",
+                    color: "#666",
+                    marginBottom: "4px",
+                  }}>
+                    <span>Total Items:</span>
+                    <span>{totalItems}</span>
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "14px",
+                    color: "#666",
+                    marginBottom: "4px",
+                  }}>
+                    <span>Total Kgs:</span>
+                    <span>{totalKgs.toFixed(2)} kg</span>
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "14px",
+                    color: "#666",
+                    marginBottom: "4px",
+                  }}>
+                    <span>Subtotal:</span>
+                    <span>₹{subtotalAmount.toFixed(2)}</span>
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "14px",
+                    color: "#666",
+                    marginBottom: "4px",
+                  }}>
+                
+                  </div>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    color: BROWN,
+                    marginTop: "8px",
+                    paddingTop: "8px",
+                    borderTop: "1px solid #ccc",
+                  }}>
+                    <span>Total Amount:</span>
+                    <span>₹{totalAmountWithTax.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Total */}
-            <div style={{ marginTop: "20px" }}>
-              <div style={desktopStyles.summaryRow}>
-                <span>Subtotal ({totalItems} items)</span>
-                <span>₹{totalAmount}</span>
-              </div>
-              
-              <div style={desktopStyles.totalRow}>
-                <span>Total</span>
-                <span>₹{totalAmount}</span>
-              </div>
-            </div>
-
-            {/* Order Now Button */}
             <button 
               onClick={handleCheckout}
               style={desktopStyles.checkoutBtn}

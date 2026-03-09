@@ -50,10 +50,10 @@ function QuantityControl({ quantity, onIncrease, onDecrease, outOfStock }) {
 function PriceTag({ price }) {
   return (
     <div className="absolute bg-[#6b5454] h-[25px] left-0 overflow-clip top-[132.95px] w-[115px]">
-      <p className="absolute font-['Inter:Medium',sans-serif] font-medium h-[20px] leading-[normal] left-[14px] not-italic text-[18px] text-white top-[2.05px] w-[70px]">
-        ₹{price}
-      </p>
-    </div>
+  <p className="absolute font-['Inter:Medium',sans-serif] font-medium h-[20px] leading-[normal] left-[14px] not-italic text-[22px] text-white top-[2.05px] w-[70px]">
+    ₹{price}
+  </p>
+</div>
   );
 }
 
@@ -72,38 +72,206 @@ function CartIconComponent() {
   );
 }
 
-function ProductCard({ product, quantity, onUpdateQty }) {
+function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
   const outOfStock = product.stock <= 0;
 
-  const handleIncrease = () => {
-    onUpdateQty(product.id, 1);
-  };
+  const handleIncrease = () => onUpdateQty(product.id, 1);
+  const handleDecrease = () => onUpdateQty(product.id, -1);
 
-  const handleDecrease = () => {
-    onUpdateQty(product.id, -1);
-  };
 
+ if (isMobile) {
+  return (
+    <div style={{
+      display: 'flex',
+      background: '#fff',
+      borderRadius: '12px',
+      width: '100%',
+      minHeight: '120px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      border: '1px solid #e8ddd4',
+      overflow: 'hidden',
+      transition: 'box-shadow 0.2s',
+    }}>
+      {/* LEFT COLUMN - Product Info */}
+      <div style={{
+        flex: 1,
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+      }}>
+        {/* Product Name */}
+        <p style={{
+          margin: 0,
+          fontWeight: '600',
+          fontSize: '14px',
+          color: '#6b5454',
+          lineHeight: 1.3,
+        }}>
+          {product.name}
+        </p>
+        
+        {/* Short Name */}
+        {product.shortName && (
+          <p style={{
+            margin: '4px 0 0',
+            fontSize: '11px',
+            color: '#888',
+            lineHeight: 1.2,
+          }}>
+            {product.shortName}
+          </p>
+        )}
+        
+        {/* Stock Details */}
+        <p style={{
+          margin: '8px 0 0',
+          fontSize: '10px',
+          color: outOfStock ? '#e74c3c' : '#555',
+          fontWeight: outOfStock ? '600' : 'normal',
+        }}>
+          {outOfStock
+            ? '⚠ Out of Stock'
+            : `Stock: ${product.stock.toFixed(1)} Bags`}
+          {!outOfStock && product.balQty > 0 && (
+            <span style={{ color: '#999', marginLeft: '4px' }}>
+              ({product.balQty} kg)
+            </span>
+          )}
+        </p>
+        
+        {/* Price */}
+        <span style={{
+          marginTop: '8px',
+          fontSize: '16px',
+          fontWeight: '700',
+          color: '#3a1f0e',
+        }}>
+          ₹{product.price}
+        </span>
+      </div>
+
+      {/* RIGHT COLUMN - Image and Quantity Control */}
+      <div style={{
+        width: '120px',
+        minWidth: '120px',
+        display: 'flex',
+        flexDirection: 'column',
+        borderLeft: '1px solid #f0e8e0',
+        background: '#faf6f2',
+      }}>
+        {/* Image */}
+        <div style={{
+          width: '100%',
+          height: '80px',
+          overflow: 'hidden',
+          background: '#f5f0eb',
+        }}>
+          <img
+            alt={product.name}
+            src={product.image || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=120&h=80&fit=crop"}
+            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=120&h=80&fit=crop"; }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </div>
+
+        {/* Quantity Control */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '8px',
+        }}>
+          {outOfStock ? (
+            <span style={{
+              fontSize: '10px',
+              color: '#fff',
+              background: '#b0a0a0',
+              borderRadius: '10px',
+              padding: '4px 8px',
+            }}>
+              Out of Stock
+            </span>
+          ) : (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: '#6b5454',
+              borderRadius: '20px',
+              padding: '4px 8px',
+              gap: '8px',
+            }}>
+              <button
+                onClick={handleDecrease}
+                disabled={quantity === 0}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  cursor: quantity === 0 ? 'not-allowed' : 'pointer',
+                  width: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  opacity: quantity === 0 ? 0.4 : 1,
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
+                -
+              </button>
+              <span style={{
+                color: '#fff',
+                fontSize: '14px',
+                fontWeight: '600',
+                minWidth: '20px',
+                textAlign: 'center',
+              }}>
+                {quantity}
+              </span>
+              <button
+                onClick={handleIncrease}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  width: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  // ─── DESKTOP: original card layout ───
   return (
     <div className="bg-white relative rounded-[15px] w-[360px] h-[170px] shadow-[0_2px_8px_rgba(0,0,0,0.09)] hover:shadow-[-10px_8px_5px_-2px_rgba(0,0,0,0.1)] transition-all duration-200 hover:-translate-y-[3px]">
       <div className="overflow-clip relative rounded-[inherit] size-full">
    
-        <p className="absolute font-['Inter:Medium',sans-serif] font-medium leading-[normal] left-[14px] not-italic text-[#6b5454] text-[20px] top-[18px] whitespace-nowrap">
-          {product.fullName || `${product.name} ${product.weight}`}
+        <p className="absolute font-['Inter:Medium',sans-serif] font-normal leading-[normal] left-[14px] not-italic text-[#6b5454] text-[20px] top-[18px] whitespace-nowrap">
+          { `${product.name} `}
         </p>
-        
-        <p className="absolute font-['Inter:Regular',sans-serif] font-normal leading-[0] left-[14px] not-italic text-[#6b5454] text-[12px] top-[47px] whitespace-nowrap">
-          <span className="leading-[normal]">{product.name}</span>
-          <span className="leading-[normal]">{` ${product.weight}`}</span>
-        </p>
-        
-        <QuantityControl 
-          quantity={quantity}
-          onIncrease={handleIncrease}
-          onDecrease={handleDecrease}
-          outOfStock={outOfStock}
-        />
-        
-        <div className="absolute contents left-0 top-[131px]">
+         <div className="absolute contents left-0 top-[131px]">
           <PriceTag price={product.price} />
           <div className="absolute flex h-[29.032px] items-center justify-center left-[101.08px] top-[131px] w-[19.832px]">
             <div className="flex-none rotate-[-89.92deg]">
@@ -121,7 +289,16 @@ function ProductCard({ product, quantity, onUpdateQty }) {
             </div>
           </div>
         </div>
-
+        <p className="absolute font-['Inter:Medium',sans-serif] font-normal leading-[0] left-[14px] not-italic text-[#6b5454] text-[12px] top-[47px] whitespace-nowrap">
+          <span className="leading-[normal]">{product.shortName}</span>
+        </p>
+         
+        <QuantityControl 
+          quantity={quantity}
+          onIncrease={handleIncrease}
+          onDecrease={handleDecrease}
+          outOfStock={outOfStock}
+        />
       
         <p className={`absolute font-['Inter:Regular',sans-serif] font-normal leading-[normal] left-[16px] not-italic text-[10px] top-[116px] whitespace-nowrap ${
           outOfStock ? 'text-red-500' : 'text-[#403f3d]'
@@ -161,6 +338,8 @@ function ProductCard({ product, quantity, onUpdateQty }) {
   );
 }
 
+
+
 function MobileOrderSummary({ selectedCount, totalAmount, onGoToCart }) {
   if (selectedCount === 0) return null;
 
@@ -185,10 +364,10 @@ function MobileOrderSummary({ selectedCount, totalAmount, onGoToCart }) {
       }}>
         <div>
           <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-            Selected Items: <span style={{ fontWeight: 'bold', color: BROWN_DARK }}>{selectedCount}</span>
+            {/* Selected Items: <span style={{ fontWeight: 'bold', color: BROWN_DARK }}>{selectedCount}</span> */}
           </div>
           <div style={{ fontSize: '16px', fontWeight: 'bold', color: BROWN_DARK }}>
-            Total: ₹{totalAmount.toFixed(2)}
+            {/* Total: ₹{totalAmount.toFixed(2)} */}
           </div>
         </div>
 
@@ -573,7 +752,7 @@ export default function SMTraders() {
 
   const formatProduct = (product) => {
     const uniqueId = String(product.Product_Id);
-    
+    console.log("product",product?.Short_Name)
  
     const balQty = parseFloat(product.Bal_Qty) || 0;
     
@@ -999,6 +1178,7 @@ export default function SMTraders() {
                   product={formatted}
                   quantity={qty}
                   onUpdateQty={updateQty}
+                  isMobile={isMobile}
                 />
               </div>
             );

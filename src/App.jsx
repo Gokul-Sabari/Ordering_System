@@ -76,7 +76,7 @@ function App() {
         pauseOnHover
       />
       <Routes>
-        <Route path="/pos" element={<SaleOrder />} />
+        <Route path="/" element={<SaleOrder />} />
         <Route path="/cart" element={<CartPage />} />
       </Routes>
     </BrowserRouter>
