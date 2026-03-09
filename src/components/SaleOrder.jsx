@@ -1266,6 +1266,18 @@
 // }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchLink } from './fetchComponent';
@@ -1274,6 +1286,8 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import SearchIcon from '@mui/icons-material/Search';
+import CommonHeader from './CommonHeader';
 
 const BROWN = "#4a2c1a";
 const BROWN_DARK = "#3a1f0e";
@@ -1359,7 +1373,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
         overflow: 'hidden',
         transition: 'box-shadow 0.2s',
       }}>
-        {/* LEFT COLUMN - Product Info */}
+        
         <div style={{
           flex: 1,
           padding: '12px',
@@ -1367,7 +1381,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
           flexDirection: 'column',
           justifyContent: 'space-between',
         }}>
-          {/* Product Name */}
+      
           <p style={{
             margin: 0,
             fontWeight: '600',
@@ -1378,7 +1392,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             {product.name}
           </p>
           
-          {/* Short Name */}
+      
           {product.shortName && (
             <p style={{
               margin: '4px 0 0',
@@ -1390,7 +1404,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             </p>
           )}
           
-          {/* Stock Details */}
+
           <p style={{
             margin: '8px 0 0',
             fontSize: '10px',
@@ -1407,7 +1421,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             )}
           </p>
           
-          {/* Price */}
+        
           <span style={{
             marginTop: '8px',
             fontSize: '16px',
@@ -1418,7 +1432,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
           </span>
         </div>
 
-        {/* RIGHT COLUMN - Image and Quantity Control */}
+     
         <div style={{
           width: '120px',
           minWidth: '120px',
@@ -1427,7 +1441,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
           borderLeft: '1px solid #f0e8e0',
           background: '#faf6f2',
         }}>
-          {/* Image */}
+    
           <div style={{
             width: '100%',
             height: '80px',
@@ -1442,7 +1456,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             />
           </div>
 
-          {/* Quantity Control */}
+
           <div style={{
             flex: 1,
             display: 'flex',
@@ -1530,11 +1544,10 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
     );
   }
 
-  // DESKTOP: original card layout
   return (
     <div className="product-card bg-white relative rounded-[15px] w-[360px] h-[170px] shadow-[0_2px_8px_rgba(0,0,0,0.09)] hover:shadow-[-10px_8px_5px_-2px_rgba(0,0,0,0.1)] transition-all duration-200 hover:-translate-y-[3px]">
       <div className="overflow-clip relative rounded-[inherit] size-full" style={{ display: 'flex' }}>
-        {/* LEFT SIDE - All Product Details */}
+    
         <div style={{ 
           flex: 1, 
           padding: '12px 0 12px 14px',
@@ -1547,7 +1560,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             {product.shortName}
           </p>
 
-          {/* Product Name */}
+
           <p className="font-['Inter:Medium',sans-serif] font-normal leading-[normal] not-italic text-[#6b5454] text-[12px] whitespace-nowrap m-0">
             {product.name}
           </p>
@@ -1558,7 +1571,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             </p>
           </div>
           
-          {/* Quantity Control */}
+        
           {outOfStock ? (
             <div className="bg-[#6b5454] h-[22px] rounded-[15px] w-[90px] opacity-50 flex items-center justify-center">
               <p className="font-['Inter:Regular',sans-serif] font-normal text-[10px] text-white">
@@ -1599,7 +1612,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
           </p>
         </div>
 
-        {/* RIGHT SIDE - Only Image */}
+   
         <div style={{
           width: '120px',
           height: '100%',
@@ -1617,7 +1630,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             }}
           />
           
-          {/* Cart Icon and Quantity Badge */}
+     
           <div style={{
             position: 'absolute',
             top: '8px',
@@ -1671,7 +1684,7 @@ function MobileOrderSummary({ selectedCount, totalAmount, onGoToCart }) {
       }}>
         <div>
           <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
-            {/* Selected Items: <span style={{ fontWeight: 'bold', color: BROWN_DARK }}>{selectedCount}</span> */}
+        
           </div>
           <div style={{ fontSize: '16px', fontWeight: 'bold', color: BROWN_DARK }}>
             {/* Total: ₹{totalAmount.toFixed(2)} */}
@@ -1726,11 +1739,12 @@ export default function SMTraders() {
   const navigate = useNavigate();
   const [quantities, setQuantities] = useState({});
   const [search, setSearch] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [stockGroups, setStockGroups] = useState([]);
   const [posGroups, setPosGroups] = useState([]);
   const [displayProducts, setDisplayProducts] = useState([]);
-  const [selectedStockGroup, setSelectedStockGroup] = useState("All Categories");
+  const [selectedStockGroup, setSelectedStockGroup] = useState("All");
   const [selectedPOSGroup, setSelectedPOSGroup] = useState(null);
   const [showPOSGroups, setShowPOSGroups] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -1738,6 +1752,39 @@ export default function SMTraders() {
   
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  // New state for login
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
+
+  // Check login status on component mount
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+
+  const checkLoginStatus = () => {
+    try {
+      const user = localStorage.getItem("user");
+      const session = localStorage.getItem("session");
+      const loginAt = localStorage.getItem("loginAt");
+
+      if (user && session && loginAt) {
+        setIsLoggedIn(true);
+        
+        // Parse user data to get the name
+        const userData = JSON.parse(user);
+        const name = userData?.Full_Name || userData?.name || userData?.username || userData?.User_Name || "User";
+        setUserName(name);
+      } else {
+        setIsLoggedIn(false);
+        setUserName("");
+      }
+    } catch (error) {
+      console.error("Error checking login status:", error);
+      setIsLoggedIn(false);
+      setUserName("");
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -1908,7 +1955,7 @@ export default function SMTraders() {
         name: group,
       }));
       
-      setStockGroups([{ id: 'All Categories', name: 'All Categories' }, ...formattedGroups]);
+      setStockGroups([{ id: 'All', name: 'All' }, ...formattedGroups]);
     }
   }, [allProducts]);
 
@@ -1916,7 +1963,7 @@ export default function SMTraders() {
     setSelectedPOSGroup(null);
     setSelectedStockGroup(group.id);
     
-    if (group.id === 'All Categories') {
+    if (group.id === 'All') {
       setDisplayProducts(allProducts);
       setShowPOSGroups(false);
       setPosGroups([]);
@@ -2059,6 +2106,29 @@ export default function SMTraders() {
     navigate('/cart');
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('session');
+    localStorage.removeItem('loginAt');
+    setIsLoggedIn(false);
+    setUserName("");
+    toast.success("Logged out successfully");
+    navigate('/', { replace: true });
+  };
+
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+    if (!isSearchOpen) {
+      // Focus on search input when opened
+      setTimeout(() => {
+        const searchInput = document.getElementById('category-search');
+        if (searchInput) searchInput.focus();
+      }, 300); // Increased timeout to match animation duration
+    } else {
+      setSearch(""); // Clear search when closing
+    }
+  };
+
   const MobileDrawer = () => (
     <>
       {isDrawerOpen && (
@@ -2186,7 +2256,6 @@ export default function SMTraders() {
     </>
   );
 
-  // Media Queries Styles
   const mediaQueryStyles = `
     /* Base responsive styles */
     @media screen and (max-width: 768px) {
@@ -2439,6 +2508,32 @@ export default function SMTraders() {
       }
     }
 
+    /* Search animation styles */
+    .search-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      transition: width 0.3s ease-in-out;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 16px;
+      border: 1px solid ${BROWN_LIGHT};
+      border-radius: 25px;
+      font-size: 14px;
+      outline: none;
+      background-color: #fff;
+      color: #333;
+      transition: opacity 0.2s ease-in-out;
+    }
+
+    .search-input:focus {
+      border-color: ${BROWN_DARK};
+      box-shadow: 0 0 0 2px rgba(74, 44, 26, 0.1);
+    }
+
     /* Animations */
     @keyframes slideIn {
       from {
@@ -2486,102 +2581,22 @@ export default function SMTraders() {
     }}>
       <style>{mediaQueryStyles}</style>
 
-      <header className="header" style={{
-        background: BROWN_DARK,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "10px 16px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div className="header-logo" style={{
-            width: 40, height: 40, borderRadius: "50%",
-            background: ACCENT,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: "bold", color: BROWN_DARK, fontSize: 14, letterSpacing: 1,
-          }}>SMT</div>
-          
-          <span className="header-title" style={{ color: "#fff", fontSize: 16, fontWeight: "600", letterSpacing: 1 }}>
-            SM Traders
-          </span>
-        </div>
-
-        <div style={{ 
-          display: "flex", 
-          alignItems: "center", 
-          gap: "16px",
-        }}>
-          {!isMobile && (
-            <div style={{ width: "250px" }}>
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input"
-                style={{
-                  width: "100%",
-                  padding: "8px 16px",
-                  borderRadius: 25,
-                  border: "none",
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                  color: "#fff",
-                  fontSize: 14,
-                  outline: "none",
-                }}
-              />
-            </div>
-          )}
-
-          {isMobile && (
-            <div style={{ flex: 1, maxWidth: 200, margin: "0 8px" }}>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input-mobile"
-                style={{
-                  width: "100%",
-                  padding: "6px 10px",
-                  borderRadius: 20,
-                  border: "none",
-                  backgroundColor: "rgba(255,255,255,0.15)",
-                  color: "#fff",
-                  fontSize: 13,
-                  outline: "none",
-                }}
-              />
-            </div>
-          )}
-
-          <div 
-            onClick={handleCartClick}
-            className="cart-button"
-            style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: BROWN_LIGHT,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", position: "relative",
-            }}
-          >
-            🛒
-            {selectedCount > 0 && (
-              <span style={{
-                position: "absolute", top: -4, right: -4,
-                background: "#e74c3c", color: "#fff",
-                borderRadius: "50%", width: 18, height: 18,
-                fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: "bold",
-              }}>{selectedCount}</span>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* CommonHeader with no search */}
+      <CommonHeader
+        title="SM Traders"
+        logo="SMT"
+        showCart={true}
+        showBackButton={false}
+        showTitle={true}
+        cartItemCount={selectedCount}
+        onCartClick={handleCartClick}
+        customActions={null}
+        isMobile={isMobile}
+        backgroundColor={BROWN_DARK}
+        // showLogout={isLoggedIn}
+        userName={userName}
+        // onLogout={handleLogout}
+      />
 
       <div className="category-filters" style={{
         background: "#fff",
@@ -2591,24 +2606,98 @@ export default function SMTraders() {
         top: isMobile ? 60 : 64,
         zIndex: 90,
         boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
-        overflowX: 'auto',
-        whiteSpace: 'nowrap',
-        WebkitOverflowScrolling: 'touch',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
       }}>
-        <style>
-          {`
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `}
-        </style>
-        {loadingProducts ? (
-          <div style={{ textAlign: "center", padding: "10px" }}>Loading categories...</div>
-        ) : (
-          <div style={{ display: "flex", gap: "8px" }}>
-            {stockGroups.map(group => (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          gap: '12px',
+          flexWrap: 'wrap'
+        }}>
+          {/* Categories with search icon */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: '8px',
+            flex: 1,
+            minWidth: isMobile ? '100%' : 'auto'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              gap: '4px',
+              background: selectedStockGroup === 'All' ? BROWN_DARK : 'transparent',
+              padding: '4px 8px',
+              borderRadius: '20px',
+            }}>
+              <button
+                onClick={() => handleStockGroupClick({ id: 'All', name: 'All' })}
+                className="category-button"
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "20px",
+                  border: 'none',
+                  background: selectedStockGroup === 'All' ? BROWN_DARK : "transparent",
+                  color: selectedStockGroup === 'All' ? "#fff" : "#333",
+                  fontFamily: "inherit",
+                  fontSize: isMobile ? 13 : 14,
+                  cursor: "pointer",
+                  fontWeight: selectedStockGroup === 'All' ? "bold" : "normal",
+                  transition: "all 0.2s",
+                }}
+              >
+                All
+              </button>
+              
+              {/* Search Icon - Always visible */}
+              <button
+                onClick={toggleSearch}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: selectedStockGroup === 'All' ? '#fff' : BROWN_DARK,
+                  borderRadius: '50%',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <SearchIcon style={{ fontSize: '18px' }} />
+              </button>
+            </div>
+
+            {/* Search Input - Improved animation */}
+            <div className="search-container" style={{
+              overflow: 'hidden',
+              transition: 'width 0.3s ease-in-out',
+              width: isSearchOpen ? (isMobile ? '180px' : '250px') : '0px',
+            }}>
+              <input
+                id="category-search"
+                type="text"
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input"
+                style={{
+                  width: '100%',
+                  opacity: isSearchOpen ? 1 : 0,
+                  transition: 'opacity 0.2s ease-in-out',
+                  transitionDelay: isSearchOpen ? '0.1s' : '0s',
+                }}
+              />
+            </div>
+
+            {/* Other category buttons */}
+            {!loadingProducts && stockGroups.filter(g => g.id !== 'All').map(group => (
               <button
                 key={group.id}
                 onClick={() => handleStockGroupClick(group)}
@@ -2631,7 +2720,13 @@ export default function SMTraders() {
               </button>
             ))}
           </div>
-        )}
+
+          {loadingProducts && (
+            <div style={{ textAlign: "center", padding: "10px", width: '100%' }}>
+              Loading categories...
+            </div>
+          )}
+        </div>
       </div>
 
       {!isMobile && showPOSGroups && (
@@ -2742,7 +2837,7 @@ export default function SMTraders() {
           selectedCount={selectedCount}
           totalAmount={totalAmount}
           onGoToCart={handleCartClick}
-        />
+        />  
       )}
     </div>
   );

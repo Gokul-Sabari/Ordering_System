@@ -22,27 +22,27 @@ const Login = ({ setLoginTrue }) => {
         const session = localStorage.getItem("session");
         const loginAt = localStorage.getItem("loginAt");
 
-        // If any required auth data is missing, ensure we're on login page
+
         if (!user || !session || !loginAt) {
           // Clear any partial data
           localStorage.removeItem("user");
           localStorage.removeItem("session");
           localStorage.removeItem("loginAt");
           
-          // If we're not already on the login page, redirect to root
+
           if (window.location.pathname !== '/') {
             navigate('/', { replace: true });
           }
         } else {
-          // If auth data exists, user is already logged in, redirect to POS
+       
           if (setLoginTrue) {
             setLoginTrue();
           }
-          navigate('/pos', { replace: true });
+          navigate('/', { replace: true });
         }
       } catch (error) {
         console.error("Error checking auth status:", error);
-        // If there's an error, redirect to root
+     
         navigate('/', { replace: true });
       } finally {
         setCheckingStorage(false);

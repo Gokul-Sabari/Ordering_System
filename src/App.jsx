@@ -60,6 +60,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import SaleOrder from './components/SaleOrder';
 import CartPage from './components/CartPage';
+import { Login } from '@mui/icons-material';
 
 function App() {
   return (
@@ -77,6 +78,7 @@ function App() {
       />
       <Routes>
         <Route path="/" element={<SaleOrder />} />
+         <Route path="/login" element={<Login />} />
         <Route path="/cart" element={<CartPage />} />
       </Routes>
     </BrowserRouter>
