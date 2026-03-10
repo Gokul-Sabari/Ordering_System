@@ -319,11 +319,17 @@
 
 
 
+
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import LogoutIcon from '@mui/icons-material/Logout';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PersonIcon from '@mui/icons-material/Person';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
+const BROWN_DARK = "#3a1f0e";
+const ACCENT = "#c8a96e";
 
 const CommonHeader = ({ 
   title, 
@@ -338,142 +344,129 @@ const CommonHeader = ({
   onBackClick,
   customActions,
   isMobile = false,
-  backgroundColor = "#3a1f0e",
+  backgroundColor = BROWN_DARK,
   showLogout = false,
   onLogout,
-  userName = "" // New prop for user name
+  userName = "",
+  isLoggedIn = false,
+  selectedCount = 0,
+  handleCartClick
 }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // Clear all auth data from localStorage
     localStorage.removeItem('user');
     localStorage.removeItem('session');
     localStorage.removeItem('loginAt');
     
     toast.success('Logged out successfully');
     
-    // Redirect to home page
     navigate('/', { replace: true });
     
-    // Call custom onLogout if provided
     if (onLogout) {
       onLogout();
     }
   };
 
+  const handleBackClick = () => {
+    if (onBackClick) {
+      onBackClick();
+    } else {
+      navigate(-1);
+    }
+  };
+
   const headerStyle = {
-    background: backgroundColor,
-    color: '#fff',
-    padding: isMobile ? '12px 16px' : '16px 24px',
-    position: 'sticky',
+    backgroundColor: BROWN_DARK,
+    color: "#fff",
+    padding: isMobile ? "10px 16px" : "12px 24px",
+    position: "sticky",
     top: 0,
     zIndex: 100,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
   };
 
   const containerStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    maxWidth: '1400px',
-    margin: '0 auto',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    maxWidth: 1400,
+    margin: "0 auto",
   };
 
   const leftSectionStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: isMobile ? '12px' : '20px',
+    display: "flex",
+    alignItems: "center",
+    gap: isMobile ? 8 : 16,
   };
 
   const logoStyle = {
-    fontSize: isMobile ? '20px' : '24px',
-    fontWeight: 'bold',
-    background: '#fff',
-    color: backgroundColor,
-    width: isMobile ? '36px' : '44px',
-    height: isMobile ? '36px' : '44px',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: isMobile ? 36 : 44,
+    height: isMobile ? 36 : 44,
+    borderRadius: "50%",
+    backgroundColor: ACCENT,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "bold",
+    fontSize: isMobile ? 14 : 18,
+    color: BROWN_DARK,
   };
 
   const titleStyle = {
-    fontSize: isMobile ? '16px' : '20px',
-    fontWeight: '600',
     margin: 0,
+    fontSize: isMobile ? 16 : 20,
+    fontWeight: "bold",
+    color: "#fff",
   };
 
   const rightSectionStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: isMobile ? '12px' : '20px',
+    display: "flex",
+    alignItems: "center",
+    gap: isMobile ? 8 : 16,
   };
 
   const iconButtonStyle = {
     background: 'transparent',
     border: 'none',
-    color: '#fff',
     cursor: 'pointer',
     padding: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    color: '#fff',
     borderRadius: '50%',
-    transition: 'background 0.3s',
-    position: 'relative',
+    transition: 'background 0.2s',
+  };
+
+  const userNameBadgeStyle = {
+    fontSize: isMobile ? 12 : 14,
+    color: "#fff",
+    opacity: 0.9,
+    background: "rgba(255,255,255,0.15)",
+    padding: isMobile ? "3px 8px" : "4px 12px",
+    borderRadius: "20px",
+    maxWidth: isMobile ? "100px" : "200px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   };
 
   const cartBadgeStyle = {
     position: 'absolute',
-    top: '0',
-    right: '0',
-    background: '#c8a96e',
-    color: '#3a1f0e',
-    fontSize: '10px',
-    fontWeight: 'bold',
-    minWidth: '16px',
-    height: '16px',
+    top: '2px',
+    right: '2px',
+    backgroundColor: '#e74c3c',
+    color: '#fff',
     borderRadius: '50%',
+    width: '18px',
+    height: '18px',
+    fontSize: '11px',
+    fontWeight: 'bold',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-  };
-
-  const userInfoStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    background: 'rgba(255,255,255,0.1)',
-    padding: isMobile ? '4px 8px' : '6px 12px',
-    borderRadius: '20px',
-    marginRight: '8px',
-  };
-
-  const userNameStyle = {
-    fontSize: isMobile ? '13px' : '14px',
-    fontWeight: '500',
-    color: '#fff',
-    maxWidth: isMobile ? '100px' : '150px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  };
-
-  const logoutButtonStyle = {
-    background: 'transparent',
-    border: '1.5px solid #fff',
-    color: '#fff',
-    borderRadius: '20px',
-    padding: isMobile ? '6px 12px' : '8px 16px',
-    fontSize: isMobile ? '13px' : '14px',
-    cursor: 'pointer',
-    fontWeight: '500',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    transition: 'all 0.3s',
+    pointerEvents: 'none',
   };
 
   return (
@@ -482,77 +475,50 @@ const CommonHeader = ({
         <div style={leftSectionStyle}>
           {showBackButton && (
             <button
-              onClick={onBackClick}
+              onClick={handleBackClick}
               style={iconButtonStyle}
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              ←
+              <ArrowBackIcon style={{ fontSize: isMobile ? '20px' : '24px' }} />
             </button>
           )}
           
           <div style={logoStyle}>
-            {logo}
+            {logo || "SMT"}
           </div>
           
           {showTitle && (
-            <h1 style={titleStyle}>{title}</h1>
+            <h2 style={titleStyle}>{title || "SM Traders"}</h2>
           )}
         </div>
 
         <div style={rightSectionStyle}>
-          {/* Show user info if logged in */}
-          {showLogout && userName && (
-            <div style={userInfoStyle}>
-              <PersonIcon style={{ fontSize: isMobile ? '16px' : '18px', color: '#fff' }} />
-              <span style={userNameStyle}>{userName}</span>
-            </div>
+          {/* Show username when logged in - SINGLE INSTANCE */}
+          {isLoggedIn && userName && (
+            <span style={userNameBadgeStyle}>
+              {userName}
+            </span>
           )}
 
-          {/* Show logout button if user is logged in */}
-          {showLogout && (
-            <button
-              onClick={handleLogout}
-              style={logoutButtonStyle}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#fff';
-                e.currentTarget.style.color = backgroundColor;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#fff';
-              }}
-            >
-              <LogoutIcon style={{ fontSize: isMobile ? '16px' : '18px' }} />
-              {!isMobile && 'Logout'}
-            </button>
-          )}
-
-          {showSearch && (
-            <button
-              onClick={onSearchClick}
-              style={iconButtonStyle}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              🔍
-            </button>
-          )}
-
+          {/* Cart Icon with badge */}
           {showCart && (
-            <button
-              onClick={onCartClick}
-              style={iconButtonStyle}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              🛒
-              {cartItemCount > 0 && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={handleCartClick || onCartClick}
+                style={iconButtonStyle}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <ShoppingCartIcon style={{ fontSize: isMobile ? '22px' : '24px' }} />
+              </button>
+
+              {(cartItemCount > 0 || selectedCount > 0) && (
                 <span style={cartBadgeStyle}>
-                  {cartItemCount}
+                  {selectedCount || cartItemCount}
                 </span>
               )}
-            </button>
+            </div>
           )}
 
           {customActions}

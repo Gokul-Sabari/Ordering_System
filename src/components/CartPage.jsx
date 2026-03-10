@@ -1,598 +1,4 @@
-// import React, { useState, useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-// import { toast } from 'react-toastify';
-
-// const BROWN = "#4a2c1a";
-// const BROWN_DARK = "#3a1f0e";
-// const BROWN_LIGHT = "#6b3f23";
-// const ACCENT = "#c8a96e";
-
-// export default function CartPage() {
-//   const navigate = useNavigate();
-//   const [cartItems, setCartItems] = useState({});
-//   const [products, setProducts] = useState([]);
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     loadCartData();
-
-//     const handleVisibilityChange = () => {
-//       if (document.visibilityState === 'visible') {
-//         console.log("Cart page became visible, reloading cart...");
-//         loadCartData();
-//       }
-//     };
-
-//     const handleFocus = () => {
-//       console.log("Cart page focused, reloading cart...");
-//       loadCartData();
-//     };
-
-//     document.addEventListener('visibilitychange', handleVisibilityChange);
-//     window.addEventListener('focus', handleFocus);
-
-//     return () => {
-//       document.removeEventListener('visibilitychange', handleVisibilityChange);
-//       window.removeEventListener('focus', handleFocus);
-//     };
-//   }, []);
-
-//   const loadCartData = () => {
-//     setLoading(true);
-//     try {
-//       const savedCart = localStorage.getItem('cartItems');
-//       const savedProducts = localStorage.getItem('products');
-      
-//       if (savedCart) {
-//         const parsedCart = JSON.parse(savedCart);
-//         setCartItems(parsedCart);
-//         console.log("✅ Cart page loaded cart:", parsedCart);
-//       } else {
-//         console.log("ℹ️ No cart found in localStorage");
-//         setCartItems({});
-//       }
-      
-//       if (savedProducts) {
-//         setProducts(JSON.parse(savedProducts));
-//       }
-//     } catch (error) {
-//       console.error("❌ Error loading cart data:", error);
-//       toast.error("Failed to load cart");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const updateQty = (id, delta) => {
-//     setCartItems(prev => {
-//       const current = prev[id] || 0;
-//       const next = Math.max(0, current + delta);
-      
-//       let newCart;
-//       if (next === 0) {
-//         const { [id]: _, ...rest } = prev;
-//         newCart = rest;
-//       } else {
-//         newCart = { ...prev, [id]: next };
-//       }
-      
-     
-//       localStorage.setItem('cartItems', JSON.stringify(newCart));
-      
-//       const product = products.find(p => p.id === id);
-//       if (product) {
-//         if (delta > 0) {
-//           toast.success(`Increased ${product.name} quantity`);
-//         } else if (delta < 0 && current > 0) {
-//           if (current - 1 === 0) {
-//             toast.info(`Removed ${product.name} from cart`);
-//           } else {
-//             toast.info(`Decreased ${product.name} quantity`);
-//           }
-//         }
-//       }
-      
-//       return newCart;
-//     });
-//   };
-
-//   const handleCheckout = () => {
-//     toast.success("Processing checkout...");
-//     setTimeout(() => {
-//       toast.info("Checkout functionality will be implemented here");
-//     }, 1000);
-//   };
-
-//   const clearCart = () => {
-//     if (window.confirm('Are you sure you want to clear your cart?')) {
-//       setCartItems({});
-//       localStorage.removeItem('cartItems');
-//       toast.info("Cart cleared");
-//       console.log("🗑️ Cart cleared");
-//     }
-//   };
-
-//   const continueShopping = () => {
-//     localStorage.setItem('cartItems', JSON.stringify(cartItems));
-   
-//     navigate('/pos');
-//   };
-
-//   const getProductDetails = (productId) => {
-//     return products.find(p => p.id === productId) || {};
-//   };
-
-//   const cartItemsList = Object.entries(cartItems)
-//     .filter(([_, qty]) => qty > 0)
-//     .map(([productId, qty]) => {
-//       const product = getProductDetails(productId);
-//       return { 
-//         ...product, 
-//         quantity: qty, 
-//         total: (product.price || 0) * qty 
-//       };
-//     });
-
-//   const totalAmount = cartItemsList.reduce((sum, item) => sum + item.total, 0);
-//   const totalItems = cartItemsList.reduce((sum, item) => sum + item.quantity, 0);
-
-//   if (loading) {
-//     return (
-//       <div style={{ 
-//         display: "flex", 
-//         justifyContent: "center", 
-//         alignItems: "center", 
-//         height: "100vh",
-//         background: "#f5f0eb"
-//       }}>
-//         <div style={{ color: BROWN, fontSize: "18px" }}>Loading cart...</div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div style={{ 
-//       fontFamily: "'Georgia', serif", 
-//       background: "#f5f0eb", 
-//       minHeight: "100vh" 
-//     }}>
-//       {/* Header */}
-//       <header style={{
-//         background: BROWN_DARK,
-//         display: "flex",
-//         alignItems: "center",
-//         justifyContent: "space-between",
-//         padding: "10px 24px",
-//         boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-//         position: "sticky",
-//         top: 0,
-//         zIndex: 100,
-//       }}>
-//         <div 
-//           onClick={() => continueShopping()}
-//           style={{ 
-//             display: "flex", 
-//             alignItems: "center", 
-//             gap: 10,
-//             cursor: "pointer"
-//           }}
-//         >
-//           <div style={{
-//             width: 44, height: 44, borderRadius: "50%",
-//             background: ACCENT,
-//             display: "flex", alignItems: "center", justifyContent: "center",
-//             fontWeight: "bold", color: BROWN_DARK, fontSize: 14, letterSpacing: 1,
-//           }}>SMT</div>
-//           <span style={{ color: "#fff", fontSize: 18, fontWeight: "600", letterSpacing: 1 }}>
-//             SM Traders - Cart
-//           </span>
-//         </div>
-
-//         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-//           <button
-//             onClick={continueShopping}
-//             style={{
-//               padding: "8px 16px",
-//               background: "transparent",
-//               border: "1px solid #fff",
-//               color: "#fff",
-//               borderRadius: "5px",
-//               cursor: "pointer",
-//               fontSize: "14px",
-//               transition: "all 0.3s",
-//             }}
-//             onMouseEnter={(e) => {
-//               e.target.style.background = "rgba(255,255,255,0.1)";
-//             }}
-//             onMouseLeave={(e) => {
-//               e.target.style.background = "transparent";
-//             }}
-//           >
-//             ← Continue Shopping
-//           </button>
-//           <div style={{
-//             width: 40, height: 40, borderRadius: "50%",
-//             background: BROWN_LIGHT,
-//             display: "flex", alignItems: "center", justifyContent: "center",
-//             position: "relative",
-//           }}>
-//             🛒
-//             {totalItems > 0 && (
-//               <span style={{
-//                 position: "absolute", top: -4, right: -4,
-//                 background: "#e74c3c", color: "#fff",
-//                 borderRadius: "50%", width: 18, height: 18,
-//                 fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center",
-//                 fontWeight: "bold",
-//               }}>{totalItems}</span>
-//             )}
-//           </div>
-//         </div>
-//       </header>
-
-      
-//       <div style={{ maxWidth: "1000px", margin: "40px auto", padding: "0 24px" }}>
-//         <div style={{ 
-//           background: "#fff", 
-//           borderRadius: "15px", 
-//           boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-//           overflow: "hidden"
-//         }}>
-
-//           <div style={{ 
-//             padding: "20px 24px", 
-//             borderBottom: "1px solid #eee",
-//             display: "flex",
-//             justifyContent: "space-between",
-//             alignItems: "center",
-//             background: "#faf7f2"
-//           }}>
-//             <h2 style={{ 
-//               fontSize: "24px", 
-//               fontWeight: "bold", 
-//               color: BROWN,
-//               margin: 0
-//             }}>
-//               Your Shopping Cart
-//             </h2>
-//             {cartItemsList.length > 0 && (
-//               <button
-//                 onClick={clearCart}
-//                 style={{
-//                   padding: "6px 12px",
-//                   background: "#fee",
-//                   border: "1px solid #fcc",
-//                   color: "#c00",
-//                   borderRadius: "5px",
-//                   cursor: "pointer",
-//                   fontSize: "13px",
-//                   transition: "all 0.3s",
-//                 }}
-//                 onMouseEnter={(e) => {
-//                   e.target.style.background = "#fdd";
-//                 }}
-//                 onMouseLeave={(e) => {
-//                   e.target.style.background = "#fee";
-//                 }}
-//               >
-//                 Clear Cart
-//               </button>
-//             )}
-//           </div>
-
-       
-//           <div style={{ padding: "24px" }}>
-//             {cartItemsList.length === 0 ? (
-//               <div style={{ textAlign: "center", padding: "60px 20px" }}>
-//                 <div style={{ fontSize: "48px", marginBottom: "20px" }}>🛒</div>
-//                 <p style={{ fontSize: "18px", color: "#666", marginBottom: "20px" }}>
-//                   Your cart is empty
-//                 </p>
-//                 <button
-//                   onClick={continueShopping}
-//                   style={{
-//                     padding: "12px 24px",
-//                     background: BROWN,
-//                     color: "#fff",
-//                     border: "none",
-//                     borderRadius: "5px",
-//                     fontSize: "16px",
-//                     cursor: "pointer",
-//                     transition: "background 0.3s",
-//                   }}
-//                   onMouseEnter={(e) => e.target.style.background = BROWN_DARK}
-//                   onMouseLeave={(e) => e.target.style.background = BROWN}
-//                 >
-//                   Start Shopping
-//                 </button>
-//               </div>
-//             ) : (
-//               <>
-                
-//                 <div style={{ marginBottom: "30px" }}>
-//                   {cartItemsList.map((item) => (
-//                     <div 
-//                       key={item.id} 
-//                       style={{
-//                         display: "flex",
-//                         gap: "20px",
-//                         padding: "20px 0",
-//                         borderBottom: "1px solid #eee"
-//                       }}
-//                     >
-
-//                       <img 
-//                         src={item.image}
-//                         alt={item.name}
-//                         style={{
-//                           width: "100px",
-//                           height: "100px",
-//                           objectFit: "cover",
-//                           borderRadius: "8px"
-//                         }}
-//                         onError={(e) => {
-//                           e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=100&h=100&fit=crop";
-//                         }}
-//                       />
-                      
-           
-//                       <div style={{ flex: 1 }}>
-//                         <h3 style={{ 
-//                           fontSize: "18px", 
-//                           fontWeight: "600", 
-//                           color: BROWN,
-//                           margin: "0 0 8px 0"
-//                         }}>
-//                           {item.name}
-//                         </h3>
-//                         <p style={{ 
-//                           fontSize: "14px", 
-//                           color: "#666",
-//                           margin: "0 0 4px 0"
-//                         }}>
-//                           Weight: {item.weight}
-//                         </p>
-//                         <p style={{ 
-//                           fontSize: "14px", 
-//                           color: "#666",
-//                           margin: "0 0 12px 0"
-//                         }}>
-//                           Price: ₹{item.price} per {item.unit?.toLowerCase() || 'item'}
-//                         </p>
-                        
-                      
-//                         <div style={{ 
-//                           display: "flex", 
-//                           alignItems: "center",
-//                           gap: "12px",
-//                           marginTop: "10px"
-//                         }}>
-//                           <button 
-//                             onClick={() => updateQty(item.id, -1)}
-//                             style={{
-//                               width: "32px",
-//                               height: "32px",
-//                               borderRadius: "50%",
-//                               background: "#f0f0f0",
-//                               border: "1px solid #ddd",
-//                               cursor: "pointer",
-//                               fontSize: "18px",
-//                               display: "flex",
-//                               alignItems: "center",
-//                               justifyContent: "center",
-//                               transition: "all 0.2s",
-//                             }}
-//                             onMouseEnter={(e) => {
-//                               e.target.style.background = "#e0e0e0";
-//                             }}
-//                             onMouseLeave={(e) => {
-//                               e.target.style.background = "#f0f0f0";
-//                             }}
-//                           >
-//                             -
-//                           </button>
-                          
-//                           <span style={{ 
-//                             fontSize: "16px", 
-//                             fontWeight: "500",
-//                             minWidth: "30px",
-//                             textAlign: "center"
-//                           }}>
-//                             {item.quantity}
-//                           </span>
-                          
-//                           <button 
-//                             onClick={() => updateQty(item.id, 1)}
-//                             style={{
-//                               width: "32px",
-//                               height: "32px",
-//                               borderRadius: "50%",
-//                               background: "#f0f0f0",
-//                               border: "1px solid #ddd",
-//                               cursor: "pointer",
-//                               fontSize: "18px",
-//                               display: "flex",
-//                               alignItems: "center",
-//                               justifyContent: "center",
-//                               transition: "all 0.2s",
-//                             }}
-//                             onMouseEnter={(e) => {
-//                               e.target.style.background = "#e0e0e0";
-//                             }}
-//                             onMouseLeave={(e) => {
-//                               e.target.style.background = "#f0f0f0";
-//                             }}
-//                           >
-//                             +
-//                           </button>
-                          
-//                           {item.stock && (
-//                             <span style={{ 
-//                               fontSize: "12px", 
-//                               color: "#888",
-//                               marginLeft: "10px"
-//                             }}>
-//                               Stock: {item.stock.toFixed(1)} {item.unit}
-//                             </span>
-//                           )}
-//                         </div>
-//                       </div>
-                      
-//                       {/* Item Total */}
-//                       <div style={{ 
-//                         minWidth: "120px",
-//                         textAlign: "right"
-//                       }}>
-//                         <p style={{ 
-//                           fontSize: "14px", 
-//                           color: "#666",
-//                           margin: "0 0 5px 0"
-//                         }}>
-//                           Subtotal:
-//                         </p>
-//                         <p style={{ 
-//                           fontSize: "20px", 
-//                           fontWeight: "bold",
-//                           color: BROWN,
-//                           margin: 0
-//                         }}>
-//                           ₹{item.total.toFixed(2)}
-//                         </p>
-//                         <p style={{ 
-//                           fontSize: "12px", 
-//                           color: "#888",
-//                           margin: "5px 0 0 0"
-//                         }}>
-//                           (₹{item.price} × {item.quantity})
-//                         </p>
-//                       </div>
-//                     </div>
-//                   ))}
-//                 </div>
-
-             
-//                 <div style={{ 
-//                   background: "#f9f4ef",
-//                   borderRadius: "10px",
-//                   padding: "24px",
-//                   marginTop: "20px"
-//                 }}>
-//                   <h3 style={{ 
-//                     fontSize: "18px", 
-//                     fontWeight: "600", 
-//                     color: BROWN,
-//                     margin: "0 0 20px 0"
-//                   }}>
-//                     Order Summary
-//                   </h3>
-                  
-//                   <div style={{ 
-//                     display: "flex", 
-//                     justifyContent: "space-between",
-//                     marginBottom: "12px",
-//                     fontSize: "16px",
-//                     color: "#666"
-//                   }}>
-//                     <span>Total Items:</span>
-//                     <span>{totalItems}</span>
-//                   </div>
-                  
-//                   <div style={{ 
-//                     display: "flex", 
-//                     justifyContent: "space-between",
-//                     marginBottom: "12px",
-//                     fontSize: "16px",
-//                     color: "#666"
-//                   }}>
-//                     <span>Total Products:</span>
-//                     <span>{cartItemsList.length}</span>
-//                   </div>
-                  
-//                   <div style={{ 
-//                     display: "flex", 
-//                     justifyContent: "space-between",
-//                     marginBottom: "20px",
-//                     paddingTop: "12px",
-//                     borderTop: "2px dashed #d4c5b5",
-//                     fontSize: "24px",
-//                     fontWeight: "bold",
-//                     color: BROWN
-//                   }}>
-//                     <span>Total Amount:</span>
-//                     <span>₹{totalAmount.toFixed(2)}</span>
-//                   </div>
-
-//                   <button 
-//                     onClick={handleCheckout}
-//                     style={{
-//                       width: "100%",
-//                       padding: "16px",
-//                       background: BROWN,
-//                       color: "#fff",
-//                       border: "none",
-//                       borderRadius: "8px",
-//                       fontSize: "18px",
-//                       fontWeight: "600",
-//                       cursor: "pointer",
-//                       transition: "background 0.3s",
-//                       marginBottom: "12px"
-//                     }}
-//                     onMouseEnter={(e) => e.target.style.background = BROWN_DARK}
-//                     onMouseLeave={(e) => e.target.style.background = BROWN}
-//                   >
-//                     Proceed to Checkout
-//                   </button>
-                  
-//                   <button 
-//                     onClick={continueShopping}
-//                     style={{
-//                       width: "100%",
-//                       padding: "12px",
-//                       background: "transparent",
-//                       border: `2px solid ${BROWN}`,
-//                       color: BROWN,
-//                       borderRadius: "8px",
-//                       fontSize: "16px",
-//                       fontWeight: "500",
-//                       cursor: "pointer",
-//                       transition: "all 0.3s",
-//                     }}
-//                     onMouseEnter={(e) => {
-//                       e.target.style.background = "#f0e9e2";
-//                     }}
-//                     onMouseLeave={(e) => {
-//                       e.target.style.background = "transparent";
-//                     }}
-//                   >
-//                     Continue Shopping
-//                   </button>
-//                 </div>
-//               </>
-//             )}
-//           </div>
-//         </div>
-//       </div>
-      
-//       {cartItemsList.length > 0 && (
-//         <div style={{
-//           maxWidth: "1000px",
-//           margin: "20px auto 40px",
-//           padding: "0 24px",
-//           textAlign: "center",
-//           color: "#888",
-//           fontSize: "13px"
-//         }}>
-//           <p>
-//             Need help? Contact us at support@smtraders.com or call +91 1234567890
-//           </p>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -611,8 +17,9 @@ const BROWN_LIGHT = "#6b3f23";
 const ACCENT = "#c8a96e";
 const BG_COLOR = "#fdf8f3";
 
-// Login Popup Component
+
 const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -639,23 +46,19 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
       if (data.success) {
         const { user, sessionInfo } = data;
 
-        // Store auth data in localStorage
         localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("session", JSON.stringify(sessionInfo));
         localStorage.setItem('loginAt', new Date().toString());
 
         toast.success("Login successful!");
         
-        // Clear form
         setUsername("");
         setPassword("");
         
-        // Call success callback
         if (onLoginSuccess) {
           onLoginSuccess();
         }
         
-        // Close popup
         onClose();
       } else {
         toast.error(data.message || "Login failed");
@@ -700,12 +103,12 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
             color: BROWN,
             fontSize: "24px",
             margin: "0 0 8px 0",
-          }}>👋 Welcome Back</h2>
+          }}> </h2>
           <p style={{
             color: "#666",
             fontSize: "14px",
             margin: 0,
-          }}>Sign in to place your order</p>
+          }}></p>
         </div>
 
         <div style={{
@@ -858,8 +261,254 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
   );
 };
 
+
+const UserMenuDropdown = ({ isOpen, onClose, isLoggedIn, userName, onLoginClick, onLogout }) => {
+  const dropdownRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleLogout = () => {
+    onLogout();
+    onClose();
+  };
+
+  const handleLogin = () => {
+    onLoginClick();
+    onClose();
+  };
+
+  const desktopCardStyles = {
+    minWidth: "320px", 
+    padding: "0",
+  };
+
+  const desktopHeaderStyles = {
+    padding: "28px 24px", 
+  };
+
+  const desktopAvatarStyles = {
+    width: "64px", 
+    height: "64px", 
+    fontSize: "28px", 
+  };
+
+  const desktopNameStyles = {
+    fontSize: "22px", 
+  };
+
+  const desktopUserTypeStyles = {
+    padding: "16px 24px",
+    fontSize: "15px", 
+  };
+
+  const desktopButtonStyles = {
+    padding: "18px 24px", 
+    fontSize: "17px", 
+    gap: "16px", 
+  };
+
+  const desktopIconStyles = {
+    fontSize: "22px", 
+  };
+
+  return (
+    <div
+      ref={dropdownRef}
+      style={{
+        position: "absolute",
+        top: "calc(100% + 8px)",
+        right: 0,
+        ...(isMobile ? {
+          minWidth: "250px",
+        } : desktopCardStyles),
+        background: "#fff",
+        borderRadius: isMobile ? "12px" : "20px",
+        boxShadow: isMobile 
+          ? "0 4px 20px rgba(0,0,0,0.15)" 
+          : "0 8px 30px rgba(0,0,0,0.2)", 
+        zIndex: 1000,
+        overflow: "hidden",
+        animation: "slideDown 0.2s ease",
+      }}
+    >
+      {isLoggedIn ? (
+    
+        <>
+          <div style={{
+            padding: isMobile ? "20px 16px" : desktopHeaderStyles.padding,
+            background: "linear-gradient(135deg, #4a2c1a 0%, #3a1f0e 100%)",
+            borderBottom: `1px solid ${ACCENT}`,
+          }}>
+            <div style={{
+              width: isMobile ? "48px" : desktopAvatarStyles.width,
+              height: isMobile ? "48px" : desktopAvatarStyles.height,
+              borderRadius: "50%",
+              background: "#c8a96e",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              <span style={{
+                color: "#4a2c1a",
+                fontSize: isMobile ? "20px" : desktopAvatarStyles.fontSize,
+                fontWeight: "bold",
+              }}>
+                {userName?.charAt(0) || ""}
+              </span>
+            </div>
+              <div style={{
+                  fontSize: isMobile ? "18px" : "20px",
+                  color: "#fff",
+                }}>{userName || ""}</div>
+
+            <div style={{
+              fontSize: isMobile ? "18px" : desktopNameStyles.fontSize,
+              fontWeight: "600",
+              color: "#fff",
+              marginBottom: "4px",
+            }}>{userName?.Name || ""}</div>
+            <div style={{
+              fontSize: isMobile ? "13px" : "15px",
+              color: "rgba(255,255,255,0.8)",
+            }}>Signed In</div>
+          </div>
+          
+          <div style={{
+            padding: isMobile ? "8px" : "12px",
+          }}>
+            <div style={{
+              padding: isMobile ? "12px 16px" : desktopUserTypeStyles.padding,
+              borderBottom: "1px solid #f0f0f0",
+            }}>
+            
+            
+            </div>
+            
+            <button
+              onClick={handleLogout}
+              style={{
+                width: "100%",
+                padding: isMobile ? "14px 16px" : desktopButtonStyles.padding,
+                background: "transparent",
+                border: "none",
+                textAlign: "left",
+                fontSize: isMobile ? "15px" : desktopButtonStyles.fontSize,
+                color: "#d32f2f",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: isMobile ? "12px" : desktopButtonStyles.gap,
+                transition: "background 0.2s",
+                borderRadius: isMobile ? "8px" : "12px",
+                marginTop: "4px",
+              }}
+              onMouseEnter={(e) => e.target.style.background = "#fff5f5"}
+              onMouseLeave={(e) => e.target.style.background = "transparent"}
+            >
+              <span style={{ fontSize: isMobile ? "18px" : desktopIconStyles.fontSize }}>🚪</span>
+              <span>Logout</span>
+            </button>
+          </div>
+        </>
+      ) : (
+    
+        <>
+          <div style={{
+            padding: isMobile ? "20px 16px" : desktopHeaderStyles.padding,
+            background: "#f9f4ef",
+            textAlign: "center",
+          }}>
+            <div style={{
+              width: isMobile ? "20px" : desktopAvatarStyles.width,
+              height: isMobile ? "48px" : desktopAvatarStyles.height,
+              borderRadius: "50%",
+              background: "#e0d5cc",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 12px",
+            }}>
+              <span style={{
+                color: BROWN,
+                fontSize: isMobile ? "20px" : desktopAvatarStyles.fontSize,
+                fontWeight: "bold",
+              }}>?</span>
+            </div>
+            <div style={{
+              fontSize: isMobile ? "16px" : "20px",
+              fontWeight: "600",
+              color: BROWN,
+              marginBottom: "4px",
+            }}>Not Signed In</div>
+            <div style={{
+              fontSize: isMobile ? "13px" : "15px",
+              color: "#666",
+            }}>Sign in to place orders</div>
+          </div>
+          
+          <div style={{
+            padding: isMobile ? "12px" : "20px",
+          }}>
+            <button
+              onClick={handleLogin}
+              style={{
+                width: "100%",
+                padding: isMobile ? "14px 16px" : "16px 24px",
+                background: BROWN,
+                border: "none",
+                borderRadius: isMobile ? "8px" : "12px",
+                fontSize: isMobile ? "15px" : "18px",
+                fontWeight: "600",
+                color: "#fff",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: isMobile ? "8px" : "12px",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={(e) => e.target.style.background = BROWN_DARK}
+              onMouseLeave={(e) => e.target.style.background = BROWN}
+            >
+              <span style={{ fontSize: isMobile ? "18px" : "22px" }}>🔑</span>
+              <span>Sign In</span>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+
 const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
-  // ... (keep your existing SearchableCustomerSelect component code)
+
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [customers, setCustomers] = useState([]);
@@ -882,8 +531,8 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
             Mobile_No: customer.Mobile_No ? customer.Mobile_No.trim() : '',
             Address: customer.Address ? customer.Address.trim() : '',
             City: customer.City ? customer.City.trim() : '',
-            Broker: customer.Broker ? customer.Broker.trim() : '',
-            Transporter: customer.Transporter ? customer.Transporter.trim() : ''
+            Broker_Name: customer.Broker_Name?.trim() || customer.Broker?.trim() || '',
+            Transporter_Name: customer.Transporter_Name?.trim() || customer.Transporter?.trim() || ''
           }));
           
           setCustomers(sanitizedData);
@@ -921,8 +570,8 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
 
     if (onCustomerSelect) {
       onCustomerSelect({
-        broker: customer.Broker?.trim() || "",
-        transporter: customer.Transporter?.trim() || "",
+        broker: customer.Broker_Name || customer.Broker?.trim() || "",
+        transporter: customer.Transporter_Name || customer.Transporter?.trim() || "",
         customerId: customer.Customer_Id,
         customerName: customer.Short_Name || "",
         mobileNo: customer.Mobile_No || "",
@@ -1010,14 +659,303 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect }) => {
                 }}>
                   {customer.Mobile_No && <span>📞 {customer.Mobile_No}</span>}
                   {customer.City && <span>📍 {customer.City}</span>}
-                  {customer.Broker?.trim() && <span>🤝 Broker: {customer.Broker}</span>}
-                  {customer.Transporter?.trim() && <span>🚚 Trans: {customer.Transporter}</span>}
+                  {(customer.Broker_Name || customer.Broker?.trim()) && <span>🤝 Broker: {customer.Broker_Name || customer.Broker}</span>}
+                  {(customer.Transporter_Name || customer.Transporter?.trim()) && <span>🚚 Trans: {customer.Transporter_Name || customer.Transporter}</span>}
                 </div>
               </div>
             ))
           ) : (
             <div style={{ padding: "12px", color: "#666", textAlign: "center" }}>
               No customers found
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+const BrokerDropdown = ({ 
+  selectedBroker, 
+  onSelectBroker, 
+  availableBrokers, 
+  loading,
+  onOpen 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredBrokers = availableBrokers.filter(broker =>
+    broker.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (broker.code && broker.code.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const handleSelectBroker = (broker) => {
+    onSelectBroker({ id: broker.id, name: broker.name });
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
+      <div
+        onClick={() => {
+          setIsOpen(!isOpen);
+          onOpen && onOpen();
+        }}
+        style={{
+          padding: "12px",
+          border: `1px solid ${isOpen ? BROWN : "#ddd"}`,
+          borderRadius: "8px",
+          background: "#fff",
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          transition: "all 0.2s",
+        }}
+      >
+        <span style={{ color: selectedBroker.name ? BROWN : "#999" }}>
+          {selectedBroker.name || "Select Broker"}
+        </span>
+        <span style={{ color: BROWN_LIGHT }}>▼</span>
+      </div>
+
+      {isOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "#fff",
+            border: `1px solid #ddd`,
+            borderRadius: "8px",
+            marginTop: "4px",
+            maxHeight: "250px",
+            overflowY: "auto",
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          }}
+        >
+          <div style={{ padding: "8px", position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #eee" }}>
+            <input
+              type="text"
+              placeholder="Search broker..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          {loading ? (
+            <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+              Loading brokers...
+            </div>
+          ) : availableBrokers.length === 0 ? (
+            <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+              No brokers available
+            </div>
+          ) : filteredBrokers.length > 0 ? (
+            filteredBrokers.map((broker) => (
+              <div
+                key={broker.id}
+                onClick={() => handleSelectBroker(broker)}
+                style={{
+                  padding: "12px 16px",
+                  borderBottom: "1px solid #f0f0f0",
+                  cursor: "pointer",
+                  background: selectedBroker.id === broker.id ? "#f0e9e2" : "transparent",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedBroker.id !== broker.id) {
+                    e.currentTarget.style.background = "#f5f5f5";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = selectedBroker.id === broker.id ? "#f0e9e2" : "transparent";
+                }}
+              >
+                <div style={{ fontWeight: "600", color: BROWN, fontSize: "14px" }}>
+                  {broker.name}
+                </div>
+                <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
+                  {broker.code && `Code: ${broker.code}`}
+                  {broker.code && broker.mobile && ` | `}
+                  {broker.mobile && `${broker.mobile}`}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+              No brokers found
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const TransporterDropdown = ({ 
+  selectedTransporter, 
+  onSelectTransporter, 
+  availableTransporters, 
+  loading,
+  onOpen 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredTransporters = availableTransporters.filter(transporter =>
+    transporter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (transporter.code && transporter.code.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const handleSelectTransporter = (transporter) => {
+    onSelectTransporter({ id: transporter.id, name: transporter.name });
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
+      <div
+        onClick={() => {
+          setIsOpen(!isOpen);
+          onOpen && onOpen();
+        }}
+        style={{
+          padding: "12px",
+          border: `1px solid ${isOpen ? BROWN : "#ddd"}`,
+          borderRadius: "8px",
+          background: "#fff",
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          transition: "all 0.2s",
+        }}
+      >
+        <span style={{ color: selectedTransporter.name ? BROWN : "#999" }}>
+          {selectedTransporter.name || "Select Transporter"}
+        </span>
+        <span style={{ color: BROWN_LIGHT }}>▼</span>
+      </div>
+
+      {isOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            background: "#fff",
+            border: `1px solid #ddd`,
+            borderRadius: "8px",
+            marginTop: "4px",
+            maxHeight: "250px",
+            overflowY: "auto",
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          }}
+        >
+          <div style={{ padding: "8px", position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #eee" }}>
+            <input
+              type="text"
+              placeholder="Search transporter..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                fontSize: "13px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          {loading ? (
+            <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+              Loading transporters...
+            </div>
+          ) : availableTransporters.length === 0 ? (
+            <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+              No transporters available
+            </div>
+          ) : filteredTransporters.length > 0 ? (
+            filteredTransporters.map((transporter) => (
+              <div
+                key={transporter.id}
+                onClick={() => handleSelectTransporter(transporter)}
+                style={{
+                  padding: "12px 16px",
+                  borderBottom: "1px solid #f0f0f0",
+                  cursor: "pointer",
+                  background: selectedTransporter.id === transporter.id ? "#f0e9e2" : "transparent",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedTransporter.id !== transporter.id) {
+                    e.currentTarget.style.background = "#f5f5f5";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = selectedTransporter.id === transporter.id ? "#f0e9e2" : "transparent";
+                }}
+              >
+                <div style={{ fontWeight: "600", color: BROWN, fontSize: "14px" }}>
+                  {transporter.name}
+                </div>
+                <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
+                  {transporter.code && `Code: ${transporter.code}`}
+                  {transporter.code && transporter.mobile && ` | `}
+                  {transporter.mobile && `${transporter.mobile}`}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: "16px", textAlign: "center", color: "#666" }}>
+              No transporters found
             </div>
           )}
         </div>
@@ -1043,12 +981,16 @@ export default function CartPage() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [description, setDescription] = useState("");
   const [selectedDetails, setSelectedDetails] = useState([]);
-  
-  // New state for login popup
+  const [availableBrokers, setAvailableBrokers] = useState([]);
+  const [availableTransporters, setAvailableTransporters] = useState([]);
+  const [selectedBroker, setSelectedBroker] = useState({ id: null, name: "" });
+  const [selectedTransporter, setSelectedTransporter] = useState({ id: null, name: "" });
+  const [loadingBrokers, setLoadingBrokers] = useState(false);
+  const [loadingTransporters, setLoadingTransporters] = useState(false);
   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Check login status on component mount
   useEffect(() => {
     checkLoginStatus();
   }, []);
@@ -1061,12 +1003,8 @@ export default function CartPage() {
 
       if (user && session && loginAt) {
         setIsLoggedIn(true);
-        
-        // Parse user data to get the name
         const userData = JSON.parse(user);
-        // Adjust this based on your user object structure
-        // Common patterns: userData.name, userData.Full_Name, userData.username, userData.User_Name
-        const name = userData?.Full_Name || userData?.name || userData?.username || userData?.User_Name || "User";
+        const name = userData?.name || userData?.Name || "";
         setUserName(name);
       } else {
         setIsLoggedIn(false);
@@ -1081,18 +1019,87 @@ export default function CartPage() {
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
-    // Get the user name after successful login
     try {
       const user = localStorage.getItem("user");
       if (user) {
         const userData = JSON.parse(user);
-        const name = userData?.Full_Name || userData?.name || userData?.username || userData?.User_Name || "User";
+        const name = userData?.Name || userData?.name || "";
         setUserName(name);
       }
     } catch (error) {
       console.error("Error getting user name:", error);
     }
   };
+
+  const fetchBrokers = async () => {
+    setLoadingBrokers(true);
+    try {
+      const response = await fetchLink({
+        address: `pos/brokers`
+      });
+      
+     if (response?.success) {
+      // Handle the nested data structure
+      const brokersData = response.data?.Brokers || response.data || [];
+      
+      if (Array.isArray(brokersData)) {
+        const brokersList = brokersData.map(broker => ({
+          id: broker.Broker_Id,
+          name: broker.Broker_Name?.trim() || '',
+          code: broker.Broker_Code?.trim() || '',
+          mobile: broker.Mobile_No?.trim() || ''
+        }));
+        setAvailableBrokers(brokersList);
+      } else {
+        console.error("Brokers data is not an array:", brokersData);
+        toast.error("Invalid brokers data format");
+      }
+    } else {
+      console.error("Failed to fetch brokers:", response?.message);
+      toast.error(response?.message || "Failed to load brokers");
+    }
+  } catch (error) {
+    console.error("Error fetching brokers:", error);
+    toast.error("Failed to load brokers: " + error.message);
+  } finally {
+    setLoadingBrokers(false);
+  }
+};
+
+  const fetchTransporters = async () => {
+    setLoadingTransporters(true);
+    try {
+      const response = await fetchLink({
+        address: `pos/transporters`
+      });
+      
+      if (response?.success) {
+      // Handle the nested data structure
+      const transportersData = response.data?.Transporters || response.data || [];
+      
+      if (Array.isArray(transportersData)) {
+        const transportersList = transportersData.map(transporter => ({
+          id: transporter.Transporter_Id,
+          name: transporter.Transporter_Name?.trim() || '',
+          code: transporter.Transporter_Code?.trim() || '',
+          mobile: transporter.Mobile_No?.trim() || ''
+        }));
+        setAvailableTransporters(transportersList);
+      } else {
+        console.error("Transporters data is not an array:", transportersData);
+        toast.error("Invalid transporters data format");
+      }
+    } else {
+      console.error("Failed to fetch transporters:", response?.message);
+      toast.error(response?.message || "Failed to load transporters");
+    }
+  } catch (error) {
+    console.error("Error fetching transporters:", error);
+    toast.error("Failed to load transporters: " + error.message);
+  } finally {
+    setLoadingTransporters(false);
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -1101,6 +1108,14 @@ export default function CartPage() {
     setIsLoggedIn(false);
     setUserName("");
     toast.success("Logged out successfully");
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  const closeDropdown = () => {
+    setIsDropdownOpen(false);
   };
 
   const getProductPackGet = (productId) => {
@@ -1153,14 +1168,45 @@ export default function CartPage() {
 
   const handleCustomerSelect = (customerData) => {
     setCustomer(customerData.customerId);
-    setBrokerName(customerData.broker || "");
-    setTransporter(customerData.transporter || "");
     setContactNumber(customerData.mobileNo || "");
     setSelectedDetails(customerData);
+    
     if (customerData.address) {
       setShippingAddress(customerData.address);
       setDeliveryAddress(customerData.address);
     }
+
+    if (customerData.Broker_Id && customerData.broker) {
+      setSelectedBroker({ 
+        id: customerData.Broker_Id, 
+        name: customerData.broker 
+      });
+      setBrokerName(customerData.broker);
+    } else {
+      setSelectedBroker({ id: null, name: "" });
+      setBrokerName("");
+    }
+
+    if (customerData.Transporter_Id && customerData.transporter) {
+      setSelectedTransporter({ 
+        id: customerData.Transporter_Id, 
+        name: customerData.transporter 
+      });
+      setTransporter(customerData.transporter);
+    } else {
+      setSelectedTransporter({ id: null, name: "" });
+      setTransporter("");
+    }
+  };
+
+  const handleBrokerSelect = (broker) => {
+    setSelectedBroker(broker);
+    setBrokerName(broker.name);
+  };
+
+  const handleTransporterSelect = (transporter) => {
+    setSelectedTransporter(transporter);
+    setTransporter(transporter.name);
   };
 
   useEffect(() => {
@@ -1175,6 +1221,8 @@ export default function CartPage() {
   useEffect(() => {
     loadCartData();
     loadAllProducts();
+    fetchBrokers();
+    fetchTransporters();
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -1251,10 +1299,7 @@ export default function CartPage() {
   };
 
   const handleCheckout = async () => {
-    if (!isLoggedIn) {
-      setIsLoginPopupOpen(true);
-      return;
-    }
+   
 
     if (!contactNumber) {
       toast.error("Please enter contact number");
@@ -1305,10 +1350,10 @@ export default function CartPage() {
       
       Customer_Name: selectedDetails?.customerName || "",
       Ord_Mobile_No: contactNumber,
-      Broker_Name: brokerName || selectedDetails?.Broker || "",
-      Broker_Id: selectedDetails?.Broker_Id ? parseInt(selectedDetails.Broker_Id) : null,
-      Transporter_Name: transporter || selectedDetails?.Transporter || "",
-      Transporter_Id: selectedDetails?.Transporter_Id ? parseInt(selectedDetails.Transporter_Id) : null,
+      Broker_Name: selectedBroker.name || "",
+      Broker_Id: selectedBroker.id || null,
+      Transporter_Name: selectedTransporter.name || "",
+      Transporter_Id: selectedTransporter.id || null,
       Shipp_Address: shippingAddress || selectedDetails?.Address || "",
       Deliv_Address: deliveryAddress || shippingAddress || selectedDetails?.Address || "",
       Total_Kgs: totalKgsValue.toFixed(2),
@@ -1368,8 +1413,8 @@ export default function CartPage() {
       customerId: customer,
       customerName: selectedDetails?.customerName || "",
       contactNumber: contactNumber,
-      brokerName: brokerName,
-      transporter: transporter,
+      brokerName: selectedBroker.name,
+      transporter: selectedTransporter.name,
       shippingAddress: shippingAddress,
       deliveryAddress: deliveryAddress,
       description: description,
@@ -1433,67 +1478,64 @@ export default function CartPage() {
     }
   };
 
-  // Custom action for the three-dots menu
   const renderThreeDotsMenu = () => {
-    if (isLoggedIn) {
-      return (
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "transparent",
-              border: "1px solid #fff",
-              color: "#fff",
-              borderRadius: "20px",
-              padding: "6px 12px",
-              fontSize: "14px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = "#fff";
-              e.target.style.color = BROWN_DARK;
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "transparent";
-              e.target.style.color = "#fff";
-            }}
-          >
-            <span>Logout</span>
-          </button>
-        </div>
-      );
-    } else {
-      return (
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => setIsLoginPopupOpen(true)}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#fff",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "8px",
-              borderRadius: "50%",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = "rgba(255,255,255,0.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "transparent";
-            }}
-          >
-            <MoreVertIcon style={{ fontSize: "24px" }} />
-          </button>
-        </div>
-      );
-    }
+    return (
+      <div style={{ position: "relative" }}>
+        <button
+          onClick={toggleDropdown}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#fff",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: isMobile ? "8px" : "12px",
+            borderRadius: "50%",
+            transition: "background 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = "rgba(255,255,255,0.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = "transparent";
+          }}
+        >
+          <MoreVertIcon style={{ fontSize: isMobile ? "24px" : "32px" }} />
+        </button>
+        
+        <UserMenuDropdown 
+          isOpen={isDropdownOpen}
+          onClose={closeDropdown}
+          isLoggedIn={isLoggedIn}
+          userName={userName}
+          onLoginClick={() => setIsLoginPopupOpen(true)}
+          onLogout={handleLogout}
+        />
+      </div>
+    );
   };
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -1737,99 +1779,104 @@ export default function CartPage() {
     container: {
       maxWidth: "1400px",
       margin: "0 auto",
-      padding: "20px 24px",
+      padding: "30px 40px",
       background: BG_COLOR,
       minHeight: "100vh",
     },
     mainContent: {
       display: "grid",
       gridTemplateColumns: "1.2fr 1.8fr",
-      gap: "24px",
+      gap: "32px",
     },
     leftSection: {
       background: "#fff",
-      borderRadius: "16px",
-      boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+      borderRadius: "20px",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
       overflow: "hidden",
     },
     rightSection: {
       background: "#fff",
-      borderRadius: "16px",
-      boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-      padding: "24px",
+      borderRadius: "20px",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+      padding: "32px",
     },
     sectionTitle: {
-      fontSize: "20px",
-      fontWeight: "600",
+      fontSize: "24px",
+      fontWeight: "700",
       color: BROWN,
-      margin: "0 0 20px 0",
-      paddingBottom: "12px",
-      borderBottom: `2px solid ${ACCENT}`,
+      margin: "0 0 24px 0",
+      paddingBottom: "16px",
+      borderBottom: `3px solid ${ACCENT}`,
     },
     formGroup: {
-      marginBottom: "20px",
+      marginBottom: "24px",
     },
     input: {
       width: "100%",
-      padding: "12px",
+      padding: "14px 16px",
       border: "1px solid #ddd",
-      borderRadius: "8px",
-      fontSize: "14px",
+      borderRadius: "12px",
+      fontSize: "16px",
       outline: "none",
-      transition: "border-color 0.2s",
-      boxSizing: "border-box"
+      transition: "border-color 0.2s, box-shadow 0.2s",
+      boxSizing: "border-box",
     },
     textarea: {
       width: "100%",
-      padding: "12px",
+      padding: "14px 16px",
       border: "1px solid #ddd",
-      borderRadius: "8px",
-      fontSize: "14px",
+      borderRadius: "12px",
+      fontSize: "16px",
       outline: "none",
-      minHeight: "80px",
+      minHeight: "100px",
       resize: "vertical",
       boxSizing: "border-box",
-      fontFamily: "inherit"
+      fontFamily: "inherit",
+      transition: "border-color 0.2s, box-shadow 0.2s",
     },
     summaryRow: {
       display: "flex",
       justifyContent: "space-between",
-      marginBottom: "12px",
-      fontSize: "16px",
+      marginBottom: "16px",
+      fontSize: "18px",
     },
     totalRow: {
       display: "flex",
       justifyContent: "space-between",
-      marginTop: "16px",
-      paddingTop: "16px",
-      borderTop: "2px dashed #ddd",
-      fontSize: "20px",
+      marginTop: "20px",
+      paddingTop: "20px",
+      borderTop: "3px dashed #ddd",
+      fontSize: "24px",
       fontWeight: "bold",
       color: BROWN,
     },
     checkoutBtn: {
       width: "100%",
-      padding: "16px",
+      padding: "18px",
       background: BROWN,
       color: "#fff",
       border: "none",
-      borderRadius: "8px",
-      fontSize: "18px",
-      fontWeight: "600",
+      borderRadius: "50px",
+      fontSize: "20px",
+      fontWeight: "700",
       cursor: "pointer",
-      marginTop: "24px",
-      transition: "background 0.3s",
+      marginTop: "32px",
+      transition: "all 0.3s",
+      letterSpacing: "0.5px",
+      boxShadow: "0 4px 12px rgba(74, 44, 26, 0.2)",
     },
     emptyCart: {
       textAlign: "center",
-      padding: "60px 20px",
+      padding: "80px 40px",
       background: "#fff",
-      borderRadius: "16px",
+      borderRadius: "24px",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
     },
   };
 
   const styles = isMobile ? mobileStyles : desktopStyles;
 
+  // MOBILE STEP 2 VIEW
   if (isMobile && step === 2) {
     return (
       <>   
@@ -1844,13 +1891,19 @@ export default function CartPage() {
           onBackClick={handleBackToSelection}
           isMobile={isMobile}
           backgroundColor={BROWN_DARK}
+          isLoggedIn={isLoggedIn}
           showLogout={isLoggedIn}
           userName={userName}
-          customActions={renderThreeDotsMenu()}
+          customActions={
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {renderThreeDotsMenu()}
+            </div>
+          }
         />
 
-        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
+        <div style={{ marginTop: "20px", marginBottom: "20px", padding: "0 16px" }}>
           <div style={styles.formGroup}>
+            <label style={styles.label}>Customer</label>
             <SearchableCustomerSelect 
               value={customer}
               onChange={setCustomer}
@@ -1859,6 +1912,29 @@ export default function CartPage() {
           </div>
 
           <div style={styles.formGroup}>
+            <label style={styles.label}>Broker</label>
+            <BrokerDropdown
+              selectedBroker={selectedBroker}
+              onSelectBroker={handleBrokerSelect}
+              availableBrokers={availableBrokers}
+              loading={loadingBrokers}
+              onOpen={fetchBrokers}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Transporter</label>
+            <TransporterDropdown
+              selectedTransporter={selectedTransporter}
+              onSelectTransporter={handleTransporterSelect}
+              availableTransporters={availableTransporters}
+              loading={loadingTransporters}
+              onOpen={fetchTransporters}
+            />
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Contact Number</label>
             <input
               type="tel"
               placeholder="Contact Number"
@@ -1869,63 +1945,7 @@ export default function CartPage() {
           </div>
 
           <div style={styles.formGroup}>
-            <input
-              type="text"
-              placeholder="Broker Name"
-              value={brokerName}
-              onChange={(e) => setBrokerName(e.target.value)}
-              style={styles.input}
-              readOnly
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <input
-              type="text"
-              placeholder="Transporter"
-              value={transporter}
-              onChange={(e) => setTransporter(e.target.value)}
-              style={styles.input}
-              readOnly
-            />
-          </div>
-
-          <div style={styles.formGroup}>
-            <div style={styles.productListSummary}>
-              <div style={{ 
-                display: "flex", 
-                justifyContent: "space-between",
-                marginBottom: "8px",
-                paddingBottom: "8px",
-                borderBottom: "1px dashed #ccc"
-              }}>
-                <span style={{ fontWeight: "bold" }}>Product List</span>
-                <span 
-                  style={{ color: BROWN, cursor: "pointer" }}
-                  onClick={() => {
-                    setCartItems({});
-                    localStorage.removeItem('cartItems');
-                    setStep(1);
-                  }}
-                >
-                  Clear ▼
-                </span>
-              </div>
-              {enhancedCartItems.map(item => (
-                <div key={item.id} style={{ 
-                  display: "flex", 
-                  justifyContent: "space-between",
-                  marginBottom: "4px",
-                  fontSize: "12px"
-                }}>
-                  <span>• {item.name} x {item.quantity} ({item.kgs.toFixed(2)} kg)</span>
-                  <span>₹{item.amount.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={styles.formGroup}>
+            <label style={styles.label}>Shipping Address</label>
             <textarea
               placeholder="Shipping Address"
               value={shippingAddress}
@@ -1935,6 +1955,7 @@ export default function CartPage() {
           </div>
 
           <div style={styles.formGroup}>
+            <label style={styles.label}>Delivery Address</label>
             <textarea
               placeholder="Delivery Address"
               value={deliveryAddress}
@@ -1944,6 +1965,7 @@ export default function CartPage() {
           </div>
 
           <div style={styles.formGroup}>
+            <label style={styles.label}>Description</label>
             <textarea
               placeholder="Description"
               value={description}
@@ -1951,13 +1973,46 @@ export default function CartPage() {
               style={styles.textarea}
             />
           </div>
+
+          <div style={styles.productListSummary}>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between",
+              marginBottom: "8px",
+              paddingBottom: "8px",
+              borderBottom: "1px dashed #ccc"
+            }}>
+              <span style={{ fontWeight: "bold" }}>Product List</span>
+              <span 
+                style={{ color: BROWN, cursor: "pointer" }}
+                onClick={() => {
+                  setCartItems({});
+                  localStorage.removeItem('cartItems');
+                  setStep(1);
+                }}
+              >
+                Clear ▼
+              </span>
+            </div>
+            {enhancedCartItems.map(item => (
+              <div key={item.id} style={{ 
+                display: "flex", 
+                justifyContent: "space-between",
+                marginBottom: "4px",
+                fontSize: "12px"
+              }}>
+                <span>• {item.name} x {item.quantity} ({item.kgs.toFixed(2)} kg)</span>
+                <span>₹{item.amount.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div style={{
           position: "sticky",
           bottom: 0,
           background: "#fff",
-          padding: "16px 0",
+          padding: "16px",
           borderTop: `2px solid ${ACCENT}`,
           marginTop: "10px",
         }}>
@@ -2017,7 +2072,6 @@ export default function CartPage() {
           </button>
         </div>
 
-        {/* Login Popup */}
         <LoginPopup 
           isOpen={isLoginPopupOpen}
           onClose={() => setIsLoginPopupOpen(false)}
@@ -2027,6 +2081,7 @@ export default function CartPage() {
     );
   }
 
+  // MOBILE STEP 1 VIEW
   if (isMobile && step === 1) {
     return (
       <>
@@ -2035,50 +2090,24 @@ export default function CartPage() {
           logo="SMT"
           showSearch={false}
           showCart={false} 
-          showBackButton={false}
+          showBackButton={true}
           showTitle={true}
           cartItemCount={0} 
-          customActions={
-            <>
-              {renderThreeDotsMenu()}
-              <button 
-                onClick={continueShopping}
-                style={{
-                  background: "transparent",
-                  border: "1.5px solid #fff",
-                  color: "#fff",
-                  borderRadius: "20px",
-                  padding: "6px 10px",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  fontWeight: "500",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  marginLeft: "8px",
-                }}
-              >
-                ← Back
-              </button>
-            </>
-          }
+          onBackClick={continueShopping}
           isMobile={isMobile}
           backgroundColor={BROWN_DARK}
+          isLoggedIn={isLoggedIn}
           showLogout={isLoggedIn}
           userName={userName}
+          customActions={
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {renderThreeDotsMenu()}
+            </div>
+          }
         />
 
         <div style={styles.container}>
-          <h2 style={{ 
-            fontSize: "16px", 
-            fontWeight: "600", 
-            color: BROWN,
-            marginBottom: "12px",
-            marginTop: "20px"
-          }}>
-            Selection List
-          </h2>
-
+          
           <div style={{ marginBottom: "20px" }}>
             {enhancedCartItems.map((item) => {
               return (
@@ -2291,11 +2320,17 @@ export default function CartPage() {
             </button>
           </div>
         </div>
+
+        <LoginPopup 
+          isOpen={isLoginPopupOpen}
+          onClose={() => setIsLoginPopupOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
       </>
     );
   }
 
-  // Desktop View
+  // DESKTOP VIEW
   return (
     <>
       <CommonHeader
@@ -2303,43 +2338,19 @@ export default function CartPage() {
         logo="SMT"
         showSearch={false}
         showCart={false} 
-        showBackButton={false}
+        showBackButton={true}
         showTitle={true}
         cartItemCount={0}  
-        onCartClick={() => {}}
+        onBackClick={continueShopping}
         customActions={
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {renderThreeDotsMenu()}
-            <button 
-              onClick={continueShopping}
-              style={{
-                background: "transparent",
-                border: "2px solid #fff",
-                color: "#fff",
-                borderRadius: "8px",
-                padding: "8px 16px",
-                fontSize: "15px",
-                cursor: "pointer",
-                fontWeight: "500",
-                transition: "all 0.3s",
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = "#fff";
-                e.target.style.color = BROWN_DARK;
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = "transparent";
-                e.target.style.color = "#fff";
-              }}
-            >
-              ← Continue Shopping
-            </button>
           </div>
         }
         isMobile={isMobile}
         backgroundColor={BROWN_DARK}
-        // showLogout={isLoggedIn}
         userName={userName}
+        isLoggedIn={isLoggedIn}
       />
 
       <div style={desktopStyles.container}>
@@ -2569,6 +2580,9 @@ export default function CartPage() {
               }}>
                 <div>
                   <div style={desktopStyles.formGroup}>
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginBottom: "8px", display: "block" }}>
+                      Customer
+                    </label>
                     <SearchableCustomerSelect 
                       value={customer}
                       onChange={setCustomer}
@@ -2577,20 +2591,22 @@ export default function CartPage() {
                   </div>
                   
                   <div style={desktopStyles.formGroup}>
-                    <input
-                      type="text"
-                      placeholder="Broker Name"
-                      value={brokerName}
-                      onChange={(e) => setBrokerName(e.target.value)}
-                      style={{
-                        ...desktopStyles.input,
-                        backgroundColor: brokerName ? "#f5f0eb" : "#fff"
-                      }}
-                      readOnly
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginBottom: "8px", display: "block" }}>
+                      Broker
+                    </label>
+                    <BrokerDropdown
+                      selectedBroker={selectedBroker}
+                      onSelectBroker={handleBrokerSelect}
+                      availableBrokers={availableBrokers}
+                      loading={loadingBrokers}
+                      onOpen={fetchBrokers}
                     />
                   </div>
                   
                   <div style={desktopStyles.formGroup}>
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginBottom: "8px", display: "block" }}>
+                      Shipping Address
+                    </label>
                     <textarea
                       placeholder="Enter shipping address"
                       value={shippingAddress}
@@ -2600,6 +2616,9 @@ export default function CartPage() {
                   </div>
                   
                   <div style={desktopStyles.formGroup}>
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginBottom: "8px", display: "block" }}>
+                      Description
+                    </label>
                     <textarea
                       placeholder="Add any notes or description"
                       value={description}
@@ -2611,20 +2630,22 @@ export default function CartPage() {
 
                 <div>
                   <div style={desktopStyles.formGroup}>
-                    <input
-                      type="text"
-                      placeholder="Transporter"
-                      value={transporter}
-                      onChange={(e) => setTransporter(e.target.value)}
-                      style={{
-                        ...desktopStyles.input,
-                        backgroundColor: transporter ? "#f5f0eb" : "#fff"
-                      }}
-                      readOnly
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginBottom: "8px", display: "block" }}>
+                      Transporter
+                    </label>
+                    <TransporterDropdown
+                      selectedTransporter={selectedTransporter}
+                      onSelectTransporter={handleTransporterSelect}
+                      availableTransporters={availableTransporters}
+                      loading={loadingTransporters}
+                      onOpen={fetchTransporters}
                     />
                   </div>
                   
                   <div style={desktopStyles.formGroup}>
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginBottom: "8px", display: "block" }}>
+                      Contact Number
+                    </label>
                     <input
                       type="tel"
                       placeholder="Enter contact number"
@@ -2635,6 +2656,9 @@ export default function CartPage() {
                   </div>
                   
                   <div style={desktopStyles.formGroup}>
+                    <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", marginBottom: "8px", display: "block" }}>
+                      Delivery Address
+                    </label>
                     <textarea
                       placeholder="Enter delivery address"
                       value={deliveryAddress}
@@ -2648,16 +2672,17 @@ export default function CartPage() {
               <div style={desktopStyles.formGroup}>
                 <div style={{
                   background: "#f9f4ef",
-                  padding: "16px",
-                  borderRadius: "8px",
+                  padding: "24px",
+                  borderRadius: "16px",
+                  boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)",
                 }}>
                   <h3 style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
+                    fontSize: "20px",
+                    fontWeight: "700",
                     color: BROWN,
-                    margin: "0 0 12px 0",
-                    paddingBottom: "8px",
-                    borderBottom: `1px solid ${ACCENT}`,
+                    margin: "0 0 16px 0",
+                    paddingBottom: "12px",
+                    borderBottom: `2px solid ${ACCENT}`,
                   }}>
                     Order Summary
                   </h3>
@@ -2666,18 +2691,19 @@ export default function CartPage() {
                     <div key={item.id} style={{ 
                       display: "flex", 
                       justifyContent: "space-between",
-                      marginBottom: "8px",
-                      fontSize: "13px",
+                      marginBottom: "12px",
+                      fontSize: "15px",
+                      lineHeight: "1.5",
                     }}>
                       <div>
-                        <span>• {item.name}</span>
-                        <span style={{ color: "#666", marginLeft: "4px" }}>
+                        <span style={{ fontWeight: "500" }}>• {item.name}</span>
+                        <span style={{ color: "#666", marginLeft: "6px", fontSize: "14px" }}>
                           ({item.quantity} × {item.packGet}kg = {item.kgs.toFixed(2)}kg)
                         </span>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div>₹{item.amount.toFixed(2)}</div>
-                        <div style={{ fontSize: "11px", color: "#666" }}>
+                        <div style={{ fontWeight: "600" }}>₹{item.amount.toFixed(2)}</div>
+                        <div style={{ fontSize: "12px", color: "#666" }}>
                           ₹{item.price}/kg
                         </div>
                       </div>
@@ -2685,49 +2711,49 @@ export default function CartPage() {
                   ))}
                   
                   <div style={{
-                    marginTop: "12px",
-                    paddingTop: "12px",
-                    borderTop: "1px dashed #ccc",
+                    marginTop: "20px",
+                    paddingTop: "20px",
+                    borderTop: "2px dashed #ccc",
                   }}>
                     <div style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      fontSize: "14px",
+                      fontSize: "16px",
                       color: "#666",
-                      marginBottom: "4px",
+                      marginBottom: "8px",
                     }}>
                       <span>Total Items:</span>
-                      <span>{totalItems}</span>
+                      <span style={{ fontWeight: "600", color: BROWN }}>{totalItems}</span>
                     </div>
                     <div style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      fontSize: "14px",
+                      fontSize: "16px",
                       color: "#666",
-                      marginBottom: "4px",
+                      marginBottom: "8px",
                     }}>
                       <span>Total Kgs:</span>
-                      <span>{totalKgs.toFixed(2)} kg</span>
+                      <span style={{ fontWeight: "600", color: BROWN }}>{totalKgs.toFixed(2)} kg</span>
                     </div>
                     <div style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      fontSize: "14px",
+                      fontSize: "16px",
                       color: "#666",
-                      marginBottom: "4px",
+                      marginBottom: "12px",
+                      paddingBottom: "12px",
+                      borderBottom: "1px dashed #ddd",
                     }}>
                       <span>Subtotal:</span>
-                      <span>₹{subtotalAmount.toFixed(2)}</span>
+                      <span style={{ fontWeight: "600", color: BROWN }}>₹{subtotalAmount.toFixed(2)}</span>
                     </div>
                     <div style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      fontSize: "18px",
+                      fontSize: "22px",
                       fontWeight: "bold",
                       color: BROWN,
                       marginTop: "8px",
-                      paddingTop: "8px",
-                      borderTop: "1px solid #ccc",
                     }}>
                       <span>Total Amount:</span>
                       <span>₹{totalAmountWithTax.toFixed(2)}</span>
@@ -2749,7 +2775,6 @@ export default function CartPage() {
         )}
       </div>
 
-      {/* Login Popup */}
       <LoginPopup 
         isOpen={isLoginPopupOpen}
         onClose={() => setIsLoginPopupOpen(false)}
