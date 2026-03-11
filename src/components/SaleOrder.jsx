@@ -1041,41 +1041,57 @@ export default function SMTraders() {
     return merged;
   };
 
-  const fetchAllData = async () => {
-    setLoadingProducts(true);
-    try {
-      const [posResponse, stockResponse] = await Promise.all([
-        fetchLink({ address: `pos/posProductList` }),
-        fetchLink({ address: `pos/productMaster` })
-      ]);
+ const fetchAllData = async () => {
+  setLoadingProducts(true);
+  try {
+    const [posResponse, stockResponse] = await Promise.all([
+      fetchLink({ address: `pos/posProductList` }),
+      fetchLink({ address: `pos/productMaster` })
+    ]);
 
-      let productList = [];
-      
-      if (posResponse?.success && posResponse.data) {
-        productList = posResponse.data;
-      }
-
-      const mergedProducts = mergeProductData(productList, stockResponse);
-      const uniqueProducts = deduplicateProducts(mergedProducts);
-      
-      const activeProducts = uniqueProducts.filter(product => 
-        product.isActive === 1 || product.IsActive === 1 || product.Is_Active === 1
-      );
-      
-      setAllProducts(activeProducts);
-      setDisplayProducts(activeProducts);
-      
-      const formattedProducts = activeProducts.map(formatProduct);
-      localStorage.setItem('products', JSON.stringify(formattedProducts));
-      
-      setInitialLoadDone(true);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      toast.error("Failed to load products");
-    } finally {
-      setLoadingProducts(false);
+    let productList = [];
+    
+    if (posResponse?.success && posResponse.data) {
+      productList = posResponse.data;
     }
-  };
+
+    const mergedProducts = mergeProductData(productList, stockResponse);
+    const uniqueProducts = deduplicateProducts(mergedProducts);
+    
+    const activeProducts = uniqueProducts.filter(product => 
+      product.isActive === 1 || product.IsActive === 1 || product.Is_Active === 1
+    );
+    
+    // Filter out out-of-stock products (where Bal_Qty is 0 or less)
+    const inStockProducts = activeProducts.filter(product => {
+      const balQty = parseFloat(product.Bal_Qty) || 0;
+      const packGet = parseFloat(product.PackGet) || 1;
+      const stockInBags = packGet > 0 ? balQty / packGet : 0;
+      
+      // Keep products with stock > 0
+      return stockInBags > 0;
+    });
+    
+    setAllProducts(inStockProducts);
+    setDisplayProducts(inStockProducts);
+    
+     const formattedProducts = inStockProducts.map(formatProduct);
+    localStorage.setItem('products', JSON.stringify(formattedProducts));
+    
+    setInitialLoadDone(true);
+    
+    
+    if (activeProducts.length > inStockProducts.length) {
+      const filteredCount = activeProducts.length - inStockProducts.length;
+    }
+    
+  } catch (error) {
+  
+    toast.error("Failed to load products");
+  } finally {
+    setLoadingProducts(false);
+  }
+};
 
   useEffect(() => {
     fetchAllData();
@@ -1195,45 +1211,54 @@ export default function SMTraders() {
     return sum;
   }, 0);
 
-  const filtered = displayProducts.filter(p => {
-    if (!search) return true;
-    
-    const searchLower = search.toLowerCase();
-    return (
-      (p.Product_Name && p.Product_Name.toLowerCase().includes(searchLower)) ||
-      (p.Short_Name && p.Short_Name.toLowerCase().includes(searchLower)) ||
-      (p.POS_Group && p.POS_Group.toLowerCase().includes(searchLower)) ||
-      (p.Stock_Group && p.Stock_Group.toLowerCase().includes(searchLower))
-    );
-  });
+ const filtered = displayProducts.filter(p => {
+  // First check if in stock
+  const balQty = parseFloat(p.Bal_Qty) || 0;
+  const packGet = parseFloat(p.PackGet) || 1;
+  const stockInBags = packGet > 0 ? balQty / packGet : 0;
+  
+  if (stockInBags <= 0) {
+    return false; // Hide out-of-stock products
+  }
+  
+  if (!search) return true;
+  
+  const searchLower = search.toLowerCase();
+  return (
+    (p.Product_Name && p.Product_Name.toLowerCase().includes(searchLower)) ||
+    (p.Short_Name && p.Short_Name.toLowerCase().includes(searchLower)) ||
+    (p.POS_Group && p.POS_Group.toLowerCase().includes(searchLower)) ||
+    (p.Stock_Group && p.Stock_Group.toLowerCase().includes(searchLower))
+  );
+});
 
   const formatProduct = (product) => {
-    const uniqueId = String(product.Product_Id);
-    const balQty = parseFloat(product.Bal_Qty) || 0;
-    const packGet = parseFloat(product.PackGet) || 1;
-    const stockInBags = packGet > 0 ? balQty / packGet : 0;
-    const price = parseFloat(product.Price) || parseFloat(product.Product_Rate) || 0;
-    
-    return {
-      id: uniqueId,
-      name: product.Product_Name || product.Stock_Item || "Unknown",
-      fullName: product.Product_Name || "Unknown",
-      shortName: product.Short_Name,
-      weight: product.Bag || product.PackGet ? `${product.PackGet || ''}kg` : "N/A",
-      stockGroup: product.Stock_Group || "General",
-      posGroup: product.POS_Group || "General",
-      price: price,
-      stock: stockInBags,
-      unit: product.Units || "Bags",
-      image: product.productImageUrl || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=140&h=116&fit=crop",
-      coolie: product.Coolie,
-      brokerage: product.NagalBrokerage || product.Brokerage,
-      packGet: product.PackGet,
-      hsnCode: product.HSN_Code,
-      balQty: balQty,
-      originalProduct: product
-    };
+     const uniqueId = String(product.Product_Id);
+  const balQty = parseFloat(product.Bal_Qty) || 0;
+  const packGet = parseFloat(product.PackGet) || 1;
+  const stockInBags = packGet > 0 ? balQty / packGet : 0;
+  const price = parseFloat(product.Price) || parseFloat(product.Product_Rate) || 0;
+ return {
+    id: uniqueId,
+    name: product.Product_Name || product.Stock_Item || "Unknown",
+    fullName: product.Product_Name || "Unknown",
+    shortName: product.Short_Name,
+    weight: product.Bag || product.PackGet ? `${product.PackGet || ''}kg` : "N/A",
+    stockGroup: product.Stock_Group || "General",
+    posGroup: product.POS_Group || "General",
+    price: price,
+    stock: stockInBags,
+    unit: product.Units || "Bags",
+    image: product.productImageUrl || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=140&h=116&fit=crop",
+    coolie: product.Coolie,
+    brokerage: product.NagalBrokerage || product.Brokerage,
+    packGet: product.PackGet,
+    hsnCode: product.HSN_Code,
+    balQty: balQty,
+    originalProduct: product,
+    isInStock: stockInBags > 0 // Add stock status flag
   };
+};
 
   const formattedProducts = allProducts.map(formatProduct);
 
