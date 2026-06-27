@@ -231,6 +231,61 @@ export const ISOString = (dateObj) => {
     return receivedDate.toISOString().split('T')[0]
 }
 
+
+// In your functions.js file, update the ISOStrings function:
+
+export const ISOStrings = (dateObj, includeTime = true) => {
+    const receivedDate = dateObj ? new Date(dateObj) : new Date();
+    
+    // Convert to IST (UTC+5:30)
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(receivedDate.getTime() + istOffset);
+    
+    if (!includeTime) {
+        // Return only date in YYYY-MM-DD format
+        const year = istDate.getUTCFullYear();
+        const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(istDate.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // Return full datetime in IST format: YYYY-MM-DD HH:MM:SS
+    const year = istDate.getUTCFullYear();
+    const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(istDate.getUTCDate()).padStart(2, '0');
+    const hours = String(istDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(istDate.getUTCSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+// Helper function to convert UTC from database to IST for display
+export const convertUTCToIST = (utcDateTime) => {
+    if (!utcDateTime) return null;
+    
+    // Parse the UTC datetime (format: "2026-05-22 06:15:27")
+    const [datePart, timePart] = utcDateTime.split(' ');
+    const [year, month, day] = datePart.split('-');
+    const [hours, minutes, seconds] = timePart.split(':');
+    
+    // Create UTC date
+    const utcDate = new Date(Date.UTC(year, month-1, day, hours, minutes, seconds));
+    
+    // Add 5.5 hours to get IST
+    const istDate = new Date(utcDate.getTime() + (5.5 * 60 * 60 * 1000));
+    
+    // Format as YYYY-MM-DD HH:MM:SS
+    const istYear = istDate.getUTCFullYear();
+    const istMonth = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+    const istDay = String(istDate.getUTCDate()).padStart(2, '0');
+    const istHours = String(istDate.getUTCHours()).padStart(2, '0');
+    const istMinutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+    const istSeconds = String(istDate.getUTCSeconds()).padStart(2, '0');
+    
+    return `${istYear}-${istMonth}-${istDay} ${istHours}:${istMinutes}:${istSeconds}`;
+};
+
 export const timeDuration = (startDate, endDate) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
