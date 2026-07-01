@@ -685,12 +685,19 @@ function MobileOrderSummary({ selectedCount, totalAmount, onGoToCart, footerOffs
   if (selectedCount === 0) return null;
   return (
     <div className="cart-summary" style={{
-      position: "fixed", bottom: footerOffset, right: 0, left: 0,
-      backgroundColor: "white", boxShadow: "0 -4px 12px rgba(0,0,0,0.1)",
-      padding: "12px 16px", zIndex: 1000,
-      borderTopLeftRadius: "16px", borderTopRightRadius: "16px",
-      borderTop: `2px solid ${BROWN_DARK}`,
-    }}>
+  position: "sticky",  // Changed from "fixed"
+  bottom: 0,           // Changed from footerOffset
+  right: 0, 
+  left: 0,
+  backgroundColor: "white", 
+  boxShadow: "0 -4px 12px rgba(0,0,0,0.1)",
+  padding: "12px 16px", 
+  zIndex: 1000,
+  borderTopLeftRadius: "16px", 
+  borderTopRightRadius: "16px",
+  borderTop: `2px solid ${BROWN_DARK}`,
+  marginTop: "auto",   // Push to bottom of flex container
+}}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div />
         <button
@@ -4029,7 +4036,7 @@ const handleLoginSuccess = () => {
       ) : showSaleOrders ? (
         <SaleOrders onBack={handleBackFromSaleOrders} />
       ) : (
-        <div style={{ fontFamily: "'Georgia', serif", background: "#f5f0eb", minHeight: "100vh", paddingBottom: isMobile && selectedCount > 0 ? "80px" : "0" }}>
+       <div style={{ fontFamily: "'Georgia', serif", background: "#f5f0eb", minHeight: "100vh", paddingBottom: isMobile ? (selectedCount > 0 ? "100px" : "80px") : "0"}}>
           <style>{mediaQueryStyles}</style>
 
           <CommonHeader
@@ -4134,7 +4141,7 @@ const handleLoginSuccess = () => {
             </>
           )}
 
-{isMobile && !showDashboard && <MobileDrawer />}
+          {isMobile && !showDashboard && <MobileDrawer />}
           {isMobile && !showDashboard && (
             <MobileOrderSummary
               selectedCount={selectedCount}
