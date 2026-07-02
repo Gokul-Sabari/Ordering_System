@@ -243,18 +243,18 @@ const buildPrintHtml = (customer, cartItems, totals, storage, createdOn, orderDa
 </html>`;
 };
 
-// Detect mobile browser
+
 const isMobileDevice = () =>
   typeof window !== "undefined" &&
   (window.innerWidth <= 768 ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
 
-// Open print in new window (mobile-safe)
+
 const mobilePrint = (customer, cartItems, totals, storage, createdOn, orderDate) => {
   const html = buildPrintHtml(customer, cartItems, totals, storage, createdOn, orderDate);
   const printWindow = window.open("", "_blank", "width=400,height=600");
   if (!printWindow) {
-    // Popup blocked — fall back to blob URL
+    
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -558,8 +558,74 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
 
 function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
   const outOfStock = product.stock <= 0;
-  const handleIncrease = () => onUpdateQty(product.id, 1);
-  const handleDecrease = () => onUpdateQty(product.id, -1);
+  const [localQuantity, setLocalQuantity] = useState(quantity);
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef(null);
+
+  // Sync local state with prop when quantity changes externally
+  useEffect(() => {
+    setLocalQuantity(quantity);
+  }, [quantity]);
+
+  const handleIncrease = () => {
+    onUpdateQty(product.id, 1);
+  };
+
+  const handleDecrease = () => {
+    if (quantity > 0) {
+      onUpdateQty(product.id, -1);
+    }
+  };
+
+  const handleQuantityChange = (e) => {
+    const value = e.target.value;
+    // Allow empty string or numbers only
+    if (value === '' || /^\d+$/.test(value)) {
+      setLocalQuantity(value === '' ? '' : parseInt(value, 10));
+    }
+  };
+
+  const handleQuantityBlur = () => {
+    setIsEditing(false);
+    let newQty = localQuantity;
+    
+    // If empty or invalid, set to 0
+    if (newQty === '' || isNaN(newQty) || newQty < 0) {
+      newQty = 0;
+    }
+    
+    // Only update if different from current
+    if (newQty !== quantity) {
+      // Calculate delta and apply
+      const delta = newQty - quantity;
+      if (delta !== 0) {
+        onUpdateQty(product.id, delta);
+      }
+    }
+    setLocalQuantity(quantity);
+  };
+
+  const handleQuantityKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.target.blur();
+    }
+    if (e.key === 'Escape') {
+      setLocalQuantity(quantity);
+      setIsEditing(false);
+      e.target.blur();
+    }
+  };
+
+  const handleQuantityClick = () => {
+    setIsEditing(true);
+   
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
+    }, 50);
+  };
 
   if (isMobile) {
     return (
@@ -587,25 +653,71 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             {outOfStock ? (
               <span style={{ fontSize: "11px", color: "#fff", background: "#b0a0a0", borderRadius: "10px", padding: "3px 8px" }}>Out of Stock</span>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", background: "#6b5454", borderRadius: "20px", padding: "3px 8px", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", background: "#6b5454", borderRadius: "20px", padding: "3px 8px", gap: "4px" }}>
                 <button
-                  onClick={handleDecrease} disabled={quantity === 0}
+                  onClick={handleDecrease}
+                  disabled={quantity === 0}
                   style={{
                     background: "transparent", border: "none", color: "#fff", fontWeight: "bold",
                     fontSize: "16px", cursor: quantity === 0 ? "not-allowed" : "pointer",
                     width: "24px", height: "24px", display: "flex", alignItems: "center",
                     justifyContent: "center", borderRadius: "50%", opacity: quantity === 0 ? 0.4 : 1,
-                    lineHeight: 1, padding: 0,
+                    lineHeight: 1, padding: 0, flexShrink: 0,
                   }}
-                >-</button>
-                <span style={{ color: "#fff", fontSize: "14px", fontWeight: "600", minWidth: "20px", textAlign: "center" }}>{quantity}</span>
+                >−</button>
+                
+                {/* Editable quantity input */}
+                {isEditing ? (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={localQuantity}
+                    onChange={handleQuantityChange}
+                    onBlur={handleQuantityBlur}
+                    onKeyDown={handleQuantityKeyDown}
+                    style={{
+                      width: "30px",
+                      background: "rgba(255,255,255,0.2)",
+                      border: "none",
+                      borderRadius: "4px",
+                      color: "#fff",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      textAlign: "center",
+                      padding: "2px 0",
+                      outline: "2px solid #fff",
+                      minWidth: "20px",
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    onClick={handleQuantityClick}
+                    style={{ 
+                      color: "#fff", 
+                      fontSize: "14px", 
+                      fontWeight: "600", 
+                      minWidth: "20px", 
+                      textAlign: "center",
+                      cursor: "pointer",
+                      padding: "2px 4px",
+                      borderRadius: "4px",
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
+                    onMouseLeave={(e) => e.target.style.background = "transparent"}
+                    title="Click to edit quantity"
+                  >
+                    {quantity}
+                  </span>
+                )}
+                
                 <button
                   onClick={handleIncrease}
                   style={{
                     background: "transparent", border: "none", color: "#fff", fontWeight: "bold",
                     fontSize: "16px", cursor: "pointer", width: "24px", height: "24px",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    borderRadius: "50%", lineHeight: 1, padding: 0,
+                    borderRadius: "50%", lineHeight: 1, padding: 0, flexShrink: 0,
                   }}
                 >+</button>
               </div>
@@ -615,8 +727,8 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
         <div style={{ width: "110px", minWidth: "110px", overflow: "hidden", background: "#f5f0eb" }}>
           <img
             alt={product.name}
-            src={product.image || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=110&h=110&fit=crop"}
-            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=110&h=110&fit=crop"; }}
+            src={product.image || "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=110&h=110&fit=crop"}
+            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=110&h=110&fit=crop"; }}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         </div>
@@ -624,6 +736,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
     );
   }
 
+  // Desktop version
   return (
     <div className="product-card bg-white relative rounded-[15px] w-[400px] h-[150px] shadow-[0_4px_12px_rgba(0,0,0,0.12)] hover:shadow-[-12px_10px_8px_-3px_rgba(0,0,0,0.15)] transition-all duration-200 hover:-translate-y-[4px]">
       <div className="overflow-clip relative rounded-[inherit] size-full" style={{ display: "flex" }}>
@@ -639,10 +752,63 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
                 <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-white m-0">Out of Stock</p>
               </div>
             ) : (
-              <div className="bg-[#6b5454] h-[30px] flex items-center justify-between px-3 gap-2 rounded">
-                <button onClick={handleDecrease} className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center" disabled={quantity === 0}>-</button>
-                <span className="text-white text-sm font-medium min-w-[16px] text-center">{quantity}</span>
-                <button onClick={handleIncrease} className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center">+</button>
+              <div className="bg-[#6b5454] h-[30px] flex items-center justify-between px-3 gap-1 rounded">
+                <button 
+                  onClick={handleDecrease} 
+                  className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center" 
+                  disabled={quantity === 0}
+                  style={{ opacity: quantity === 0 ? 0.4 : 1, cursor: quantity === 0 ? 'not-allowed' : 'pointer' }}
+                >−</button>
+                
+                {/* Editable quantity input - Desktop */}
+                {isEditing ? (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={localQuantity}
+                    onChange={handleQuantityChange}
+                    onBlur={handleQuantityBlur}
+                    onKeyDown={handleQuantityKeyDown}
+                    style={{
+                      width: "30px",
+                      background: "rgba(255,255,255,0.2)",
+                      border: "none",
+                      borderRadius: "4px",
+                      color: "#fff",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      textAlign: "center",
+                      padding: "2px 0",
+                      outline: "2px solid #fff",
+                      minWidth: "20px",
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    onClick={handleQuantityClick}
+                    style={{ 
+                      color: "#fff", 
+                      fontSize: "14px", 
+                      fontWeight: "600", 
+                      minWidth: "16px", 
+                      textAlign: "center",
+                      cursor: "pointer",
+                      padding: "2px 4px",
+                      borderRadius: "4px",
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
+                    onMouseLeave={(e) => e.target.style.background = "transparent"}
+                    title="Click to edit quantity"
+                  >
+                    {quantity}
+                  </span>
+                )}
+                
+                <button 
+                  onClick={handleIncrease} 
+                  className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center"
+                >+</button>
               </div>
             )}
           </div>
@@ -657,8 +823,8 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
           <img
             alt={product.name}
             className="w-full h-full object-cover"
-            src={product.image || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=130&h=170&fit=crop"}
-            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=130&h=170&fit=crop"; }}
+            src={product.image || "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=130&h=170&fit=crop"}
+            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=130&h=170&fit=crop"; }}
           />
           <div style={{ position: "absolute", top: "8px", right: "8px", zIndex: 10 }}>
             <div className="bg-white border border-[#6b5454] border-solid rounded-[50px] size-[24px] cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center">
@@ -685,17 +851,17 @@ function MobileOrderSummary({ selectedCount, totalAmount, onGoToCart, footerOffs
   if (selectedCount === 0) return null;
   return (
     <div className="cart-summary" style={{
-  position: "sticky",  // Changed from "fixed"
-  bottom: 0,           // Changed from footerOffset
-  right: 0, 
-  left: 0,
-  backgroundColor: "white", 
-  boxShadow: "0 -4px 12px rgba(0,0,0,0.1)",
+  // position: "sticky",  
+  // bottom: 0,         
+  // right: 0, 
+  // left: 0,
+  // backgroundColor: "white", 
+  // boxShadow: "0 -4px 12px rgba(0,0,0,0.1)",
   padding: "12px 16px", 
   zIndex: 1000,
   borderTopLeftRadius: "16px", 
   borderTopRightRadius: "16px",
-  borderTop: `2px solid ${BROWN_DARK}`,
+  // borderTop: `2px solid ${BROWN_DARK}`,
   marginTop: "auto",   // Push to bottom of flex container
 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -723,9 +889,7 @@ function MobileOrderSummary({ selectedCount, totalAmount, onGoToCart, footerOffs
     </div>
   );
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// MobileTabBar
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 function MobileTabBar({ activeTab, onHome, onDashboard, onCart, cartCount }) {
   const tabs = [
@@ -1886,9 +2050,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
     </div>
   );
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// QuotationPrint  (forwardRef — used by desktop react-to-print)
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,createdOn, orderDate }, ref) => {
   
@@ -2108,9 +2270,7 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
 
 QuotationPrint.displayName = "QuotationPrint";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PrintPreviewModal  ← KEY FIX: mobile uses mobilePrint(), desktop uses react-to-print
-// ─────────────────────────────────────────────────────────────────────────────
+
 
 const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrintAndSave, storage, isReprint = false,createdOn, orderDate }) => {
   const printRef = useRef();
@@ -2155,7 +2315,7 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
     return true;
   };
 
-  // Build complete HTML for printing
+
   const buildCompletePrintHtml = () => {
     const safeNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
     const rupee = (n) => safeNum(n).toLocaleString("en-IN", {
@@ -2503,9 +2663,6 @@ return `<!DOCTYPE html>
     </Dialog>
   );
 };
-// ─────────────────────────────────────────────────────────────────────────────
-// TransporterDropdown (inner component used inside MobileCartDrawer)
-// ─────────────────────────────────────────────────────────────────────────────
 
 
 // iOS-specific print handler
@@ -2693,7 +2850,8 @@ const MobileCartDrawer = ({
   const [description, setDescription] = useState("");
   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-
+  const [creditInfo, setCreditInfo] = useState(null);
+  const [showCreditLimitDialog, setShowCreditLimitDialog] = useState(false);
   const selectedCustomer = headerSelectedCustomer;
 
   const [availableBrokers, setAvailableBrokers] = useState([]);
@@ -2784,12 +2942,36 @@ const fetchTransporters = async () => {
   }
 };
 
+const fetchCreditInfo = async (retailerId) => {
+  if (!retailerId) { setCreditInfo(null); return; }
+  try {
+    const response = await fetchLink({
+      address: `receipt/receiptMaster/pendingSalesInvoiceReceipt/amount?Retailer_Id=${retailerId}`,
+      method: "GET",
+    });
+    if (response?.success) {
+      setCreditInfo(response.others || null);
+    } else {
+      setCreditInfo(null);
+    }
+  } catch (error) {
+    console.error("Error fetching credit info:", error);
+    setCreditInfo(null);
+  }
+};
 
+useEffect(() => {
+  if (selectedCustomer?.id) {
+    fetchCreditInfo(selectedCustomer.id);
+  } else {
+    setCreditInfo(null);
+  }
+}, [selectedCustomer?.id]);
   
-// In MobileCartDrawer component, update the useEffect that sets customer data
+
 useEffect(() => {
   if (selectedCustomer) {
-    // Use original values from editData if in edit mode
+ 
     const isEditing = localStorage.getItem('isEditingOrder') === 'true';
     let contactNum = selectedCustomer.mobile || "";
     let shipAddress = selectedCustomer.address || "";
@@ -2859,6 +3041,15 @@ useEffect(() => {
     return p?.packGet || parseFloat(p?.PackGet) || 1;
   };
 
+       const handleQtyCommit = (id, value) => {
+         const newQty = Math.max(0, parseInt(value, 10) || 0);
+         const currentQty = cartItems[id] || 0;
+         const delta = newQty - currentQty;
+         if (delta !== 0) {
+           onUpdateQty(id, delta); 
+         }
+       };
+
   const enhancedCartItems = Object.entries(cartItems)
     .filter(([_, qty]) => qty > 0)
     .map(([productId, qty]) => {
@@ -2907,173 +3098,175 @@ useEffect(() => {
   const filteredBrokers = brokerSearch.trim()
     ? availableBrokers.filter(b => matchName(b.name, brokerSearch)) : availableBrokers;
 
-  const handleCheckout = async () => {
-    if (!isLoggedIn) { toast.error("Please sign in to place an order"); setIsLoginPopupOpen(true); return; }
-    if (!contactNumber) { toast.error("Please enter contact number"); return; }
-    if (!selectedCustomer) { toast.error("Please select a customer"); return; }
-
-    setIsProcessing(true);
-
-      const now = new Date();
-        const formattedDateTime = ISOStrings(new Date(), true);  // Returns: "2026-05-22 17:08:00"
-      const formattedDateOnly = ISOStrings(new Date(), false); // Returns: "2026-05-22"
-
-
-    const parseData = JSON.parse(localStorage.getItem('user') || '{}');
-    const storage = JSON.parse(localStorage.getItem('user') || '{}');
-
-    const editOrderId = localStorage.getItem('editOrderId');
-    const isEditing = !!editOrderId;
-
-    const totalBeforeTax = enhancedCartItems.reduce((s, i) => s + i.amount, 0);
-    const totalTax = enhancedCartItems.reduce((s, i) => {
-      const taxRate = i.taxRate || 12;
-      return s + (i.amount * (taxRate / 100));
-    }, 0);
-    const totalInvoiceValue = totalBeforeTax + totalTax;
-    const totalKgsValue = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
-
-   // In handleCheckout function in MobileCartDrawer
-const Staff_Involved_List = [];
-
-// Only add broker if ID is valid (not null, not "0", not empty, not "null")
-if (selectedBroker?.id && selectedBroker.id !== "0" && selectedBroker.id !== "null" && selectedBroker.id !== "") {
-  const brokerIdNum = parseInt(selectedBroker.id);
-  if (!isNaN(brokerIdNum) && brokerIdNum > 0) {
-    Staff_Involved_List.push({ Involved_Emp_Id: brokerIdNum, Cost_Center_Type_Id: 3 });
-  }
-}
-
-// Only add transporter if ID is valid
-if (selectedTransporter?.id && selectedTransporter.id !== "0" && selectedTransporter.id !== "null" && selectedTransporter.id !== "") {
-  const transporterIdNum = parseInt(selectedTransporter.id);
-  if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
-    Staff_Involved_List.push({ Involved_Emp_Id: transporterIdNum, Cost_Center_Type_Id: 2 });
-  }
-}
-
-    const generalInfo = {
-      ...(isEditing && { So_Id: parseInt(editOrderId) }),
-      So_Date: formattedDateOnly,
-      Retailer_Id: parseInt(selectedCustomer.id),
-      Sales_Person_Id: storage?.user?.SalesPersonId || 0,
-      Branch_Id: storage?.user?.BranchId || parseData?.BranchId,
-      VoucherType: 200, GST_Inclusive: 2, IS_IGST: 0,
-      CSGT_Total: (totalTax / 2).toFixed(2), SGST_Total: (totalTax / 2).toFixed(2),
-      IGST_Total: "0.00", Round_off: "0.00",
-      Total_Before_Tax: totalBeforeTax.toFixed(2), Total_Tax: totalTax.toFixed(2),
-      Total_Invoice_value: totalInvoiceValue.toFixed(2),
-      Narration: description || "", isConverted: 0, Cancel_status: 1,
-      Created_by: parseData?.UserId || storage?.user?.UserId,
-       Created_on: formattedDateTime,
-      Trans_Type: isEditing ? "UPDATE" : "INSERT", Alter_Id: 0,
-      Customer_Name: selectedCustomer.name || "", Ord_Mobile_No: contactNumber,
-      Broker_Name: selectedBroker.name || "", Broker_Id: selectedBroker.id || null,
-      Transporter_Name: selectedTransporter.name || "", Transporter_Id: selectedTransporter.id || null,
-      Shipp_Address: shippingAddress || selectedCustomer.address || "",
-      Deliv_Address: deliveryAddress || shippingAddress || selectedCustomer.address || "",
-      Total_Kgs: totalKgsValue.toFixed(2), Total_Items: enhancedCartItems.length,
-      Staff_Involved_List,
-    };
-
-    const stockInfo = enhancedCartItems.map((item, index) => {
-      const taxRate = item.taxRate || 12;
-      const cgstSgstRate = taxRate / 2;
-      const taxableAmount = item.amount;
-      const taxAmount = taxableAmount * (taxRate / 100);
-      const cgstSgstAmount = taxAmount / 2;
-      const finalAmount = taxableAmount + taxAmount;
-      return {
-        So_Date: formattedDateOnly, S_No: index + 1, Item_Id: parseInt(item.id),
-        Bill_Qty: item.kgs.toFixed(2), Taxable_Rate: item.price.toFixed(2),
-        Item_Rate: item.price.toFixed(2), Amount: taxableAmount.toFixed(2), Free_Qty: "0.00",
-        Total_Qty: item.quantity.toString(), Taxble: taxAmount.toFixed(2),
-        HSN_Code: item.hsn || "210690", Unit_Id: item.unitId, Unit_Name: item.unitName,
-        Taxable_Amount: taxableAmount.toFixed(2), Tax_Rate: taxRate,
-        Cgst: cgstSgstRate, Cgst_Amo: cgstSgstAmount.toFixed(2),
-        Sgst: cgstSgstRate, Sgst_Amo: cgstSgstAmount.toFixed(2),
-        Igst: 0, Igst_Amo: "0.00", Final_Amo: finalAmount.toFixed(2),
-        Created_on: formattedDateTime, Product_Id: parseInt(item.id), Product_Name: item.name,
-        Quantity: item.quantity, Price: item.price, Total: taxableAmount.toFixed(2),
-        Weight: item.kgs.toString(), Unit: item.unit, PackGet: item.packGet,
-      };
-    });
-
-    const saleData = {
-      generalInfo, stockInfo,
-      totalAmount: totalInvoiceValue, totalItems: enhancedCartItems.length,
-      totalKgs: totalKgsValue.toFixed(2), customerId: selectedCustomer.id,
-      customerName: selectedCustomer.name || "", contactNumber,
-      brokerName: selectedBroker.name, transporter: selectedTransporter.name,
-      shippingAddress, deliveryAddress, description,
-      Created_by: parseData?.UserId || parseData?.user_id || "",
-      Branch_Id: storage?.user?.BranchId || parseData?.BranchId || 2,
-    };
-
-    try {
-      const loadingToast = toast.loading(isEditing ? "Updating order..." : "Placing order...");
-      const response = await fetchLink({
-        address: `sales/salesInvoice/Whatsapp`,
-        method: isEditing ? 'PUT' : 'POST',
-        bodyData: saleData,
-      });
-      toast.dismiss(loadingToast);
-
-      if (response?.success) {
-        toast.success(isEditing ? "Order updated successfully!" : "Order placed successfully!");
-        if (isEditing) {
-          localStorage.removeItem('editOrderId'); localStorage.removeItem('editOrderNumber');
-          localStorage.removeItem('isEditingOrder'); localStorage.removeItem('editOrderData');
-          localStorage.removeItem('editCustomerData');
-        }
-
-        // const customerDataForPrint = {
-        //   Billl_Name: selectedCustomer.name || "",
-        //   Short_Name: selectedCustomer.billName || selectedCustomer.name || "",
-        //   Party_Location: selectedCustomer.city || "", City: selectedCustomer.city || "",
-        //   Mobile_No: contactNumber, Land_Line: selectedCustomer.mobile || "",
-        //   Transporter: selectedTransporter.name || "", Broker: selectedBroker.name || "",
-        //   Party_Mailing_Name: selectedCustomer.partyMailingName || selectedCustomer.billName || selectedCustomer.name || "",
-        //   Party_Mailing_Address: selectedCustomer.partyMailingAddress || selectedCustomer.address || "",
-        // };
-
-        // In handleCheckout function, update customerDataForPrint:
-// In handleCheckout function in MobileCartDrawer, update customerDataForPrint:
-// In handleCheckout function in MobileCartDrawer
-
-
-
-const customerDataForPrint = {
-  Billl_Name: selectedCustomer.billName || selectedCustomer.name || "",  // Priority to Billl_Name
-  Party_Mailing_Name: selectedCustomer.partyMailingName || selectedCustomer.billName || selectedCustomer.name || "",
-  Party_Location: selectedCustomer.city || "", 
-  Party_Mailing_Address: selectedCustomer.partyMailingAddress || shippingAddress || selectedCustomer.address || "",
-  City: selectedCustomer.city || "",
-  Mobile_No: contactNumber,
-  Land_Line: selectedCustomer.mobile || "",
-  Transporter: selectedTransporter.name || "",
-  Broker: selectedBroker.name || "",
+ const computeOrderTotals = () => {
+  const totalBeforeTax = enhancedCartItems.reduce((s, i) => s + i.amount, 0);
+  const totalTax = enhancedCartItems.reduce((s, i) => {
+    const taxRate = i.taxRate || 12;
+    return s + (i.amount * (taxRate / 100));
+  }, 0);
+  const totalInvoiceValue = totalBeforeTax + totalTax;
+  return { totalBeforeTax, totalTax, totalInvoiceValue };
 };
 
-        const printCartItems = enhancedCartItems.map(item => ({
-          ...item, Print_Name: item.shortName || item.name, price: item.price, kgs: item.kgs,
-        }));
+const handleCheckout = async () => {
+  if (!isLoggedIn) { toast.error("Please sign in to place an order"); setIsLoginPopupOpen(true); return; }
+  if (!contactNumber) { toast.error("Please enter contact number"); return; }
+  if (!selectedCustomer) { toast.error("Please select a customer"); return; }
 
-        setLastOrderData({
-          orderId: response.data?.So_Id || response.data?.OrderId,
-          customerData: customerDataForPrint, printCartItems,
-          totals: { subtotal: subtotalAmount },
-        });
-        setPrintModalOpen(true);
-      } else {
-        toast.error(response?.message || "Failed to process order");
-      }
-    } catch (error) {
-      toast.error("Failed to process order: " + (error.message || "Unknown error"));
-    } finally {
-      setIsProcessing(false);
+
+  const { totalInvoiceValue } = computeOrderTotals();
+  const creditLimit = parseFloat(creditInfo?.creditLimit || 0);
+  const outstanding = parseFloat(creditInfo?.outstanding || 0);
+
+
+  if (creditLimit > 0 && (outstanding + totalInvoiceValue) > creditLimit) {
+    setShowCreditLimitDialog(true);
+    return;
+  }
+
+  await proceedCheckout();
+};
+
+const proceedCheckout = async () => {
+  setIsProcessing(true);
+
+  const now = new Date();
+  const formattedDateTime = ISOStrings(new Date(), true);  
+  const formattedDateOnly = ISOStrings(new Date(), false); 
+
+  const parseData = JSON.parse(localStorage.getItem('user') || '{}');
+  const storage = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const editOrderId = localStorage.getItem('editOrderId');
+  const isEditing = !!editOrderId;
+
+  const { totalBeforeTax, totalTax, totalInvoiceValue } = computeOrderTotals();
+  const totalKgsValue = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
+
+
+  const Staff_Involved_List = [];
+
+
+  if (selectedBroker?.id && selectedBroker.id !== "0" && selectedBroker.id !== "null" && selectedBroker.id !== "") {
+    const brokerIdNum = parseInt(selectedBroker.id);
+    if (!isNaN(brokerIdNum) && brokerIdNum > 0) {
+      Staff_Involved_List.push({ Involved_Emp_Id: brokerIdNum, Cost_Center_Type_Id: 3 });
     }
+  }
+
+  if (selectedTransporter?.id && selectedTransporter.id !== "0" && selectedTransporter.id !== "null" && selectedTransporter.id !== "") {
+    const transporterIdNum = parseInt(selectedTransporter.id);
+    if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
+      Staff_Involved_List.push({ Involved_Emp_Id: transporterIdNum, Cost_Center_Type_Id: 2 });
+    }
+  }
+
+  const generalInfo = {
+    ...(isEditing && { So_Id: parseInt(editOrderId) }),
+    So_Date: formattedDateOnly,
+    Retailer_Id: parseInt(selectedCustomer.id),
+    Sales_Person_Id: storage?.user?.SalesPersonId || 0,
+    Branch_Id: storage?.user?.BranchId || parseData?.BranchId,
+    VoucherType: 200, GST_Inclusive: 2, IS_IGST: 0,
+    CSGT_Total: (totalTax / 2).toFixed(2), SGST_Total: (totalTax / 2).toFixed(2),
+    IGST_Total: "0.00", Round_off: "0.00",
+    Total_Before_Tax: totalBeforeTax.toFixed(2), Total_Tax: totalTax.toFixed(2),
+    Total_Invoice_value: totalInvoiceValue.toFixed(2),
+    Narration: description || "", isConverted: 0, Cancel_status: 1,
+    Created_by: parseData?.UserId || storage?.user?.UserId,
+    Created_on: formattedDateTime,
+    Trans_Type: isEditing ? "UPDATE" : "INSERT", Alter_Id: 0,
+    Customer_Name: selectedCustomer.name || "", Ord_Mobile_No: contactNumber,
+    Broker_Name: selectedBroker.name || "", Broker_Id: selectedBroker.id || null,
+    Transporter_Name: selectedTransporter.name || "", Transporter_Id: selectedTransporter.id || null,
+    Shipp_Address: shippingAddress || selectedCustomer.address || "",
+    Deliv_Address: deliveryAddress || shippingAddress || selectedCustomer.address || "",
+    Total_Kgs: totalKgsValue.toFixed(2), Total_Items: enhancedCartItems.length,
+    Staff_Involved_List,
   };
+
+  const stockInfo = enhancedCartItems.map((item, index) => {
+    const taxRate = item.taxRate || 12;
+    const cgstSgstRate = taxRate / 2;
+    const taxableAmount = item.amount;
+    const taxAmount = taxableAmount * (taxRate / 100);
+    const cgstSgstAmount = taxAmount / 2;
+    const finalAmount = taxableAmount + taxAmount;
+    return {
+      So_Date: formattedDateOnly, S_No: index + 1, Item_Id: parseInt(item.id),
+      Bill_Qty: item.kgs.toFixed(2), Taxable_Rate: item.price.toFixed(2),
+      Item_Rate: item.price.toFixed(2), Amount: taxableAmount.toFixed(2), Free_Qty: "0.00",
+      Total_Qty: item.quantity.toString(), Taxble: taxAmount.toFixed(2),
+      HSN_Code: item.hsn || "210690", Unit_Id: item.unitId, Unit_Name: item.unitName,
+      Taxable_Amount: taxableAmount.toFixed(2), Tax_Rate: taxRate,
+      Cgst: cgstSgstRate, Cgst_Amo: cgstSgstAmount.toFixed(2),
+      Sgst: cgstSgstRate, Sgst_Amo: cgstSgstAmount.toFixed(2),
+      Igst: 0, Igst_Amo: "0.00", Final_Amo: finalAmount.toFixed(2),
+      Created_on: formattedDateTime, Product_Id: parseInt(item.id), Product_Name: item.name,
+      Quantity: item.quantity, Price: item.price, Total: taxableAmount.toFixed(2),
+      Weight: item.kgs.toString(), Unit: item.unit, PackGet: item.packGet,
+    };
+  });
+
+  const saleData = {
+    generalInfo, stockInfo,
+    totalAmount: totalInvoiceValue, totalItems: enhancedCartItems.length,
+    totalKgs: totalKgsValue.toFixed(2), customerId: selectedCustomer.id,
+    customerName: selectedCustomer.name || "", contactNumber,
+    brokerName: selectedBroker.name, transporter: selectedTransporter.name,
+    shippingAddress, deliveryAddress, description,
+    Created_by: parseData?.UserId || parseData?.user_id || "",
+    Branch_Id: storage?.user?.BranchId || parseData?.BranchId || 2,
+  };
+
+  try {
+    const loadingToast = toast.loading(isEditing ? "Updating order..." : "Placing order...");
+    const response = await fetchLink({
+      address: `sales/salesInvoice/Whatsapp`,
+      method: isEditing ? 'PUT' : 'POST',
+      bodyData: saleData,
+    });
+    toast.dismiss(loadingToast);
+
+    if (response?.success) {
+      toast.success(isEditing ? "Order updated successfully!" : "Order placed successfully!");
+      if (isEditing) {
+        localStorage.removeItem('editOrderId'); localStorage.removeItem('editOrderNumber');
+        localStorage.removeItem('isEditingOrder'); localStorage.removeItem('editOrderData');
+        localStorage.removeItem('editCustomerData');
+      }
+
+      const customerDataForPrint = {
+        Billl_Name: selectedCustomer.billName || selectedCustomer.name || "",  // Priority to Billl_Name
+        Party_Mailing_Name: selectedCustomer.partyMailingName || selectedCustomer.billName || selectedCustomer.name || "",
+        Party_Location: selectedCustomer.city || "",
+        Party_Mailing_Address: selectedCustomer.partyMailingAddress || shippingAddress || selectedCustomer.address || "",
+        City: selectedCustomer.city || "",
+        Mobile_No: contactNumber,
+        Land_Line: selectedCustomer.mobile || "",
+        Transporter: selectedTransporter.name || "",
+        Broker: selectedBroker.name || "",
+      };
+
+      const printCartItems = enhancedCartItems.map(item => ({
+        ...item, Print_Name: item.shortName || item.name, price: item.price, kgs: item.kgs,
+      }));
+
+      setLastOrderData({
+        orderId: response.data?.So_Id || response.data?.OrderId,
+        customerData: customerDataForPrint, printCartItems,
+        totals: { subtotal: subtotalAmount },
+      });
+      setPrintModalOpen(true);
+    } else {
+      toast.error(response?.message || "Failed to process order");
+    }
+  } catch (error) {
+    toast.error("Failed to process order: " + (error.message || "Unknown error"));
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   if (!isOpen) return null;
 
@@ -3196,7 +3389,29 @@ const customerDataForPrint = {
           ) : (
         
             <div>
-
+{creditInfo && (
+  <div style={{
+    marginBottom: "16px",
+    padding: "10px 12px",
+    background: "#fff3f3",
+    border: "1px solid #e0b8b8",
+    borderRadius: "8px",
+    display: "flex",
+    // justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "10px",
+  }}>
+    <div style={{ color: "#000", fontWeight: "bold", fontSize: "14px", animation: "blinker 1s linear infinite" }}>
+      Outstanding: ₹{parseFloat(creditInfo.outstanding || 0).toFixed(2)}
+    </div>
+    <div style={{ color: "#000", fontWeight: "bold", fontSize: "14px", animation: "blinker 1s linear infinite" }}>
+      Credit Limit: {parseFloat(creditInfo.creditLimit || 0) === 0
+        ? "Unlimited"
+        : `₹${parseFloat(creditInfo.creditLimit).toFixed(2)}`}
+    </div>
+  </div>
+)}
               {/* Customer Selection */}
               <div style={{ marginBottom: "16px" }}>
                 <label style={{ fontSize: "13px", fontWeight: "600", color: "#333", marginBottom: "4px", display: "block" }}>Customer *</label>
@@ -3450,6 +3665,25 @@ const customerDataForPrint = {
                   onBlur={(e) => e.target.style.borderColor = "#ddd"}
                 />
               </div>
+
+              {/* {creditInfo && (
+  <div style={{
+    marginBottom: "16px",
+    padding: "10px 12px",
+    background: "#fff3f3",
+    border: "1px solid #e0b8b8",
+    borderRadius: "8px",
+  }}>
+    <div style={{ color: "#000", fontWeight: "bold", fontSize: "14px", animation: "blinker 1s linear infinite" }}>
+      Outstanding: ₹{parseFloat(creditInfo.outstanding || 0).toFixed(2)}
+    </div>
+    <div style={{ color: "#000", fontWeight: "bold", fontSize: "14px", animation: "blinker 1s linear infinite" }}>
+      Credit Limit: {parseFloat(creditInfo.creditLimit || 0) === 0
+        ? "Unlimited"
+        : `₹${parseFloat(creditInfo.creditLimit).toFixed(2)}`}
+    </div>
+  </div>
+)} */}
             </div>
           )}
         </div>
@@ -3489,15 +3723,63 @@ const customerDataForPrint = {
         )}
       </div>
 
-      <style>{`
-        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-      `}</style>
+     <style>{`
+  @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes blinker { 50% { opacity: 0; } }
+`}</style>
 
       <LoginPopup
         isOpen={isLoginPopupOpen}
         onClose={() => setIsLoginPopupOpen(false)}
         onLoginSuccess={() => { setIsLoginPopupOpen(false); window.location.reload(); }}
       />
+
+
+      <Dialog
+  open={showCreditLimitDialog}
+  onClose={() => setShowCreditLimitDialog(false)}
+  maxWidth="sm"
+  fullWidth
+>
+  <DialogTitle style={{ fontWeight: "bold", color: "#e74c3c" }}>
+    ⚠️ Credit Limit Exceeded
+  </DialogTitle>
+  <DialogContent>
+    <p style={{ fontSize: "14px", color: "#333", marginBottom: "12px" }}>
+      This order will take the customer's outstanding balance above their approved credit limit.
+    </p>
+    <div style={{
+      background: "#fff3f3", border: "1px solid #e0b8b8",
+      borderRadius: "8px", padding: "12px", fontSize: "14px",
+    }}>
+      <div>Outstanding: ₹{parseFloat(creditInfo?.outstanding || 0).toFixed(2)}</div>
+      <div>Credit Limit: ₹{parseFloat(creditInfo?.creditLimit || 0).toFixed(2)}</div>
+      <div>Current Order: ₹{computeOrderTotals().totalInvoiceValue.toFixed(2)}</div>
+  
+    </div>
+    <p style={{ fontSize: "13px", color: "#666", marginTop: "12px" }}>
+      Do you still want to place this order?
+    </p>
+  </DialogContent>
+  <DialogActions style={{ padding: "16px" }}>
+    <Button onClick={() => setShowCreditLimitDialog(false)} variant="outlined">
+      Cancel
+    </Button>
+    <Button
+      onClick={() => { setShowCreditLimitDialog(false); proceedCheckout(); }}
+      variant="contained"
+      style={{ backgroundColor: "#e74c3c", fontWeight: "bold" }}
+    >
+      Continue Anyway
+    </Button>
+  </DialogActions>
+</Dialog>
+
+<LoginPopup
+  isOpen={isLoginPopupOpen}
+  onClose={() => setIsLoginPopupOpen(false)}
+  onLoginSuccess={() => { setIsLoginPopupOpen(false); window.location.reload(); }}
+/>
     </>
   );
 };
@@ -4484,87 +4766,7 @@ const handlePrintOrder = async (e, order) => {
   }
 };
 
-  // const handleEditOrder = async (e, order) => {
-  //   e.stopPropagation();
-  //   try {
-  //     const orderId = order.So_Id || order.So_No || order.OrderId;
-  //     localStorage.setItem('editOrderId', orderId);
-  //     localStorage.setItem("selectedCustomerId", order.Retailer_Id);
 
-  //     const response = await fetchLink({ address: `pos/retailerMasterOpt?Customer_Id=${order.Retailer_Id}&limit=10000000&page=1` });
-  //     let completeCustomerDetails = null;
-  //     if (response?.success && Array.isArray(response.data)) {
-  //       const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
-  //       completeCustomerDetails = response.data.find(c => String(c.Customer_Id) === String(retailerId));
-  //     }
-
-  //     const editData = {
-  //       customerId: order.Retailer_Id || order.Customer_Id || order.Party_Id,
-  //       customerName: order.Retailer_Name || order.Customer_Name || order.Party_Name,
-  //       customerMobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "",
-  //       customerAddress: completeCustomerDetails?.Address || order.Shipp_Address || order.Shipping_Address || order.Address || "",
-  //       customerCity: completeCustomerDetails?.City || order.City || "",
-  //       orderId, orderNumber: order.So_Inv_No || order.So_No || order.OrderNumber,
-  //       cartItems: {}, productsList: [], brokerId: "", brokerName: getBrokerName(order),
-  //       transporterId: "", transporterName: getTransporterName(order),
-  //       shippingAddress: completeCustomerDetails?.Address || order.Shipp_Address || order.Shipping_Address || order.Address || "",
-  //       deliveryAddress: completeCustomerDetails?.Address || order.Deliv_Address || order.Delivery_Address || order.Shipp_Address || order.Shipping_Address || order.Address || "",
-  //       contactNumber: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "",
-  //       description: order.Narration || order.Description || order.Note || "",
-  //       customerDetails: {
-  //         id: order.Retailer_Id || order.Customer_Id || order.Party_Id,
-  //         name: order.Retailer_Name || order.Customer_Name || order.Party_Name,
-  //         mobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || order.Mobile_No || "",
-  //         address: completeCustomerDetails?.Address || order.Shipp_Address || order.Shipping_Address || order.Address || "",
-  //         city: completeCustomerDetails?.City || order.City || "",
-  //         brokerId: "", brokerName: getBrokerName(order),
-  //         transporterId: "", transporterName: getTransporterName(order),
-  //       },
-  //     };
-
-  //     if (order.Products_List && Array.isArray(order.Products_List)) {
-  //       order.Products_List.forEach(product => {
-  //         const productId = String(product.Product_Id || product.Item_Id);
-  //         const productName = product.Product_Name || "";
-  //         let packGet = parseFloat(product.PackGet) || parseFloat(product.Pack_Get) || 1;
-  //         if (packGet === 1 && productName) packGet = getProductPackGet(productName);
-  //         const billQty = parseFloat(product.Bill_Qty) || 0;
-  //         const quantity = packGet > 0 ? Math.round(billQty / packGet) : 1;
-  //         editData.cartItems[productId] = quantity;
-  //         editData.productsList.push({
-  //           id: productId, name: productName, quantity, kgs: billQty,
-  //           price: parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0,
-  //           packGet, amount: parseFloat(product.Amount) || 0,
-  //         });
-  //       });
-  //     }
-
-  //     localStorage.setItem('editOrderData', JSON.stringify(editData));
-  //     localStorage.setItem('isEditingOrder', 'true');
-  //     const currentCart = localStorage.getItem('cartItems');
-  //     if (currentCart) localStorage.setItem('previousCartItems', currentCart);
-  //     const productsData = localStorage.getItem('products');
-  //     if (productsData) localStorage.setItem('productsBackup', productsData);
-
-  //     navigate('/cart', {
-  //       state: {
-  //         editOrderData: editData, isEditingOrder: true,
-  //         selectedCustomer: {
-  //           id: editData.customerDetails.id, name: editData.customerDetails.name,
-  //           billName: editData.customerDetails.name,
-  //           mobile: editData.customerDetails.mobile || "", city: editData.customerDetails.city || "",
-  //           address: editData.customerDetails.address || "",
-  //           brokerId: editData.customerDetails.brokerId || "", brokerName: editData.customerDetails.brokerName || "",
-  //           transporterId: editData.customerDetails.transporterId || "", transporterName: editData.customerDetails.transporterName || "",
-  //         },
-  //       },
-  //     });
-  //     toast.info(`Loading order #${order.So_Inv_No || order.So_No} for editing...`);
-  //   } catch (error) {
-  //     console.error("Error fetching customer details:", error);
-  //     toast.error("Failed to load order details for editing");
-  //   }
-  // };
 
 const handleEditOrder = async (e, order) => {
  

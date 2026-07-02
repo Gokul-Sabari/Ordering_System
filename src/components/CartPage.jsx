@@ -732,6 +732,164 @@ const UserMenuDropdown = ({ isOpen, onClose, isLoggedIn, userName, onLoginClick,
 };
 
 
+function ThreeDotMenu({ isLoggedIn, userName, onLogout, onLoginClick, onSaleOrders,onDashboard }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={menuRef} style={{ position: "relative" }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          background: "transparent", border: "none", cursor: "pointer",
+          padding: "6px", display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#fff", borderRadius: "50%", flexShrink: 0,
+          minWidth: "36px", minHeight: "36px",
+          WebkitTapHighlightColor: "transparent",
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+      >
+        <MoreVertIcon style={{ fontSize: isMobile ? "22px" : "24px" }} />
+      </button>
+
+     {isOpen && (
+  <div style={{
+    position: "absolute", top: "100%", right: 0, marginTop: "8px",
+    backgroundColor: "#fff", borderRadius: isMobile ? "16px" : "20px",
+    boxShadow: "0 10px 40px rgba(0,0,0,0.2)", minWidth: "300px",
+    zIndex: 1000, overflow: "hidden",
+  }}>
+    {isLoggedIn ? (
+      <>
+        <div style={{
+          padding: isMobile ? "20px 16px" : "24px 20px",
+          background: "linear-gradient(135deg, #4a2c1a 0%, #3a1f0e 100%)",
+          borderBottom: `1px solid ${ACCENT}`,
+        }}>
+          <div style={{
+            width: isMobile ? "48px" : "60px", height: isMobile ? "48px" : "60px",
+            borderRadius: "50%", background: "#c8a96e",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            marginBottom: isMobile ? "12px" : "16px",
+          }}>
+            <span style={{ color: "#4a2c1a", fontSize: isMobile ? "20px" : "28px", fontWeight: "bold" }}>
+              {userName?.charAt(0) || ""}
+            </span>
+          </div>
+          <div style={{ fontSize: isMobile ? "18px" : "20px", color: "#fff" }}>{userName || ""}</div>
+        </div>
+        <div style={{ padding: isMobile ? "8px" : "12px" }}>
+          {/* Sale Orders - Show for both employee and customer */}
+          {(localStorage.getItem("userType") === "employee" || localStorage.getItem("userType") === "customer") && (
+            <button
+              onClick={() => { onSaleOrders(); setIsOpen(false); }}
+              style={{
+                width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
+                background: "transparent", border: "none", textAlign: "left",
+                fontSize: isMobile ? "15px" : "16px", color: BROWN,
+                cursor: "pointer", display: "flex", alignItems: "center",
+                gap: "12px", borderRadius: isMobile ? "8px" : "12px",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "#f5f0eb"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+            >
+              <span style={{ fontSize: isMobile ? "18px" : "20px" }}>📋</span>
+              <span>Sale Orders</span>
+            </button>
+          )}
+
+          {/* Dashboard - Show if onDashboard prop exists and user is logged in */}
+          {onDashboard && (
+            <button
+              onClick={() => { onDashboard(); setIsOpen(false); }}
+              style={{
+                width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
+                background: "transparent", border: "none", textAlign: "left",
+                fontSize: isMobile ? "15px" : "16px", color: BROWN,
+                cursor: "pointer", display: "flex", alignItems: "center",
+                gap: "12px", borderRadius: isMobile ? "8px" : "12px",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "#f5f0eb"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+            >
+              <span style={{ fontSize: isMobile ? "18px" : "20px" }}>📊</span>
+              <span>Dashboard</span>
+            </button>
+          )}
+
+          {/* Logout - Show for all logged-in users */}
+          <button
+            onClick={() => { onLogout(); setIsOpen(false); }}
+            style={{
+              width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
+              background: "transparent", border: "none", textAlign: "left",
+              fontSize: isMobile ? "15px" : "16px", color: "#d32f2f",
+              cursor: "pointer", display: "flex", alignItems: "center",
+              gap: "12px", borderRadius: isMobile ? "8px" : "12px", marginTop: "4px",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "#fff5f5"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+          >
+            <span style={{ fontSize: isMobile ? "18px" : "20px" }}>🚪</span>
+            <span>Logout</span>
+          </button>
+        </div>
+      </>
+    ) : (
+      <>
+        <div style={{ padding: isMobile ? "20px 16px" : "24px 20px", background: "#f9f4ef", textAlign: "center" }}>
+          <div style={{
+            width: isMobile ? "48px" : "60px", height: isMobile ? "48px" : "60px",
+            borderRadius: "50%", background: "#e0d5cc",
+            display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px",
+          }}>
+            <span style={{ color: BROWN, fontSize: isMobile ? "20px" : "28px", fontWeight: "bold" }}>?</span>
+          </div>
+          <div style={{ fontSize: isMobile ? "16px" : "20px", fontWeight: "600", color: BROWN, marginBottom: "4px" }}>Not Signed In</div>
+          <div style={{ fontSize: isMobile ? "13px" : "15px", color: "#666" }}>Sign in to place orders</div>
+        </div>
+        <div style={{ padding: isMobile ? "12px" : "20px" }}>
+          <button
+            onClick={() => { onLoginClick(); setIsOpen(false); }}
+            style={{
+              width: "100%", padding: isMobile ? "14px 16px" : "16px 24px",
+              background: BROWN, border: "none", borderRadius: isMobile ? "8px" : "12px",
+              fontSize: isMobile ? "15px" : "18px", fontWeight: "600", color: "#fff",
+              cursor: "pointer", display: "flex", alignItems: "center",
+              justifyContent: "center", gap: "12px",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = BROWN_DARK}
+            onMouseLeave={(e) => e.currentTarget.style.background = BROWN}
+          >
+            <span style={{ fontSize: isMobile ? "18px" : "22px" }}>🔑</span>
+            <span>Sign In</span>
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+)}
+    </div>
+  );
+}
+
+
 const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilledCustomer }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(prefilledCustomer?.name || "");
@@ -1794,9 +1952,6 @@ const handleEditOrder = async (e, order) => {
     localStorage.setItem('editOrderId', String(orderId));
     localStorage.setItem("selectedCustomerId", order.Retailer_Id);
     
-    // DON'T fetch products from master - use the order's original product names
-    // const productsResponse = await fetchLink({ address: `pos/productMaster`});
-    
     // Get actual broker and transporter IDs from Staff_Involved_List
     let actualBrokerId = null;
     let actualBrokerName = "";
@@ -1804,7 +1959,6 @@ const handleEditOrder = async (e, order) => {
     let actualTransporterName = "";
     
     if (order.Staff_Involved_List && Array.isArray(order.Staff_Involved_List)) {
-      // Find broker (Cost_Center_Type_Id === 3)
       const broker = order.Staff_Involved_List.find(
         staff => staff.Cost_Center_Type_Id === 3 || staff.EmpType === "Broker"
       );
@@ -1813,7 +1967,6 @@ const handleEditOrder = async (e, order) => {
         actualBrokerName = broker.EmpName || "";
       }
       
-      // Find transporter (Cost_Center_Type_Id === 4)
       const transporter = order.Staff_Involved_List.find(
         staff => staff.Cost_Center_Type_Id === 2 || staff.EmpType === "Load Man"
       );
@@ -1823,7 +1976,7 @@ const handleEditOrder = async (e, order) => {
       }
     }
     
-    // Get customer details but preserve the original name from order
+    // Get customer details
     const response = await fetchLink({ 
       address: `pos/retailerMasterOptRetailerId?Customer_Id=${order.Retailer_Id}&limit=10000000&page=1` 
     });
@@ -1837,30 +1990,23 @@ const handleEditOrder = async (e, order) => {
       );
     }
     
-    const getProductPackGet = (productName) => {
-      if (productName) {
-        const packMatch = productName.match(/(\d+(?:\.\d+)?)\s*KG/i);
-        if (packMatch) {
-          return parseFloat(packMatch[1]);
-        }
-      }
-      return 1;
-    };
+    const originalCustomerName = order.Retailer_Name || order.Customer_Name || order.Party_Name || "";
     
     const cartItemsObj = {};
     const productsList = [];
     
-    // CRITICAL: Use the original product names from the order, don't fetch from master
     if (order.Products_List && Array.isArray(order.Products_List)) {
       order.Products_List.forEach(product => {
         const productId = String(product.Product_Id || product.Item_Id);
-        // Use the original product name from the order (preserves Tamil)
         const originalProductName = product.Product_Name || product.Item_Name || "";
         const originalShortName = product.Short_Name || product.Product_Short_Name || originalProductName;
         
         let packGet = parseFloat(product.PackGet) || parseFloat(product.Pack_Get) || 1;
         if (packGet === 1 && originalProductName) {
-          packGet = getProductPackGet(originalProductName);
+          const packMatch = originalProductName.match(/(\d+(?:\.\d+)?)\s*KG/i);
+          if (packMatch) {
+            packGet = parseFloat(packMatch[1]);
+          }
         }
         
         const billQty = parseFloat(product.Bill_Qty) || 0;
@@ -1884,12 +2030,9 @@ const handleEditOrder = async (e, order) => {
       });
     }
     
-    
-    const originalCustomerName = order.Retailer_Name || order.Customer_Name || order.Party_Name || "";
-    
     const editData = {
       customerId: order.Retailer_Id || order.Customer_Id || order.Party_Id,
-      customerName: originalCustomerName, // Use original Tamil name from order
+      customerName: originalCustomerName,
       customerMobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
       customerAddress: completeCustomerDetails?.Address || order.Shipp_Address || "",
       customerCity: completeCustomerDetails?.City || order.City || "",
@@ -1907,7 +2050,7 @@ const handleEditOrder = async (e, order) => {
       description: order.Narration || "",
       customerDetails: {
         id: order.Retailer_Id || order.Customer_Id,
-        name: originalCustomerName, // Use original Tamil name
+        name: originalCustomerName,
         mobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
         address: completeCustomerDetails?.Address || order.Shipp_Address || "",
         city: completeCustomerDetails?.City || order.City || "",
@@ -1920,41 +2063,23 @@ const handleEditOrder = async (e, order) => {
       }
     };
     
-
-    
     localStorage.setItem('editOrderData', JSON.stringify(editData));
     localStorage.setItem('isEditingOrder', 'true');
     localStorage.setItem('cartItems', JSON.stringify(cartItemsObj));
     localStorage.setItem('editProductsList', JSON.stringify(productsList));
-    
-    
     localStorage.setItem('editCustomerOriginalName', originalCustomerName);
     localStorage.setItem('editBrokerId', actualBrokerId);
     localStorage.setItem('editBrokerName', actualBrokerName);
     localStorage.setItem('editTransporterId', actualTransporterId);
     localStorage.setItem('editTransporterName', actualTransporterName);
     
+    // ✅ FIXED: Don't navigate — we're already on /cart, and navigating to the
+    // same route doesn't remount CartPage, so its `showSaleOrders` state never
+    // resets and the edit form never shows. Instead, hand the parsed order
+    // straight to the parent via the onEditOrder prop, which switches views
+    // (setShowSaleOrders(false)) and populates the cart form directly.
     if (onEditOrder) {
       onEditOrder(editData);
-    } else {
-      navigate('/cart', { 
-        state: { 
-          editOrderData: editData,
-          isEditingOrder: true,
-          selectedCustomer: {
-            id: editData.customerDetails.id,
-            name: originalCustomerName, // Use original Tamil name
-            mobile: editData.customerDetails.mobile || "",
-            city: editData.customerDetails.city || "",
-            address: editData.customerDetails.address || "",
-            brokerId: actualBrokerId,
-            brokerName: actualBrokerName,
-            transporterId: actualTransporterId,
-            transporterName: actualTransporterName,
-          }
-        } 
-      });
-      toast.info(`Loading order #${order.So_Inv_No || order.So_No} for editing...`);
     }
     
   } catch (error) {
@@ -1962,6 +2087,165 @@ const handleEditOrder = async (e, order) => {
     toast.error("Failed to load order details for editing");
   }
 };
+// const handleEditOrder = async (e, order) => {
+//   e.stopPropagation();
+  
+//   try {
+//     const orderId = order.So_Id || order.So_No || order.OrderId;
+//     localStorage.setItem('editOrderId', String(orderId));
+//     localStorage.setItem("selectedCustomerId", order.Retailer_Id);
+    
+//     // Get actual broker and transporter IDs from Staff_Involved_List
+//     let actualBrokerId = null;
+//     let actualBrokerName = "";
+//     let actualTransporterId = null;
+//     let actualTransporterName = "";
+    
+//     if (order.Staff_Involved_List && Array.isArray(order.Staff_Involved_List)) {
+//       const broker = order.Staff_Involved_List.find(
+//         staff => staff.Cost_Center_Type_Id === 3 || staff.EmpType === "Broker"
+//       );
+//       if (broker) {
+//         actualBrokerId = broker.Involved_Emp_Id || broker.Emp_Id;
+//         actualBrokerName = broker.EmpName || "";
+//       }
+      
+//       const transporter = order.Staff_Involved_List.find(
+//         staff => staff.Cost_Center_Type_Id === 2 || staff.EmpType === "Load Man"
+//       );
+//       if (transporter) {
+//         actualTransporterId = transporter.Involved_Emp_Id || transporter.Emp_Id;
+//         actualTransporterName = transporter.EmpName || "";
+//       }
+//     }
+    
+//     // Get customer details
+//     const response = await fetchLink({ 
+//       address: `pos/retailerMasterOptRetailerId?Customer_Id=${order.Retailer_Id}&limit=10000000&page=1` 
+//     });
+    
+//     let completeCustomerDetails = null;
+    
+//     if (response?.success && Array.isArray(response.data)) {
+//       const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
+//       completeCustomerDetails = response.data.find(
+//         c => String(c.Customer_Id) === String(retailerId)
+//       );
+//     }
+    
+//     const originalCustomerName = order.Retailer_Name || order.Customer_Name || order.Party_Name || "";
+    
+//     const cartItemsObj = {};
+//     const productsList = [];
+    
+//     if (order.Products_List && Array.isArray(order.Products_List)) {
+//       order.Products_List.forEach(product => {
+//         const productId = String(product.Product_Id || product.Item_Id);
+//         const originalProductName = product.Product_Name || product.Item_Name || "";
+//         const originalShortName = product.Short_Name || product.Product_Short_Name || originalProductName;
+        
+//         let packGet = parseFloat(product.PackGet) || parseFloat(product.Pack_Get) || 1;
+//         if (packGet === 1 && originalProductName) {
+//           const packMatch = originalProductName.match(/(\d+(?:\.\d+)?)\s*KG/i);
+//           if (packMatch) {
+//             packGet = parseFloat(packMatch[1]);
+//           }
+//         }
+        
+//         const billQty = parseFloat(product.Bill_Qty) || 0;
+//         const quantity = packGet > 0 && billQty > 0 ? Math.round(billQty / packGet) : 1;
+//         const pricePerKg = parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0;
+//         const amount = parseFloat(product.Amount) || (pricePerKg * billQty) || 0;
+        
+//         cartItemsObj[productId] = quantity;
+        
+//         productsList.push({
+//           id: productId,
+//           name: originalProductName, 
+//           shortName: originalShortName, 
+//           quantity: quantity,
+//           kgs: billQty,
+//           price: pricePerKg,
+//           packGet: packGet,
+//           amount: amount,
+//           originalName: originalProductName,
+//         });
+//       });
+//     }
+    
+//     const editData = {
+//       customerId: order.Retailer_Id || order.Customer_Id || order.Party_Id,
+//       customerName: originalCustomerName,
+//       customerMobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
+//       customerAddress: completeCustomerDetails?.Address || order.Shipp_Address || "",
+//       customerCity: completeCustomerDetails?.City || order.City || "",
+//       orderId: orderId,
+//       orderNumber: order.So_Inv_No || order.So_No,
+//       cartItems: cartItemsObj,
+//       productsList: productsList,
+//       brokerId: actualBrokerId,
+//       brokerName: actualBrokerName,
+//       transporterId: actualTransporterId,
+//       transporterName: actualTransporterName,
+//       shippingAddress: completeCustomerDetails?.Address || order.Shipp_Address || "",
+//       deliveryAddress: completeCustomerDetails?.Address || order.Deliv_Address || order.Shipp_Address || "",
+//       contactNumber: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
+//       description: order.Narration || "",
+//       customerDetails: {
+//         id: order.Retailer_Id || order.Customer_Id,
+//         name: originalCustomerName,
+//         mobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
+//         address: completeCustomerDetails?.Address || order.Shipp_Address || "",
+//         city: completeCustomerDetails?.City || order.City || "",
+//         brokerId: actualBrokerId,
+//         brokerName: actualBrokerName,
+//         transporterId: actualTransporterId,
+//         transporterName: actualTransporterName,
+//         billName: completeCustomerDetails?.Billl_Name || originalCustomerName,
+//         partyMailingName: completeCustomerDetails?.Party_Mailing_Name || originalCustomerName,
+//       }
+//     };
+    
+//     localStorage.setItem('editOrderData', JSON.stringify(editData));
+//     localStorage.setItem('isEditingOrder', 'true');
+//     localStorage.setItem('cartItems', JSON.stringify(cartItemsObj));
+//     localStorage.setItem('editProductsList', JSON.stringify(productsList));
+//     localStorage.setItem('editCustomerOriginalName', originalCustomerName);
+//     localStorage.setItem('editBrokerId', actualBrokerId);
+//     localStorage.setItem('editBrokerName', actualBrokerName);
+//     localStorage.setItem('editTransporterId', actualTransporterId);
+//     localStorage.setItem('editTransporterName', actualTransporterName);
+    
+//     // ✅ FIXED: removed `setShowSaleOrders(false);` — that setter doesn't exist
+//     // in this component's scope. Navigation below is all that's needed;
+//     // CartPage will mount fresh at /cart and read location.state.
+
+//     // Use navigate directly with state
+//     navigate('/cart', { 
+//       state: { 
+//         editOrderData: editData,
+//         isEditingOrder: true,
+//         selectedCustomer: {
+//           id: editData.customerDetails.id,
+//           name: originalCustomerName,
+//           mobile: editData.customerDetails.mobile || "",
+//           city: editData.customerDetails.city || "",
+//           address: editData.customerDetails.address || "",
+//           brokerId: actualBrokerId,
+//           brokerName: actualBrokerName,
+//           transporterId: actualTransporterId,
+//           transporterName: actualTransporterName,
+//         }
+//       } 
+//     });
+    
+//     toast.info(`Loading order #${order.So_Inv_No || order.So_No} for editing...`);
+    
+//   } catch (error) {
+//     console.error("Error fetching order details:", error);
+//     toast.error("Failed to load order details for editing");
+//   }
+// };
 
   const ProductListExpand = ({ products }) => {
     if (!products || products.length === 0) return null;
@@ -2798,9 +3082,8 @@ export default function CartPage() {
   const [availableBrokers, setAvailableBrokers] = useState([]);
   const [availableTransporters, setAvailableTransporters] = useState([]);
   const [selectedBroker, setSelectedBroker] = useState({ id: null, name: "" });
-  const [selectedTransporter, setSelectedTransporter] = useState({ id: null, name: "" });
-  const [loadingBrokers, setLoadingBrokers] = useState(false);
-  const [loadingTransporters, setLoadingTransporters] = useState(false);
+
+ 
 
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [lastOrderData, setLastOrderData] = useState(null);
@@ -2808,7 +3091,10 @@ export default function CartPage() {
   const handleDashboard = () => setShowDashboard(true);
    const [showDashboard, setShowDashboard] = useState(() => window.innerWidth <= 768);
 
-
+const [selectedTransporter, setSelectedTransporter] = useState({ id: null, name: "" });
+const [loadingBrokers, setLoadingBrokers] = useState(false);
+const [loadingTransporters, setLoadingTransporters] = useState(false);
+const [creditInfo, setCreditInfo] = useState(null);
    const [cartHeaderMenuOpen, setCartHeaderMenuOpen] = useState(false);
 
 const handleBackFromDashboard = () => setShowDashboard(false);
@@ -2852,7 +3138,97 @@ useEffect(() => {
     });
   }, [location.state]);
 
+// Add this useEffect to handle navigation from SaleOrders
+useEffect(() => {
+  const isEditing = localStorage.getItem('isEditingOrder') === 'true';
+  const editDataStr = localStorage.getItem('editOrderData');
+  
+  // Check if we came from SaleOrders with edit intent
+  if (isEditing && editDataStr) {
+    try {
+      const editData = JSON.parse(editDataStr);
+      
+      // Set all the state from the edit data
+      if (editData.customerId) {
+        setCustomer(String(editData.customerId));
+        setContactNumber(editData.contactNumber || "");
+        setShippingAddress(editData.shippingAddress || "");
+        setDeliveryAddress(editData.deliveryAddress || "");
+        setDescription(editData.description || "");
+        
+        if (editData.customerDetails) {
+          const originalCustomerName = localStorage.getItem('editCustomerOriginalName') || editData.customerName;
+          const customerWithOriginalName = {
+            ...editData.customerDetails,
+            name: originalCustomerName,
+            billName: editData.customerDetails.billName || originalCustomerName,
+          };
+          setHeaderSelectedCustomer(customerWithOriginalName);
+          setPrefilledCustomer({ 
+            id: editData.customerDetails.id, 
+            name: originalCustomerName 
+          });
+          
+          setSelectedDetails({
+            customerId: String(editData.customerDetails.id),
+            customerName: originalCustomerName,
+            mobileNo: editData.customerDetails.mobile || "",
+            address: editData.customerDetails.address || "",
+            city: editData.customerDetails.city || "",
+            broker: editData.brokerName || "",
+            Broker_Id: editData.brokerId || "",
+            transporter: editData.transporterName || "",
+            Transporter_Id: editData.transporterId || "",
+          });
+        }
+      }
+      
 
+      if (editData.brokerId && editData.brokerId !== 0 && editData.brokerId !== "0") {
+        const brokerIdNum = parseInt(editData.brokerId);
+        if (!isNaN(brokerIdNum) && brokerIdNum > 0) {
+          setSelectedBroker({ 
+            id: brokerIdNum, 
+            name: editData.brokerName || "" 
+          });
+          setBrokerName(editData.brokerName || "");
+        }
+      }
+      
+ 
+      if (editData.transporterId && editData.transporterId !== 0 && editData.transporterId !== "0") {
+        const transporterIdNum = parseInt(editData.transporterId);
+        if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
+          setSelectedTransporter({ 
+            id: transporterIdNum, 
+            name: editData.transporterName || "" 
+          });
+          setTransporter(editData.transporterName || "");
+        }
+      }
+      
+   
+      if (editData.productsList && editData.productsList.length > 0) {
+        const restoredCartItems = {};
+        editData.productsList.forEach(product => {
+          if (product.id && product.quantity > 0) {
+            restoredCartItems[product.id] = product.quantity;
+          }
+        });
+        setCartItems(restoredCartItems);
+        localStorage.setItem('cartItems', JSON.stringify(restoredCartItems));
+      }
+      
+    
+      if (isMobile) {
+        setStep(2);
+      }
+      
+    } catch (error) {
+      console.error("Error processing edit data from navigation:", error);
+    }
+  }
+}, [isMobile]); 
 
 
 
@@ -3472,6 +3848,32 @@ const fetchTransporters = async () => {
   }
 };
 
+const fetchCreditInfo = async (retailerId) => {
+  if (!retailerId) { setCreditInfo(null); return; }
+  try {
+    const response = await fetchLink({
+      address: `receipt/receiptMaster/pendingSalesInvoiceReceipt/amount?Retailer_Id=${retailerId}`,
+      method: "GET",
+    });
+    if (response?.success) {
+      setCreditInfo(response.others || null);
+    } else {
+      setCreditInfo(null);
+    }
+  } catch (error) {
+    console.error("Error fetching credit info:", error);
+    setCreditInfo(null);
+  }
+};
+
+useEffect(() => {
+  if (customer) {
+    fetchCreditInfo(customer);
+  } else {
+    setCreditInfo(null);
+  }
+}, [customer]);
+
 const loadAllProducts = async () => {
   try {
     const response = await fetchLink({ address: 'products?limit=1000' });
@@ -3519,13 +3921,15 @@ const loadAllProducts = async () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.innerHTML = `@keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }`;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
-
+useEffect(() => {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes blinker { 50% { opacity: 0; } }
+  `;
+  document.head.appendChild(style);
+  return () => document.head.removeChild(style);
+}, []);
 
   const handleCancelEdit = () => {
   if (window.confirm("Are you sure you want to cancel the edit? All changes will be lost.")) {
@@ -4240,155 +4644,9 @@ const renderThreeDotsMenu = () => (
 //   />
 // </div>
 //   );
-
-if (showDashboard) {
-  return (
-    <Dashboard
-      isMobile={isMobile}
-      isLoggedIn={isLoggedIn}
-      userName={userName}
-      customers={customers}
-      allProducts={allProducts}
-      onLoginClick={() => setIsLoginPopupOpen(true)}
-      onLogout={handleLogout}
-      onHome={handleBackFromDashboard}
-      onSaleOrders={() => { setShowDashboard(false); setShowSaleOrders(true); }}
-      activeTab="dashboard"
-    />
-  );
-}
-
-const commonHeaderCustomerProps = {
-  showCustomerSelector: isLoggedIn && customers.length > 0,
-  customers: customers,
-  selectedCustomer: headerSelectedCustomer,
-  onCustomerSelect: handleHeaderCustomerSelect,
-  loadingCustomers: loadingCustomers,
-  userType: userType,
-};
-
- const CartItemRow = ({ item }) => {
-  // Better product matching logic
-  const fullProduct = useMemo(() => {
-    // First try direct match
-    let found = products.find(p => p.id === item.id);
-    
-    // If not found, try by Product_Id or string comparison
-    if (!found && allProducts.length > 0) {
-      found = allProducts.find(p => 
-        String(p.id) === String(item.id) || 
-        String(p.Product_Id) === String(item.id) ||
-        p.id === item.id
-      );
-    }
-    
-    // If still not found, use the item data
-    if (!found) {
-      return {
-        ...item,
-        price: item.price || 0,
-        name: item.name || "Unknown Product",
-        packGet: item.packGet || 1,
-        image: item.image || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop"
-      };
-    }
-    
-    return found;
-  }, [item, products, allProducts]);
-  
-  const packGet = fullProduct.packGet || getProductPackGet(item.id) || 1;
-  const kgs = item.quantity * packGet;
-  const amount = (fullProduct.price || 0) * item.quantity * packGet;
-  
-  return (
-    <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: isMobile ? "10px 0" : "12px 0", borderBottom: "1px dashed #ddd",
-    }}>
-      <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: 1 }}>
-        <img
-          src={fullProduct.image} alt={fullProduct.name}
-          style={{ width: "50px", height: "50px", borderRadius: "6px", objectFit: "cover" }}
-          onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop"; }}
-        />
-        <div>
-          <h3 style={{ fontSize: "15px", fontWeight: "600", color: BROWN, margin: "0 0 2px 0" }}>
-            {fullProduct.name?.length > 20 ? fullProduct.name.substring(0, 20) + '...' : fullProduct.name}
-          </h3>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ background: "#f0e9e2", padding: "2px 8px", borderRadius: "12px", fontSize: "12px", color: BROWN }}>
-              ₹{(fullProduct.price || 0).toFixed(2)}/kg
-            </span>
-            <span style={{ fontSize: "11px", color: "#666" }}>Pack: {packGet}kg</span>
-          </div>
-        </div>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f5f0eb", padding: "2px 6px", borderRadius: "25px" }}>
-          <button onClick={() => updateQty(item.id, -1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "none", background: "#fff", color: BROWN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>-</button>
-          <span style={{ fontSize: "14px", fontWeight: "600", color: BROWN, minWidth: "20px", textAlign: "center" }}>{item.quantity}</span>
-          <button onClick={() => updateQty(item.id, 1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "none", background: "#fff", color: BROWN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>+</button>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: "14px", fontWeight: "600", color: BROWN, minWidth: "60px", display: "block" }}>₹{amount.toFixed(2)}</span>
-            <span style={{ fontSize: "10px", color: "#999", display: "block" }}>({item.quantity} × {packGet}kg)</span>
-          </div>
-          <div
-            onClick={() => removeItem(item.id)}
-            style={{ color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "50%" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#fee"; e.currentTarget.style.color = "#ff4444"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#999"; }}
-          >
-            <DeleteOutlineIcon style={{ fontSize: "18px" }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-  const labelStyle = { display: "block", fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#333", marginBottom: "6px" };
-  const inputStyle = { width: "100%", padding: "12px", border: "1px solid #ddd", borderRadius: isMobile ? "10px" : "12px", fontSize: "14px", outline: "none", background: "#fff", boxSizing: "border-box" };
-  const textareaStyle = { ...inputStyle, minHeight: isMobile ? "70px" : "100px", resize: "vertical", fontFamily: "inherit" };
-  const fgStyle = { marginBottom: isMobile ? "16px" : "20px" };
-
-  const OrderForm = () => (
-    <>
-      <div style={fgStyle}>
-        <label style={labelStyle}>Customer</label>
-        <SearchableCustomerSelect value={customer} onChange={setCustomer} onCustomerSelect={handleCustomerSelect} prefilledCustomer={prefilledCustomer} />
-      </div>
-      <div style={fgStyle}>
-        <label style={labelStyle}>Broker</label>
-        <BrokerDropdown selectedBroker={selectedBroker} onSelectBroker={(b) => { setSelectedBroker(b); setBrokerName(b.name); }} availableBrokers={availableBrokers} loading={loadingBrokers} onOpen={fetchBrokers} />
-      </div>
-      <div style={fgStyle}>
-        <label style={labelStyle}>Transporter</label>
-        <TransporterDropdown selectedTransporter={selectedTransporter} onSelectTransporter={(t) => { setSelectedTransporter(t); setTransporter(t.name); }} availableTransporters={availableTransporters} loading={loadingTransporters} onOpen={fetchTransporters} />
-      </div>
-      <div style={fgStyle}>
-        <label style={labelStyle}>Contact Number</label>
-        <input type="tel" placeholder="Contact number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} style={inputStyle} />
-      </div>
-      <div style={fgStyle}>
-        <label style={labelStyle}>Shipping Address</label>
-        <textarea placeholder="Shipping address" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} style={textareaStyle} />
-      </div>
-      <div style={fgStyle}>
-        <label style={labelStyle}>Delivery Address</label>
-        <textarea placeholder="Delivery address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} style={textareaStyle} />
-      </div>
-      <div style={fgStyle}>
-        <label style={labelStyle}>Description</label>
-        <textarea placeholder="Notes or description" value={description} onChange={(e) => setDescription(e.target.value)} style={textareaStyle} />
-      </div>
-    </>
-  );
 useEffect(() => {
   if (showSaleOrders) {
-    // Save everything before navigating to Sale Orders
+
     if (headerSelectedCustomer) {
       localStorage.setItem('cartPageSelectedCustomer', JSON.stringify(headerSelectedCustomer));
       localStorage.setItem('cartPageSelectedCustomerId', String(headerSelectedCustomer.id));
@@ -4414,11 +4672,16 @@ useEffect(() => {
     if (description) {
       localStorage.setItem('cartPageDescription', description);
     }
-    // Also save the current cart items
+    
     localStorage.setItem('cartItemsBackup', JSON.stringify(cartItems));
   }
 }, [showSaleOrders]);
 
+
+useEffect(() => {
+
+  if (showSaleOrders) { /* save state to localStorage */ }
+}, [showSaleOrders]);
 
 useEffect(() => {
   const restoreCustomerFromId = async () => {
@@ -4588,6 +4851,154 @@ if (showSaleOrders) {
 }
 
 
+if (showDashboard) {
+  return (
+    <Dashboard
+      isMobile={isMobile}
+      isLoggedIn={isLoggedIn}
+      userName={userName}
+      customers={customers}
+      allProducts={allProducts}
+      onLoginClick={() => setIsLoginPopupOpen(true)}
+      onLogout={handleLogout}
+      onHome={handleBackFromDashboard}
+      onSaleOrders={() => { setShowDashboard(false); setShowSaleOrders(true); }}
+      activeTab="dashboard"
+    />
+  );
+}
+
+const commonHeaderCustomerProps = {
+  showCustomerSelector: isLoggedIn && customers.length > 0,
+  customers: customers,
+  selectedCustomer: headerSelectedCustomer,
+  onCustomerSelect: handleHeaderCustomerSelect,
+  loadingCustomers: loadingCustomers,
+  userType: userType,
+};
+
+ const CartItemRow = ({ item }) => {
+  
+  const fullProduct = useMemo(() => {
+  
+    let found = products.find(p => p.id === item.id);
+    
+
+    if (!found && allProducts.length > 0) {
+      found = allProducts.find(p => 
+        String(p.id) === String(item.id) || 
+        String(p.Product_Id) === String(item.id) ||
+        p.id === item.id
+      );
+    }
+    
+   
+    if (!found) {
+      return {
+        ...item,
+        price: item.price || 0,
+        name: item.name || "Unknown Product",
+        packGet: item.packGet || 1,
+        image: item.image || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop"
+      };
+    }
+    
+    return found;
+  }, [item, products, allProducts]);
+  
+  const packGet = fullProduct.packGet || getProductPackGet(item.id) || 1;
+  const kgs = item.quantity * packGet;
+  const amount = (fullProduct.price || 0) * item.quantity * packGet;
+  
+  return (
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: isMobile ? "10px 0" : "12px 0", borderBottom: "1px dashed #ddd",
+    }}>
+      <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: 1 }}>
+        <img
+          src={fullProduct.image} alt={fullProduct.name}
+          style={{ width: "50px", height: "50px", borderRadius: "6px", objectFit: "cover" }}
+          onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop"; }}
+        />
+        <div>
+          <h3 style={{ fontSize: "15px", fontWeight: "600", color: BROWN, margin: "0 0 2px 0" }}>
+            {fullProduct.name?.length > 20 ? fullProduct.name.substring(0, 20) + '...' : fullProduct.name}
+          </h3>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ background: "#f0e9e2", padding: "2px 8px", borderRadius: "12px", fontSize: "12px", color: BROWN }}>
+              ₹{(fullProduct.price || 0).toFixed(2)}/kg
+            </span>
+            <span style={{ fontSize: "11px", color: "#666" }}>Pack: {packGet}kg</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f5f0eb", padding: "2px 6px", borderRadius: "25px" }}>
+          <button onClick={() => updateQty(item.id, -1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "none", background: "#fff", color: BROWN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>-</button>
+          <span style={{ fontSize: "14px", fontWeight: "600", color: BROWN, minWidth: "20px", textAlign: "center" }}>{item.quantity}</span>
+          <button onClick={() => updateQty(item.id, 1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "none", background: "#fff", color: BROWN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>+</button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontSize: "14px", fontWeight: "600", color: BROWN, minWidth: "60px", display: "block" }}>₹{amount.toFixed(2)}</span>
+            <span style={{ fontSize: "10px", color: "#999", display: "block" }}>({item.quantity} × {packGet}kg)</span>
+          </div>
+          <div
+            onClick={() => removeItem(item.id)}
+            style={{ color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "50%" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#fee"; e.currentTarget.style.color = "#ff4444"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#999"; }}
+          >
+            <DeleteOutlineIcon style={{ fontSize: "18px" }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+  const labelStyle = { display: "block", fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#333", marginBottom: "6px" };
+  const inputStyle = { width: "100%", padding: "12px", border: "1px solid #ddd", borderRadius: isMobile ? "10px" : "12px", fontSize: "14px", outline: "none", background: "#fff", boxSizing: "border-box" };
+  const textareaStyle = { ...inputStyle, minHeight: isMobile ? "70px" : "100px", resize: "vertical", fontFamily: "inherit" };
+  const fgStyle = { marginBottom: isMobile ? "16px" : "20px" };
+
+  const OrderForm = () => (
+    <>
+      <div style={fgStyle}>
+        <label style={labelStyle}>Customer</label>
+        <SearchableCustomerSelect value={customer} onChange={setCustomer} onCustomerSelect={handleCustomerSelect} prefilledCustomer={prefilledCustomer} />
+      </div>
+      <div style={fgStyle}>
+        <label style={labelStyle}>Broker</label>
+        <BrokerDropdown selectedBroker={selectedBroker} onSelectBroker={(b) => { setSelectedBroker(b); setBrokerName(b.name); }} availableBrokers={availableBrokers} loading={loadingBrokers} onOpen={fetchBrokers} />
+      </div>
+      <div style={fgStyle}>
+        <label style={labelStyle}>Transporter</label>
+        <TransporterDropdown selectedTransporter={selectedTransporter} onSelectTransporter={(t) => { setSelectedTransporter(t); setTransporter(t.name); }} availableTransporters={availableTransporters} loading={loadingTransporters} onOpen={fetchTransporters} />
+      </div>
+      <div style={fgStyle}>
+        <label style={labelStyle}>Contact Number</label>
+        <input type="tel" placeholder="Contact number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} style={inputStyle} />
+      </div>
+      <div style={fgStyle}>
+        <label style={labelStyle}>Shipping Address</label>
+        <textarea placeholder="Shipping address" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} style={textareaStyle} />
+      </div>
+      <div style={fgStyle}>
+        <label style={labelStyle}>Delivery Address</label>
+        <textarea placeholder="Delivery address" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} style={textareaStyle} />
+      </div>
+      <div style={fgStyle}>
+        <label style={labelStyle}>Description</label>
+        <textarea placeholder="Notes or description" value={description} onChange={(e) => setDescription(e.target.value)} style={textareaStyle} />
+      </div>
+     
+    </>
+  );
+
+
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: BG_COLOR }}>
@@ -4633,11 +5044,17 @@ if (showSaleOrders) {
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "24px" }}>
+       <div style={{ 
+  display: "flex", 
+  flexDirection: "column", 
+  gap: "12px", 
+  marginTop: "24px",
+  paddingBottom: "80px" // 👈 adjust to match your footer's height + a little buffer
+}}>
   <button
     onClick={handleCheckout}
     style={{ 
-      width: "100%", padding: "18px", 
+      width: "100%", padding: "18px 12px", 
       background: localStorage.getItem('editOrderId') ? ACCENT : BROWN, 
       color: localStorage.getItem('editOrderId') ? BROWN_DARK : "#fff", 
       border: "none", borderRadius: "50px", 
@@ -4649,7 +5066,6 @@ if (showSaleOrders) {
   >
     {localStorage.getItem('editOrderId') ? 'Update Order' : 'Order Now'}
   </button>
-  
 
   {localStorage.getItem('editOrderId') && (
     <button
@@ -4818,6 +5234,29 @@ if (showSaleOrders) {
             <div style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", padding: "32px", overflowY: "auto", maxHeight: "calc(100vh - 140px)" }}>
               <h2 style={{ fontSize: "22px", fontWeight: "700", color: BROWN, margin: "0 0 24px 0", paddingBottom: "14px", borderBottom: `3px solid ${ACCENT}` }}>
                 Order Details
+{creditInfo && (
+  <div style={{
+    marginBottom: "16px",
+    padding: "10px 12px",
+    background: "#fff3f3",
+    border: "1px solid #e0b8b8",
+    borderRadius: "8px",
+    display: "flex",
+    // justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "100px",
+  }}>
+    <div style={{ color: "#000", fontWeight: "bold", fontSize: "14px", animation: "blinker 1s linear infinite" }}>
+      Outstanding: ₹{parseFloat(creditInfo.outstanding || 0).toFixed(2)}
+    </div>
+    <div style={{ color: "#000", fontWeight: "bold", fontSize: "14px", animation: "blinker 1s linear infinite" }}>
+      Credit Limit: {parseFloat(creditInfo.creditLimit || 0) === 0
+        ? "Unlimited"
+        : `₹${parseFloat(creditInfo.creditLimit).toFixed(2)}`}
+    </div>
+  </div>
+)}
               </h2>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                 <div>
@@ -4825,6 +5264,7 @@ if (showSaleOrders) {
                     <label style={labelStyle}>Customer</label>
                     <SearchableCustomerSelect value={customer} onChange={setCustomer} onCustomerSelect={handleCustomerSelect} prefilledCustomer={prefilledCustomer} />
                   </div>
+      
                   <div style={fgStyle}>
                     <label style={labelStyle}>Broker</label>
                     <BrokerDropdown selectedBroker={selectedBroker} onSelectBroker={(b) => { setSelectedBroker(b); setBrokerName(b.name); }} availableBrokers={availableBrokers} loading={loadingBrokers} onOpen={fetchBrokers} />
@@ -4837,6 +5277,7 @@ if (showSaleOrders) {
                     <label style={labelStyle}>Description</label>
                     <textarea placeholder="Notes" value={description} onChange={(e) => setDescription(e.target.value)} style={textareaStyle} />
                   </div>
+            
                 </div>
                 <div>
                   <div style={fgStyle}>
@@ -5253,7 +5694,7 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, creat
 QuotationPrint.displayName = "QuotationPrint";
 
 
-function MobileTabBar({ activeTab, onSaleOrders, cartCount,onDashboard }) {
+function MobileTabBar({ activeTab, onSaleOrders, cartCount, onDashboard }) {
   const navigate = useNavigate();
 
   const tabs = [
@@ -5275,7 +5716,15 @@ function MobileTabBar({ activeTab, onSaleOrders, cartCount,onDashboard }) {
         return (
           <button
             key={tab.key}
-            onClick={tab.onClick}
+            onClick={() => {
+              // Clear any pending edit state when navigating to home
+              if (tab.key === 'home') {
+                localStorage.removeItem('isEditingOrder');
+                localStorage.removeItem('editOrderData');
+                localStorage.removeItem('editOrderId');
+              }
+              tab.onClick();
+            }}
             style={{
               flex: 1, background: "transparent", border: "none", cursor: "pointer",
               display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
@@ -5284,7 +5733,6 @@ function MobileTabBar({ activeTab, onSaleOrders, cartCount,onDashboard }) {
           >
             <span style={{ fontSize: "20px", position: "relative" }}>
               {tab.icon}
-              {tab.key === "saleOrders" && cartCount > 0 && false /* no badge on sale orders */}
             </span>
             <span style={{
               fontSize: "11px",
