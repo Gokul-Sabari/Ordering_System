@@ -223,160 +223,6 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
 };
 
 
-// function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, onSelectCustomer, loading, isMobile }) {
-//   const [isOpen, setIsOpen] = useState(false);
-//   const [search, setSearch] = useState("");
-//   const [filteredCustomers, setFilteredCustomers] = useState([]);
-//   const [hasSearched, setHasSearched] = useState(false);
-//   const dropdownRef = useRef(null);
-
-//   useEffect(() => {
-//     const handleClickOutside = (e) => {
-//       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-//         setIsOpen(false); setSearch(""); setFilteredCustomers([]); setHasSearched(false);
-//       }
-//     };
-//     document.addEventListener("mousedown", handleClickOutside);
-//     return () => document.removeEventListener("mousedown", handleClickOutside);
-//   }, []);
-
-//   useEffect(() => {
-//     if (isOpen && !hasSearched) setFilteredCustomers(customers);
-//   }, [isOpen, customers, hasSearched]);
-
-//   if (!isLoggedIn || customers.length === 0) return null;
-
-//   const performSearch = () => {
-//     if (!search.trim()) { setFilteredCustomers(customers); setHasSearched(false); return; }
-//     const s = search.toLowerCase();
-//     setFilteredCustomers(customers.filter(c =>
-//       (c.name && c.name.toLowerCase().includes(s)) ||
-//       (c.billName && c.billName.toLowerCase().includes(s)) ||
-//       (c.mobile && c.mobile.includes(search)) ||
-//       (c.city && c.city.toLowerCase().includes(s))
-//     ));
-//     setHasSearched(true);
-//   };
-
-//   return (
-//     <div ref={dropdownRef} style={{ position: "relative" }}>
-//       <div
-//         onClick={() => {
-//           setIsOpen(!isOpen);
-//           if (!isOpen) { setSearch(""); setFilteredCustomers(customers); setHasSearched(false); }
-//         }}
-//         style={{
-//           display: "flex", alignItems: "center", gap: "8px",
-//           padding: "8px 14px", background: "#f5ede3",
-//           border: `1.5px solid ${isOpen ? BROWN : ACCENT}`,
-//           borderRadius: "25px", cursor: "pointer", transition: "all 0.2s",
-//           maxWidth: isMobile ? "180px" : "320px",
-//         }}
-//       >
-//         <span style={{ fontSize: "16px" }}>🏪</span>
-//         <span style={{
-//           fontSize: isMobile ? "12px" : "14px", fontWeight: "500",
-//           color: selectedCustomer ? BROWN_DARK : "#666",
-//           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
-//         }}>
-//           {selectedCustomer ? selectedCustomer.name : "Select outlet..."}
-//         </span>
-//         <span style={{ fontSize: "12px", color: BROWN_LIGHT, transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
-//       </div>
-
-//       {isOpen && (
-//         <div style={{
-//           position: "fixed",
-//           top: isMobile ? "50%" : "calc(100% + 8px)",
-//           left: isMobile ? "50%" : "auto",
-//           right: isMobile ? "auto" : 0,
-//           transform: isMobile ? "translate(-50%, -50%)" : "none",
-//           minWidth: "300px",
-//           width: isMobile ? "calc(100vw - 32px)" : "380px",
-//           maxWidth: "500px",
-//           maxHeight: isMobile ? "70vh" : "350px",
-//           overflowY: "auto", background: "#fff",
-//           border: "1px solid #ddd", borderRadius: "12px",
-//           boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 9999,
-//         }}>
-//           <div style={{
-//             padding: "10px 12px", borderBottom: "1px solid #f0f0f0",
-//             position: "sticky", top: 0, background: "#fff", zIndex: 1,
-//             display: "flex", alignItems: "center", gap: "8px",
-//           }}>
-//             <div style={{ flex: 1 }}>
-//               <input
-//                 type="text" placeholder="Search..."
-//                 value={search}
-//                 onChange={(e) => setSearch(e.target.value)}
-//                 onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); performSearch(); } }}
-//                 autoFocus
-//                 style={{
-//                   width: "100%", padding: "8px 12px",
-//                   border: `1px solid ${ACCENT}`, borderRadius: "8px",
-//                   fontSize: "13px", outline: "none", boxSizing: "border-box",
-//                   color: BROWN_DARK, backgroundColor: "#fff",
-//                 }}
-//                 onFocus={(e) => { e.target.style.borderColor = BROWN; }}
-//                 onBlur={(e) => { e.target.style.borderColor = ACCENT; }}
-//               />
-//             </div>
-//             <button
-//               onClick={(e) => { e.stopPropagation(); performSearch(); }}
-//               style={{
-//                 background: BROWN, border: "none", borderRadius: "8px",
-//                 padding: "8px 12px", cursor: "pointer",
-//                 display: "flex", alignItems: "center", justifyContent: "center",
-//               }}
-//               onMouseEnter={(e) => e.currentTarget.style.background = BROWN_DARK}
-//               onMouseLeave={(e) => e.currentTarget.style.background = BROWN}
-//             >
-//               <SearchIcon style={{ fontSize: "18px", color: "#fff" }} />
-//             </button>
-//           </div>
-
-//           {loading ? (
-//             <div style={{ padding: "20px", textAlign: "center" }}>
-//               <CircularProgress size={20} style={{ color: BROWN }} />
-//             </div>
-//           ) : filteredCustomers.length === 0 ? (
-//             <div style={{ padding: "20px", textAlign: "center", color: "#999", fontSize: "13px" }}>
-//               {hasSearched ? "No matching outlets found" : "No outlets found"}
-//             </div>
-//           ) : (
-//             <>
-//               {hasSearched && (
-//                 <div style={{ padding: "8px 14px", fontSize: "11px", color: "#999", borderBottom: "1px solid #f0f0f0", background: "#fafafa" }}>
-//                   Search results for: "{search}"
-//                 </div>
-//               )}
-//               {filteredCustomers.map((c) => (
-//                 <div
-//                   key={c.id}
-//                   onClick={() => { onSelectCustomer(c); setIsOpen(false); setSearch(""); setFilteredCustomers([]); setHasSearched(false); }}
-//                   style={{
-//                     padding: "12px 14px", borderBottom: "1px solid #f5f0eb", cursor: "pointer",
-//                     background: selectedCustomer?.id === c.id ? "#f0e9e2" : "transparent",
-//                     transition: "background 0.15s",
-//                   }}
-//                   onMouseEnter={(e) => { if (selectedCustomer?.id !== c.id) e.currentTarget.style.background = "#faf6f2"; }}
-//                   onMouseLeave={(e) => { e.currentTarget.style.background = selectedCustomer?.id === c.id ? "#f0e9e2" : "transparent"; }}
-//                 >
-//                   <div style={{ fontSize: "14px", fontWeight: "500", color: BROWN_DARK, marginBottom: "3px" }}>{c.name}</div>
-//                   <div style={{ fontSize: "12px", color: "#999" }}>
-//                     {c.mobile && <span>📱 {c.mobile}</span>}
-//                     {c.city && <span> • {c.city}</span>}
-//                   </div>
-//                 </div>
-//               ))}
-//             </>
-//           )}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
 function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, onSelectCustomer, loading, isMobile }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -1952,7 +1798,6 @@ const handleEditOrder = async (e, order) => {
     localStorage.setItem('editOrderId', String(orderId));
     localStorage.setItem("selectedCustomerId", order.Retailer_Id);
     
-    // Get actual broker and transporter IDs from Staff_Involved_List
     let actualBrokerId = null;
     let actualBrokerName = "";
     let actualTransporterId = null;
@@ -1995,12 +1840,14 @@ const handleEditOrder = async (e, order) => {
     const cartItemsObj = {};
     const productsList = [];
     
+    // ⭐ CRITICAL FIX: Use the Item_Rate from the order's Products_List
+    // This is the price that was saved in the database (which may have been updated)
     if (order.Products_List && Array.isArray(order.Products_List)) {
       order.Products_List.forEach(product => {
         const productId = String(product.Product_Id || product.Item_Id);
         const originalProductName = product.Product_Name || product.Item_Name || "";
         const originalShortName = product.Short_Name || product.Product_Short_Name || originalProductName;
-        
+         const pricePerKg = parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0;
         let packGet = parseFloat(product.PackGet) || parseFloat(product.Pack_Get) || 1;
         if (packGet === 1 && originalProductName) {
           const packMatch = originalProductName.match(/(\d+(?:\.\d+)?)\s*KG/i);
@@ -2011,7 +1858,10 @@ const handleEditOrder = async (e, order) => {
         
         const billQty = parseFloat(product.Bill_Qty) || 0;
         const quantity = packGet > 0 && billQty > 0 ? Math.round(billQty / packGet) : 1;
-        const pricePerKg = parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0;
+        
+        // ⭐ USE THE ITEM_RATE FROM THE ORDER (SAVED IN DATABASE)
+        // This will be the updated price if the user edited it previously
+        // const pricePerKg = parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0;
         const amount = parseFloat(product.Amount) || (pricePerKg * billQty) || 0;
         
         cartItemsObj[productId] = quantity;
@@ -2022,10 +1872,12 @@ const handleEditOrder = async (e, order) => {
           shortName: originalShortName, 
           quantity: quantity,
           kgs: billQty,
-          price: pricePerKg,
+          price: pricePerKg, // This is the Item_Rate from the database
           packGet: packGet,
           amount: amount,
           originalName: originalProductName,
+          // Store the order's saved rate separately for reference
+          savedPrice: pricePerKg,
         });
       });
     }
@@ -2073,11 +1925,6 @@ const handleEditOrder = async (e, order) => {
     localStorage.setItem('editTransporterId', actualTransporterId);
     localStorage.setItem('editTransporterName', actualTransporterName);
     
-    // ✅ FIXED: Don't navigate — we're already on /cart, and navigating to the
-    // same route doesn't remount CartPage, so its `showSaleOrders` state never
-    // resets and the edit form never shows. Instead, hand the parsed order
-    // straight to the parent via the onEditOrder prop, which switches views
-    // (setShowSaleOrders(false)) and populates the cart form directly.
     if (onEditOrder) {
       onEditOrder(editData);
     }
@@ -2087,166 +1934,6 @@ const handleEditOrder = async (e, order) => {
     toast.error("Failed to load order details for editing");
   }
 };
-// const handleEditOrder = async (e, order) => {
-//   e.stopPropagation();
-  
-//   try {
-//     const orderId = order.So_Id || order.So_No || order.OrderId;
-//     localStorage.setItem('editOrderId', String(orderId));
-//     localStorage.setItem("selectedCustomerId", order.Retailer_Id);
-    
-//     // Get actual broker and transporter IDs from Staff_Involved_List
-//     let actualBrokerId = null;
-//     let actualBrokerName = "";
-//     let actualTransporterId = null;
-//     let actualTransporterName = "";
-    
-//     if (order.Staff_Involved_List && Array.isArray(order.Staff_Involved_List)) {
-//       const broker = order.Staff_Involved_List.find(
-//         staff => staff.Cost_Center_Type_Id === 3 || staff.EmpType === "Broker"
-//       );
-//       if (broker) {
-//         actualBrokerId = broker.Involved_Emp_Id || broker.Emp_Id;
-//         actualBrokerName = broker.EmpName || "";
-//       }
-      
-//       const transporter = order.Staff_Involved_List.find(
-//         staff => staff.Cost_Center_Type_Id === 2 || staff.EmpType === "Load Man"
-//       );
-//       if (transporter) {
-//         actualTransporterId = transporter.Involved_Emp_Id || transporter.Emp_Id;
-//         actualTransporterName = transporter.EmpName || "";
-//       }
-//     }
-    
-//     // Get customer details
-//     const response = await fetchLink({ 
-//       address: `pos/retailerMasterOptRetailerId?Customer_Id=${order.Retailer_Id}&limit=10000000&page=1` 
-//     });
-    
-//     let completeCustomerDetails = null;
-    
-//     if (response?.success && Array.isArray(response.data)) {
-//       const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
-//       completeCustomerDetails = response.data.find(
-//         c => String(c.Customer_Id) === String(retailerId)
-//       );
-//     }
-    
-//     const originalCustomerName = order.Retailer_Name || order.Customer_Name || order.Party_Name || "";
-    
-//     const cartItemsObj = {};
-//     const productsList = [];
-    
-//     if (order.Products_List && Array.isArray(order.Products_List)) {
-//       order.Products_List.forEach(product => {
-//         const productId = String(product.Product_Id || product.Item_Id);
-//         const originalProductName = product.Product_Name || product.Item_Name || "";
-//         const originalShortName = product.Short_Name || product.Product_Short_Name || originalProductName;
-        
-//         let packGet = parseFloat(product.PackGet) || parseFloat(product.Pack_Get) || 1;
-//         if (packGet === 1 && originalProductName) {
-//           const packMatch = originalProductName.match(/(\d+(?:\.\d+)?)\s*KG/i);
-//           if (packMatch) {
-//             packGet = parseFloat(packMatch[1]);
-//           }
-//         }
-        
-//         const billQty = parseFloat(product.Bill_Qty) || 0;
-//         const quantity = packGet > 0 && billQty > 0 ? Math.round(billQty / packGet) : 1;
-//         const pricePerKg = parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0;
-//         const amount = parseFloat(product.Amount) || (pricePerKg * billQty) || 0;
-        
-//         cartItemsObj[productId] = quantity;
-        
-//         productsList.push({
-//           id: productId,
-//           name: originalProductName, 
-//           shortName: originalShortName, 
-//           quantity: quantity,
-//           kgs: billQty,
-//           price: pricePerKg,
-//           packGet: packGet,
-//           amount: amount,
-//           originalName: originalProductName,
-//         });
-//       });
-//     }
-    
-//     const editData = {
-//       customerId: order.Retailer_Id || order.Customer_Id || order.Party_Id,
-//       customerName: originalCustomerName,
-//       customerMobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
-//       customerAddress: completeCustomerDetails?.Address || order.Shipp_Address || "",
-//       customerCity: completeCustomerDetails?.City || order.City || "",
-//       orderId: orderId,
-//       orderNumber: order.So_Inv_No || order.So_No,
-//       cartItems: cartItemsObj,
-//       productsList: productsList,
-//       brokerId: actualBrokerId,
-//       brokerName: actualBrokerName,
-//       transporterId: actualTransporterId,
-//       transporterName: actualTransporterName,
-//       shippingAddress: completeCustomerDetails?.Address || order.Shipp_Address || "",
-//       deliveryAddress: completeCustomerDetails?.Address || order.Deliv_Address || order.Shipp_Address || "",
-//       contactNumber: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
-//       description: order.Narration || "",
-//       customerDetails: {
-//         id: order.Retailer_Id || order.Customer_Id,
-//         name: originalCustomerName,
-//         mobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
-//         address: completeCustomerDetails?.Address || order.Shipp_Address || "",
-//         city: completeCustomerDetails?.City || order.City || "",
-//         brokerId: actualBrokerId,
-//         brokerName: actualBrokerName,
-//         transporterId: actualTransporterId,
-//         transporterName: actualTransporterName,
-//         billName: completeCustomerDetails?.Billl_Name || originalCustomerName,
-//         partyMailingName: completeCustomerDetails?.Party_Mailing_Name || originalCustomerName,
-//       }
-//     };
-    
-//     localStorage.setItem('editOrderData', JSON.stringify(editData));
-//     localStorage.setItem('isEditingOrder', 'true');
-//     localStorage.setItem('cartItems', JSON.stringify(cartItemsObj));
-//     localStorage.setItem('editProductsList', JSON.stringify(productsList));
-//     localStorage.setItem('editCustomerOriginalName', originalCustomerName);
-//     localStorage.setItem('editBrokerId', actualBrokerId);
-//     localStorage.setItem('editBrokerName', actualBrokerName);
-//     localStorage.setItem('editTransporterId', actualTransporterId);
-//     localStorage.setItem('editTransporterName', actualTransporterName);
-    
-//     // ✅ FIXED: removed `setShowSaleOrders(false);` — that setter doesn't exist
-//     // in this component's scope. Navigation below is all that's needed;
-//     // CartPage will mount fresh at /cart and read location.state.
-
-//     // Use navigate directly with state
-//     navigate('/cart', { 
-//       state: { 
-//         editOrderData: editData,
-//         isEditingOrder: true,
-//         selectedCustomer: {
-//           id: editData.customerDetails.id,
-//           name: originalCustomerName,
-//           mobile: editData.customerDetails.mobile || "",
-//           city: editData.customerDetails.city || "",
-//           address: editData.customerDetails.address || "",
-//           brokerId: actualBrokerId,
-//           brokerName: actualBrokerName,
-//           transporterId: actualTransporterId,
-//           transporterName: actualTransporterName,
-//         }
-//       } 
-//     });
-    
-//     toast.info(`Loading order #${order.So_Inv_No || order.So_No} for editing...`);
-    
-//   } catch (error) {
-//     console.error("Error fetching order details:", error);
-//     toast.error("Failed to load order details for editing");
-//   }
-// };
-
   const ProductListExpand = ({ products }) => {
     if (!products || products.length === 0) return null;
     
@@ -2998,7 +2685,6 @@ const handleEditOrder = async (e, order) => {
       </div>
       
       {/* Print Preview Modal */}
-      {/* Print Preview Modal */}
       {printModalOpen && (
         <PrintPreviewModal 
           open={printModalOpen}
@@ -3138,170 +2824,114 @@ useEffect(() => {
     });
   }, [location.state]);
 
-// Add this useEffect to handle navigation from SaleOrders
+
 useEffect(() => {
   const isEditing = localStorage.getItem('isEditingOrder') === 'true';
   const editDataStr = localStorage.getItem('editOrderData');
-  
-  // Check if we came from SaleOrders with edit intent
-  if (isEditing && editDataStr) {
-    try {
-      const editData = JSON.parse(editDataStr);
-      
-      // Set all the state from the edit data
-      if (editData.customerId) {
-        setCustomer(String(editData.customerId));
-        setContactNumber(editData.contactNumber || "");
-        setShippingAddress(editData.shippingAddress || "");
-        setDeliveryAddress(editData.deliveryAddress || "");
-        setDescription(editData.description || "");
-        
-        if (editData.customerDetails) {
-          const originalCustomerName = localStorage.getItem('editCustomerOriginalName') || editData.customerName;
-          const customerWithOriginalName = {
-            ...editData.customerDetails,
-            name: originalCustomerName,
-            billName: editData.customerDetails.billName || originalCustomerName,
-          };
-          setHeaderSelectedCustomer(customerWithOriginalName);
-          setPrefilledCustomer({ 
-            id: editData.customerDetails.id, 
-            name: originalCustomerName 
-          });
-          
-          setSelectedDetails({
-            customerId: String(editData.customerDetails.id),
-            customerName: originalCustomerName,
-            mobileNo: editData.customerDetails.mobile || "",
-            address: editData.customerDetails.address || "",
-            city: editData.customerDetails.city || "",
-            broker: editData.brokerName || "",
-            Broker_Id: editData.brokerId || "",
-            transporter: editData.transporterName || "",
-            Transporter_Id: editData.transporterId || "",
-          });
-        }
-      }
-      
 
-      if (editData.brokerId && editData.brokerId !== 0 && editData.brokerId !== "0") {
-        const brokerIdNum = parseInt(editData.brokerId);
-        if (!isNaN(brokerIdNum) && brokerIdNum > 0) {
-          setSelectedBroker({ 
-            id: brokerIdNum, 
-            name: editData.brokerName || "" 
-          });
-          setBrokerName(editData.brokerName || "");
-        }
-      }
-      
- 
-      if (editData.transporterId && editData.transporterId !== 0 && editData.transporterId !== "0") {
-        const transporterIdNum = parseInt(editData.transporterId);
-        if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
-          setSelectedTransporter({ 
-            id: transporterIdNum, 
-            name: editData.transporterName || "" 
-          });
-          setTransporter(editData.transporterName || "");
-        }
-      }
-      
-   
-      if (editData.productsList && editData.productsList.length > 0) {
-        const restoredCartItems = {};
-        editData.productsList.forEach(product => {
-          if (product.id && product.quantity > 0) {
-            restoredCartItems[product.id] = product.quantity;
-          }
+  if (!isEditing || !editDataStr) return;
+
+  try {
+    const editData = JSON.parse(editDataStr);
+
+    // Restore customer / broker / transporter / addresses from the edit snapshot.
+    const originalCustomerName = localStorage.getItem('editCustomerOriginalName') || editData.customerName;
+
+    if (editData.customerId) {
+      setCustomer(String(editData.customerId));
+      setContactNumber(editData.contactNumber || "");
+      setShippingAddress(editData.shippingAddress || "");
+      setDeliveryAddress(editData.deliveryAddress || "");
+      setDescription(editData.description || "");
+
+      if (editData.customerDetails) {
+        const customerWithOriginalName = {
+          ...editData.customerDetails,
+          name: originalCustomerName,
+          billName: editData.customerDetails.billName || originalCustomerName,
+        };
+        setHeaderSelectedCustomer(customerWithOriginalName);
+        setPrefilledCustomer({
+          id: editData.customerDetails.id,
+          name: originalCustomerName,
         });
-        setCartItems(restoredCartItems);
-        localStorage.setItem('cartItems', JSON.stringify(restoredCartItems));
-      }
-      
-    
-      if (isMobile) {
-        setStep(2);
-      }
-      
-    } catch (error) {
-      console.error("Error processing edit data from navigation:", error);
-    }
-  }
-}, [isMobile]); 
 
-
-
-useEffect(() => {
-  const isEditing = localStorage.getItem('isEditingOrder');
-  
-  if (isEditing === 'true') {
-
-    const editDataStr = localStorage.getItem('editOrderData');
-    
-    if (editDataStr) {
-      try {
-        const editData = JSON.parse(editDataStr);
-        
-      
-        if (editData.brokerId && editData.brokerId !== 0 && editData.brokerId !== "0" && editData.brokerId !== null) {
-          const brokerIdNum = parseInt(editData.brokerId);
-          if (!isNaN(brokerIdNum) && brokerIdNum > 0) {
-            setSelectedBroker({ 
-              id: brokerIdNum, 
-              name: editData.brokerName || "" 
-            });
-            setBrokerName(editData.brokerName || "");
-          
-          }
-        }
-        
-      
-        if (editData.transporterId && editData.transporterId !== 0 && editData.transporterId !== "0" && editData.transporterId !== null) {
-          const transporterIdNum = parseInt(editData.transporterId);
-          if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
-            setSelectedTransporter({ 
-              id: transporterIdNum, 
-              name: editData.transporterName || "" 
-            });
-            setTransporter(editData.transporterName || "");
-         
-          }
-        }
-      } catch (error) {
-        console.error("Error parsing editOrderData:", error);
+        setSelectedDetails({
+          customerId: String(editData.customerDetails.id),
+          customerName: originalCustomerName,
+          mobileNo: editData.customerDetails.mobile || "",
+          address: editData.customerDetails.address || "",
+          city: editData.customerDetails.city || "",
+          broker: editData.brokerName || "",
+          Broker_Id: editData.brokerId || "",
+          transporter: editData.transporterName || "",
+          Transporter_Id: editData.transporterId || "",
+        });
       }
     }
-    
-    const savedBrokerId = localStorage.getItem('editBrokerId');
-    const savedBrokerName = localStorage.getItem('editBrokerName');
-    const savedTransporterId = localStorage.getItem('editTransporterId');
-    const savedTransporterName = localStorage.getItem('editTransporterName');
-    
-    if (savedBrokerId && savedBrokerId !== '0' && savedBrokerId !== 'null') {
-      const brokerIdNum = parseInt(savedBrokerId);
+
+    if (editData.brokerId && editData.brokerId !== 0 && editData.brokerId !== "0") {
+      const brokerIdNum = parseInt(editData.brokerId);
       if (!isNaN(brokerIdNum) && brokerIdNum > 0) {
-        setSelectedBroker({ 
-          id: brokerIdNum, 
-          name: savedBrokerName || "" 
-        });
-        setBrokerName(savedBrokerName || "");
+        setSelectedBroker({ id: brokerIdNum, name: editData.brokerName || "" });
+        setBrokerName(editData.brokerName || "");
       }
     }
-    
-    if (savedTransporterId && savedTransporterId !== '0' && savedTransporterId !== 'null') {
-      const transporterIdNum = parseInt(savedTransporterId);
-      if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
-        setSelectedTransporter({ 
-          id: transporterIdNum, 
-          name: savedTransporterName || "" 
-        });
-        setTransporter(savedTransporterName || "");
-      }
-    }
-  }
-}, []);
 
+    if (editData.transporterId && editData.transporterId !== 0 && editData.transporterId !== "0") {
+      const transporterIdNum = parseInt(editData.transporterId);
+      if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
+        setSelectedTransporter({ id: transporterIdNum, name: editData.transporterName || "" });
+        setTransporter(editData.transporterName || "");
+      }
+    }
+
+    // ⭐ CRITICAL FIX: When restoring cart items from edit data,
+    // ALWAYS use the prices from editData.productsList, NOT from product master
+    let existingCart = {};
+    try {
+      const existingCartStr = localStorage.getItem('cartItems');
+      if (existingCartStr) existingCart = JSON.parse(existingCartStr) || {};
+    } catch (e) {
+      existingCart = {};
+    }
+
+    const hasLiveCart = existingCart && Object.keys(existingCart).length > 0;
+
+    // ⭐ IMPORTANT: When in edit mode, we should ALWAYS use the editData.productsList
+    // to populate the cart items with the correct prices from the order
+    if (editData.productsList && editData.productsList.length > 0) {
+      // Rebuild cart items from editData.productsList with the correct prices
+      const restoredCartItems = {};
+      editData.productsList.forEach(product => {
+        if (product.id && product.quantity > 0) {
+          restoredCartItems[product.id] = product.quantity;
+        }
+      });
+      
+      // ⭐ ALWAYS set cartItems from editData - this preserves the correct prices
+      setCartItems(restoredCartItems);
+      localStorage.setItem('cartItems', JSON.stringify(restoredCartItems));
+      
+      // ⭐ CRITICAL: Also store the products with their correct prices separately
+      // This ensures enhancedCartItems uses the correct prices
+      localStorage.setItem('editProductsList', JSON.stringify(editData.productsList));
+    } else if (hasLiveCart) {
+      // Only use live cart if there's no editData.productsList
+      setCartItems(existingCart);
+    } else if (editData.cartItems && Object.keys(editData.cartItems).length > 0) {
+      // Fallback to cartItems from editData
+      setCartItems(editData.cartItems);
+      localStorage.setItem('cartItems', JSON.stringify(editData.cartItems));
+    }
+
+    if (isMobile) {
+      setStep(2);
+    }
+  } catch (error) {
+    console.error("Error processing edit data from navigation:", error);
+  }
+}, [isMobile]);
 
 
 const handleBackFromSaleOrders = async () => {
@@ -3457,87 +3087,6 @@ const handleBackFromSaleOrders = async () => {
     }, 300);
   }
 };
-
-// Update the useEffect that restores edit data
-useEffect(() => {
-  const isEditing = localStorage.getItem('isEditingOrder');
-  const editDataStr = localStorage.getItem('editOrderData');
-  
-  if (isEditing === 'true' && editDataStr) {
-    try {
-      const editData = JSON.parse(editDataStr);
-      
-      // Restore customer name from original stored value
-      const originalCustomerName = localStorage.getItem('editCustomerOriginalName') || editData.customerName;
-      
-      // Set customer with original name
-      if (editData.customerId) {
-        setCustomer(String(editData.customerId));
-        setContactNumber(editData.contactNumber || "");
-        setShippingAddress(editData.shippingAddress || "");
-        setDeliveryAddress(editData.deliveryAddress || "");
-        setDescription(editData.description || "");
-        
-        if (editData.customerDetails) {
-          // Preserve original name
-          const customerWithOriginalName = {
-            ...editData.customerDetails,
-            name: originalCustomerName,
-            billName: editData.customerDetails.billName || originalCustomerName,
-          };
-          setHeaderSelectedCustomer(customerWithOriginalName);
-          setPrefilledCustomer({ 
-            id: editData.customerDetails.id, 
-            name: originalCustomerName 
-          });
-        }
-      }
-      
-      // Restore broker with actual ID
-      if (editData.brokerId && editData.brokerId !== 0 && editData.brokerId !== "0") {
-        const brokerIdNum = parseInt(editData.brokerId);
-        if (!isNaN(brokerIdNum) && brokerIdNum > 0) {
-          setSelectedBroker({ 
-            id: brokerIdNum, 
-            name: editData.brokerName || "" 
-          });
-          setBrokerName(editData.brokerName || "");
-        }
-      }
-      
-      // Restore transporter with actual ID
-      if (editData.transporterId && editData.transporterId !== 0 && editData.transporterId !== "0") {
-        const transporterIdNum = parseInt(editData.transporterId);
-        if (!isNaN(transporterIdNum) && transporterIdNum > 0) {
-          setSelectedTransporter({ 
-            id: transporterIdNum, 
-            name: editData.transporterName || "" 
-          });
-          setTransporter(editData.transporterName || "");
-        }
-      }
-      
-      // Restore cart items with original product names
-      if (editData.productsList && editData.productsList.length > 0) {
-        const restoredCartItems = {};
-        editData.productsList.forEach(product => {
-          if (product.id && product.quantity > 0) {
-            restoredCartItems[product.id] = product.quantity;
-          }
-        });
-        setCartItems(restoredCartItems);
-        localStorage.setItem('cartItems', JSON.stringify(restoredCartItems));
-      }
-      
-      const orderNumber = editData.orderNumber || 'Unknown';
-      toast.success(`Order #${orderNumber} loaded for editing`);
-      
-    } catch (error) {
-      console.error("Error processing edit order data:", error);
-    }
-  }
-}, []);
-
 
   const checkLoginStatus = () => {
     try {
@@ -3730,7 +3279,7 @@ const handleHeaderCustomerSelect = async (customer) => {
     console.error("Error fetching complete customer details:", e);
   }
 
-  // Rest of the function remains the same...
+
   setHeaderSelectedCustomer(updatedCustomer);
   setCustomer(String(updatedCustomer.id || ""));
   setContactNumber(updatedCustomer.mobile || "");
@@ -3741,9 +3290,9 @@ const handleHeaderCustomerSelect = async (customer) => {
     setDeliveryAddress(displayAddress); 
   }
 
-  // CRITICAL FIX: Don't overwrite broker/transporter if in edit mode
+  
   if (isEditing && editOrderData) {
-    // Keep the edit mode broker and transporter
+   
     if (editOrderData.brokerId && editOrderData.brokerId !== 0 && editOrderData.brokerId !== "0") {
       setSelectedBroker({ 
         id: parseInt(editOrderData.brokerId), 
@@ -3759,7 +3308,7 @@ const handleHeaderCustomerSelect = async (customer) => {
       setTransporter(editOrderData.transporterName || "");
     }
   } else {
-    // Only set from customer master if not in edit mode
+
     if (updatedCustomer.brokerId && updatedCustomer.brokerName) {
       setSelectedBroker({ id: updatedCustomer.brokerId, name: updatedCustomer.brokerName });
       setBrokerName(updatedCustomer.brokerName);
@@ -4016,11 +3565,43 @@ useEffect(() => {
   return 1;
 };
 
+// Add this helper function inside CartPage component, before enhancedCartItems
+const getEditedPrice = (productId) => {
+  try {
+    // First check editOrderData
+    const editDataStr = localStorage.getItem('editOrderData');
+    if (editDataStr) {
+      const editData = JSON.parse(editDataStr);
+      if (editData.productsList && Array.isArray(editData.productsList)) {
+        const found = editData.productsList.find(p => String(p.id) === String(productId));
+        if (found && found.price) {
+          return found.price;
+        }
+      }
+    }
+    
+    // Then check editProductsList
+    const editProductsStr = localStorage.getItem('editProductsList');
+    if (editProductsStr) {
+      const editProducts = JSON.parse(editProductsStr);
+      if (Array.isArray(editProducts)) {
+        const found = editProducts.find(p => String(p.id) === String(productId));
+        if (found && found.price) {
+          return found.price;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error getting edited price:", e);
+  }
+  return null; // Return null if no edited price found
+};
 
 const enhancedCartItems = useMemo(() => {
   let editProductsList = [];
   let editCartItems = null;
   
+  // Get editProductsList from localStorage
   try {
     const editDataStr = localStorage.getItem('editOrderData');
     if (editDataStr) {
@@ -4039,6 +3620,7 @@ const enhancedCartItems = useMemo(() => {
     } catch (e) {}
   }
 
+  // Create a map of product prices from editProductsList
   const editProductsMap = new Map();
   editProductsList.forEach(p => {
     if (p.id) {
@@ -4047,36 +3629,33 @@ const enhancedCartItems = useMemo(() => {
     }
   });
 
-  const isEditing = localStorage.getItem('isEditingOrder') === 'true';
-  let activeCartItems = cartItems;
-  if (isEditing && editCartItems && Object.keys(editCartItems).length > 0) {
-    activeCartItems = editCartItems;
-  } else if (isEditing && editProductsList.length > 0) {
-    activeCartItems = {};
-    editProductsList.forEach(p => {
-      if (p.id && p.quantity > 0) activeCartItems[p.id] = p.quantity;
-    });
-  }
+  const activeCartItems = cartItems;
+
+  
+
 
   return Object.entries(activeCartItems)
     .filter(([_, qty]) => qty > 0)
     .map(([productId, qty]) => {
       const sid = String(productId);
-
-      // Priority 1: Use product from editProductsList (preserves original Tamil name)
+      
+  
       const editP = editProductsMap.get(sid);
       if (editP && editP.name) {
         const packGet = editP.packGet || 1;
         const kgs = qty * packGet;
+      
+        const price = editP.price || 0;
+      
         return {
           id: productId,
-          name: editP.name, // Original Tamil name
+          name: editP.name, 
           shortName: editP.shortName || editP.name,
           quantity: qty,
           kgs: kgs,
-          price: editP.price || 0,
+          price: price,
           packGet: packGet,
-          amount: (editP.price || 0) * kgs,
+          amount: price * kgs,
           Print_Name: editP.name,
           hsn: editP.hsn || "",
           taxRate: editP.taxRate || 0,
@@ -4087,12 +3666,15 @@ const enhancedCartItems = useMemo(() => {
         };
       }
 
-      // Priority 2: Use from products state
+      // ⭐ PRIORITY 2: Use from products state
       const product = products.find(p => String(p.id) === sid);
       if (product && product.name) {
         const packGet = parseFloat(product.packGet) || 1;
-        const price = parseFloat(product.price) || 0;
+        // ⭐ Check if there's an edited price for this product
+        const editedPrice = getEditedPrice(productId);
+        const price = editedPrice !== null ? editedPrice : (parseFloat(product.price) || 0);
         const kgs = qty * packGet;
+      
         return {
           id: productId,
           name: product.name,
@@ -4127,7 +3709,6 @@ const enhancedCartItems = useMemo(() => {
       };
     });
 }, [cartItems, products]);
-
 
 
 
@@ -4236,16 +3817,16 @@ const handleCheckout = async () => {
   const totalInvoiceValue = totalBeforeTax + totalTax;
   const totalKgsValue = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
 
-  // IMPORTANT: Get current values from state - these should be the actual selected broker/transporter
+
   const currentBrokerId = selectedBroker?.id;
   const currentBrokerName = selectedBroker?.name;
   const currentTransporterId = selectedTransporter?.id;
   const currentTransporterName = selectedTransporter?.name;
   
-  // Create Staff_Involved_List with proper validation
+  
   const Staff_Involved_List = [];
   
-  // Add broker to Staff_Involved_List only if ID is valid (not 0, not null, not undefined)
+
   let finalBrokerId = null;
   if (currentBrokerId && currentBrokerId !== 0 && currentBrokerId !== "0" && currentBrokerId !== null && currentBrokerId !== "null") {
     const brokerIdNum = typeof currentBrokerId === 'number' ? currentBrokerId : parseInt(currentBrokerId);
@@ -4258,7 +3839,7 @@ const handleCheckout = async () => {
     }
   }
   
-  // Add transporter to Staff_Involved_List only if ID is valid
+  
   let finalTransporterId = null;
   if (currentTransporterId && currentTransporterId !== 0 && currentTransporterId !== "0" && currentTransporterId !== null && currentTransporterId !== "null") {
     const transporterIdNum = typeof currentTransporterId === 'number' ? currentTransporterId : parseInt(currentTransporterId);
@@ -4316,9 +3897,38 @@ const handleCheckout = async () => {
   };
 
   const stockInfo = enhancedCartItems.map((item, index) => {
+
+  let latestPrice = item.price;
+    
+    
+    try {
+      const storedProducts = JSON.parse(localStorage.getItem('products') || '[]');
+      const productInStorage = storedProducts.find(p => String(p.id) === String(item.id));
+      if (productInStorage && productInStorage.price !== undefined) {
+        latestPrice = productInStorage.price;
+      }
+    } catch (e) {
+      console.error("Error getting latest price from localStorage:", e);
+    }
+    
+  
+    const editOrderData = localStorage.getItem('editOrderData');
+    if (editOrderData) {
+      try {
+        const editData = JSON.parse(editOrderData);
+        const productInEdit = editData.productsList?.find(p => String(p.id) === String(item.id));
+        if (productInEdit && productInEdit.price !== undefined) {
+          latestPrice = productInEdit.price;
+        }
+      } catch (e) {
+        console.error("Error getting latest price from editOrderData:", e);
+      }
+    }
+
     const taxRate = item.taxRate || 12;
     const cgstSgstRate = taxRate / 2;
-    const taxableAmount = item.amount;
+    // const taxableAmount = item.amount;
+     const taxableAmount = item.kgs * latestPrice; 
     const taxAmount = taxableAmount * (taxRate / 100);
     const cgstSgstAmount = taxAmount / 2;
     const finalAmount = taxableAmount + taxAmount;
@@ -4328,8 +3938,10 @@ const handleCheckout = async () => {
       S_No: index + 1, 
       Item_Id: parseInt(item.id),
       Bill_Qty: item.kgs.toFixed(2), 
-      Taxable_Rate: item.price.toFixed(2),
-      Item_Rate: item.price.toFixed(2), 
+       Taxable_Rate: latestPrice.toFixed(2),
+      Item_Rate: latestPrice.toFixed(2),
+      // Taxable_Rate: item.price.toFixed(2),
+      // Item_Rate: item.price.toFixed(2), 
       Amount: taxableAmount.toFixed(2), 
       Free_Qty: "0.00",
       Total_Qty: item.quantity.toString(), 
@@ -4358,6 +3970,19 @@ const handleCheckout = async () => {
       ...(isEditing && { So_Id: parseInt(editOrderId) }),
     };
   });
+
+  // const totalBeforeTax = enhancedCartItems.reduce((s, item) => {
+  //   let latestPrice = item.price;
+  //   try {
+  //     const storedProducts = JSON.parse(localStorage.getItem('products') || '[]');
+  //     const productInStorage = storedProducts.find(p => String(p.id) === String(item.id));
+  //     if (productInStorage && productInStorage.price !== undefined) {
+  //       latestPrice = productInStorage.price;
+  //     }
+  //   } catch (e) {}
+  //   return s + (item.kgs * latestPrice);
+  // }, 0);
+
 
   const saleData = {
     generalInfo, 
@@ -4503,33 +4128,30 @@ const handleCheckout = async () => {
         setHeaderSelectedCustomer(null);
         setPrefilledCustomer(null);
         
-        // Close print modal
+    
         setIsPrintModalOpen(false);
         
-        // Remove event listener to prevent multiple redirects
+      
         window.removeEventListener('afterprint', afterPrintHandler);
         
-        // ✅ REDIRECT TO HOME PAGE
+    
         window.location.href = "/";
       };
 
-      // Define after print handler
+   
       const afterPrintHandler = () => {
         clearAllDataAndRedirect();
       };
 
-      // Add event listener for after print (fires when user prints or cancels)
+   
       window.addEventListener('afterprint', afterPrintHandler);
 
-      // Store the handler in a ref or variable to clean up if needed
-      // This will automatically redirect when print dialog closes
-      
-      // Optional: Auto-trigger print dialog after 1 second
+   
       setTimeout(() => {
         window.print();
       }, 1000);
 
-      // ================== END OF PRINT HANDLING ==================
+     
       
     } else {
       toast.error(response?.message || `Failed to ${isEditing ? 'update' : 'place'} order`);
@@ -4619,31 +4241,6 @@ const renderThreeDotsMenu = () => (
 </div>
 );
 
-//   const renderThreeDotsMenu = () => (
-//    <div style={{ position: "relative" }}>
-//   <button
-//     onClick={() => setDashboardMenuOpen(prev => !prev)}
-//     style={{
-//       background: "transparent", border: "none", color: "#fff", cursor: "pointer",
-//       display: "flex", alignItems: "center", justifyContent: "center",
-//       padding: isMobile ? "8px" : "12px", borderRadius: "50%",
-//     }}
-//   >
-//     <MoreVertIcon style={{ fontSize: isMobile ? "24px" : "32px" }} />
-//   </button>
-//   <UserMenuDropdown
-//     isOpen={dashboardMenuOpen}
-//     onClose={() => setDashboardMenuOpen(false)}
-//     isLoggedIn={isLoggedIn}
-//     userName={userName}
-//     onLogout={onLogout}
-//     onLoginClick={onLoginClick}
-//     userType={userType}
-//     onSaleOrders={onSaleOrders}
-//     onDashboard={() => {}}
-//   />
-// </div>
-//   );
 useEffect(() => {
   if (showSaleOrders) {
 
@@ -4877,13 +4474,411 @@ const commonHeaderCustomerProps = {
   userType: userType,
 };
 
- const CartItemRow = ({ item }) => {
+// const CartItemRow = ({ item }) => {
+//   const [isEditingPrice, setIsEditingPrice] = useState(false);
+//   const [tempPrice, setTempPrice] = useState("");
+  
+//   const fullProduct = useMemo(() => {
+//     let found = products.find(p => p.id === item.id);
+    
+//     if (!found && allProducts.length > 0) {
+//       found = allProducts.find(p => 
+//         String(p.id) === String(item.id) || 
+//         String(p.Product_Id) === String(item.id) ||
+//         p.id === item.id
+//       );
+//     }
+    
+//     if (!found) {
+//       return {
+//         ...item,
+//         price: item.price || 0,
+//         name: item.name || "Unknown Product",
+//         packGet: item.packGet || 1,
+//         image: item.image || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop"
+//       };
+//     }
+    
+//     return found;
+//   }, [item, products, allProducts]);
+  
+//   const packGet = fullProduct.packGet || 1;
+//   const kgs = item.quantity * packGet;
+//   const currentPrice = item.price || 0; 
+//   const amount = currentPrice * item.quantity * packGet;
+  
+
+//   const handlePriceClick = () => {
+//     setIsEditingPrice(true);
+//     setTempPrice(currentPrice.toString());
+//   };
+  
+//   const handlePriceChange = (e) => {
+//     const value = e.target.value;
+//     if (value === '' || /^\d*\.?\d*$/.test(value)) {
+//       setTempPrice(value);
+//     }
+//   };
+  
+//   const handlePriceSave = () => {
+//     const newPrice = parseFloat(tempPrice);
+//     if (!isNaN(newPrice) && newPrice >= 0) {
+      
+//       setProducts(prevProducts => 
+//         prevProducts.map(p => 
+//           String(p.id) === String(item.id) 
+//             ? { ...p, price: newPrice }
+//             : p
+//         )
+//       );
+      
+//       setAllProducts(prevAllProducts => 
+//         prevAllProducts.map(p => 
+//           String(p.id) === String(item.id) || String(p.Product_Id) === String(item.id)
+//             ? { ...p, price: newPrice }
+//             : p
+//         )
+//       );
+
+//       try {
+//         const storedProducts = JSON.parse(localStorage.getItem('products') || '[]');
+//         const updatedProducts = storedProducts.map(p => 
+//           String(p.id) === String(item.id) 
+//             ? { ...p, price: newPrice }
+//             : p
+//         );
+//         localStorage.setItem('products', JSON.stringify(updatedProducts));
+//       } catch (e) {
+//         console.error("Error updating products in localStorage:", e);
+//       }
+      
+//       const editOrderData = localStorage.getItem('editOrderData');
+//       if (editOrderData) {
+//         try {
+//           const editData = JSON.parse(editOrderData);
+//           if (editData.productsList) {
+//             editData.productsList = editData.productsList.map(p => 
+//             String(p.id) === String(item.id) 
+//               ? { ...p, price: newPrice, amount: (p.kgs || 0) * newPrice }
+//               : p
+//           );
+//             localStorage.setItem('editOrderData', JSON.stringify(editData));
+//           }
+//         } catch (e) {
+//           console.error("Error updating editOrderData:", e);
+//         }
+//       }
+      
+//        try {
+//       const editProductsStr = localStorage.getItem('editProductsList');
+//       if (editProductsStr) {
+//         const editProducts = JSON.parse(editProductsStr);
+//         const updatedEditProducts = editProducts.map(p => 
+//           String(p.id) === String(item.id) 
+//             ? { ...p, price: newPrice, amount: (p.kgs || 0) * newPrice }
+//             : p
+//         );
+//         localStorage.setItem('editProductsList', JSON.stringify(updatedEditProducts));
+//       }
+//     } catch (e) {
+//       console.error("Error updating editProductsList:", e);
+//     }
+    
+//     toast.success(`Price updated to ₹${newPrice.toFixed(2)}/kg`);
+//   } else {
+//     toast.error("Please enter a valid price");
+//   }
+//   setIsEditingPrice(false);
+// };
+  
+//   const handlePriceCancel = () => {
+//     setIsEditingPrice(false);
+//     setTempPrice("");
+//   };
+  
+//   const handlePriceKeyDown = (e) => {
+//     if (e.key === 'Enter') {
+//       handlePriceSave();
+//     } else if (e.key === 'Escape') {
+//       handlePriceCancel();
+//     }
+//   };
+
+//  return (
+//   <div style={{
+//     display: "flex", 
+//     justifyContent: "space-between", 
+//     alignItems: "center",
+//     padding: isMobile ? "10px 0" : "12px 0", 
+//     borderBottom: "1px dashed #ddd",
+//     flexWrap: isMobile ? "wrap" : "nowrap",
+//     gap: isMobile ? "8px" : "0",
+//   }}>
+//     {/* Left side - Product info */}
+//     <div style={{ 
+//       display: "flex", 
+//       gap: "12px", 
+//       alignItems: "center", 
+//       flex: 1,
+//       minWidth: isMobile ? "60%" : "auto",
+//     }}>
+//       <img
+//         src={fullProduct.image} alt={fullProduct.name}
+//         style={{ width: "50px", height: "50px", borderRadius: "6px", objectFit: "cover" }}
+//         onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop"; }}
+//       />
+//       <div style={{ flex: 1, minWidth: "0" }}>
+//         <h3 style={{ 
+//           fontSize: isMobile ? "13px" : "15px", 
+//           fontWeight: "600", 
+//           color: BROWN, 
+//           margin: "0 0 2px 0",
+//           wordBreak: "break-word",
+//         }}>
+//           {fullProduct.name?.length > 20 ? fullProduct.name.substring(0, 20) + '...' : fullProduct.name}
+//         </h3>
+        
+//         {/* Price section with edit functionality */}
+//         <div style={{ 
+//           display: "flex", 
+//           gap: "6px", 
+//           alignItems: "center", 
+//           flexWrap: "wrap",
+//         }}>
+//           {isEditingPrice ? (
+//             // Edit mode - input and buttons
+//             <div style={{ 
+//               display: "flex", 
+//               alignItems: "center", 
+//               gap: "4px",
+//               flexWrap: "wrap",
+//             }}>
+//               <input
+//                 type="text"
+//                 value={tempPrice}
+//                 onChange={handlePriceChange}
+//                 onKeyDown={handlePriceKeyDown}
+//                 autoFocus
+//                 style={{
+//                   width: isMobile ? "80px" : "80px",
+//                   padding: "4px 8px",
+//                   border: `2px solid ${BROWN}`,
+//                   borderRadius: "12px",
+//                   fontSize: isMobile ? "18px" : "18px",
+//                   fontWeight: "600",
+//                   color: BROWN,
+//                   background: "#fff",
+//                   outline: "none",
+//                 }}
+//               />
+//               <span style={{ 
+//                 fontSize: isMobile ? "18px" : "18px", 
+//                 fontWeight: "600", 
+//                 color: BROWN 
+//               }}>/kg</span>
+//               <div style={{ 
+//                 display: "flex", 
+//                 gap: "3px",
+//                 alignItems: "center",
+//               }}>
+//                 <button
+//                   onClick={handlePriceSave}
+//                   style={{
+//                     background: "#4CAF50",
+//                     border: "none",
+//                     borderRadius: "12px",
+//                     padding: "4px 8px",
+//                     color: "#fff",
+//                     fontSize: isMobile ? "12px" : "12px",
+//                     cursor: "pointer",
+//                     minWidth: "20px",
+//                     minHeight: "20px",
+//                   }}
+//                 >
+//                   ✓
+//                 </button>
+//                 <button
+//                   onClick={handlePriceCancel}
+//                   style={{
+//                     background: "#f44336",
+//                     border: "none",
+//                     borderRadius: "12px",
+//                     padding: "2px 6px",
+//                     color: "#fff",
+//                     fontSize: isMobile ? "10px" : "11px",
+//                     cursor: "pointer",
+//                     minWidth: "20px",
+//                     minHeight: "20px",
+//                   }}
+//                 >
+//                   ✕
+//                 </button>
+//               </div>
+//             </div>
+//           ) : (
+//             // Display mode - clickable price
+//             <span 
+//               onClick={handlePriceClick}
+//               style={{ 
+//                 background: "#f0e9e2", 
+//                 padding: "4px 8px", 
+//                 borderRadius: "12px", 
+//                 fontSize: isMobile ? "18px" : "18px", 
+//                 color: BROWN,
+//                 cursor: "pointer",
+//                 transition: "all 0.2s",
+//                 fontWeight: "800",
+//                 border: "1px solid transparent",
+//                 whiteSpace: "nowrap",
+//               }}
+//               onMouseEnter={(e) => {
+//                 e.currentTarget.style.background = "#e8ddd4";
+//                 e.currentTarget.style.borderColor = BROWN;
+//               }}
+//               onMouseLeave={(e) => {
+//                 e.currentTarget.style.background = "#f0e9e2";
+//                 e.currentTarget.style.borderColor = "transparent";
+//               }}
+//               title="Click to edit price"
+//             >
+//               ₹{(currentPrice || 0).toFixed(2)}/kg ✎
+//             </span>
+//           )}
+          
+//           <span style={{ 
+//             fontSize: isMobile ? "10px" : "11px", 
+//             color: "#666",
+//             whiteSpace: "nowrap",
+//           }}>
+//             Pack: {packGet}kg
+//           </span>
+//         </div>
+//       </div>
+//     </div>
+
+//     {/* Right side - Quantity controls and amount */}
+//     <div style={{ 
+//       display: "flex", 
+//       alignItems: "center", 
+//       gap: isMobile ? "8px" : "16px",
+//       flexShrink: 0,
+//       marginLeft: isMobile ? "auto" : "0",
+//     }}>
+//       <div style={{ 
+//         display: "flex", 
+//         alignItems: "center", 
+//         gap: "4px", 
+//         background: "#f5f0eb", 
+//         padding: "2px 4px", 
+//         borderRadius: "25px",
+//         flexShrink: 0,
+//       }}>
+//         <button 
+//           onClick={() => updateQty(item.id, -1)} 
+//           style={{ 
+//             width: isMobile ? "20px" : "24px", 
+//             height: isMobile ? "20px" : "24px", 
+//             borderRadius: "50%", 
+//             border: "none", 
+//             background: "#fff", 
+//             color: BROWN, 
+//             cursor: "pointer", 
+//             display: "flex", 
+//             alignItems: "center", 
+//             justifyContent: "center", 
+//             fontSize: isMobile ? "12px" : "16px", 
+//             fontWeight: "bold", 
+//             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+//             flexShrink: 0,
+//           }}
+//         >-</button>
+//         <span style={{ 
+//           fontSize: isMobile ? "12px" : "14px", 
+//           fontWeight: "600", 
+//           color: BROWN, 
+//           minWidth: isMobile ? "16px" : "20px", 
+//           textAlign: "center" 
+//         }}>{item.quantity}</span>
+//         <button 
+//           onClick={() => updateQty(item.id, 1)} 
+//           style={{ 
+//             width: isMobile ? "20px" : "24px", 
+//             height: isMobile ? "20px" : "24px", 
+//             borderRadius: "50%", 
+//             border: "none", 
+//             background: "#fff", 
+//             color: BROWN, 
+//             cursor: "pointer", 
+//             display: "flex", 
+//             alignItems: "center", 
+//             justifyContent: "center", 
+//             fontSize: isMobile ? "12px" : "16px", 
+//             fontWeight: "bold", 
+//             boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+//             flexShrink: 0,
+//           }}
+//         >+</button>
+//       </div>
+      
+//       <div style={{ 
+//         display: "flex", 
+//         alignItems: "center", 
+//         gap: "4px",
+//         flexShrink: 0,
+//       }}>
+//         <div style={{ textAlign: "right" }}>
+//           <span style={{ 
+//             fontSize: isMobile ? "12px" : "14px", 
+//             fontWeight: "600", 
+//             color: BROWN, 
+//             minWidth: isMobile ? "50px" : "60px", 
+//             display: "block" 
+//           }}>₹{amount.toFixed(2)}</span>
+//           <span style={{ 
+//             fontSize: isMobile ? "8px" : "10px", 
+//             color: "#999", 
+//             display: "block" 
+//           }}>({item.quantity} × {packGet}kg)</span>
+//         </div>
+//         <div
+//           onClick={() => removeItem(item.id)}
+//           style={{ 
+//             color: "#999", 
+//             cursor: "pointer", 
+//             display: "flex", 
+//             alignItems: "center", 
+//             justifyContent: "center", 
+//             width: isMobile ? "24px" : "28px", 
+//             height: isMobile ? "24px" : "28px", 
+//             borderRadius: "50%",
+//             flexShrink: 0,
+//           }}
+//           onMouseEnter={(e) => { 
+//             e.currentTarget.style.background = "#fee"; 
+//             e.currentTarget.style.color = "#ff4444"; 
+//           }}
+//           onMouseLeave={(e) => { 
+//             e.currentTarget.style.background = "transparent"; 
+//             e.currentTarget.style.color = "#999"; 
+//           }}
+//         >
+//           <DeleteOutlineIcon style={{ fontSize: isMobile ? "16px" : "18px" }} />
+//         </div>
+//       </div>
+//     </div>
+//   </div>
+// );
+// };
+
+const CartItemRow = ({ item }) => {
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [tempPrice, setTempPrice] = useState("");
+  const [isEditingQty, setIsEditingQty] = useState(false);
+  const [tempQty, setTempQty] = useState("");
   
   const fullProduct = useMemo(() => {
-  
     let found = products.find(p => p.id === item.id);
     
-
     if (!found && allProducts.length > 0) {
       found = allProducts.find(p => 
         String(p.id) === String(item.id) || 
@@ -4892,7 +4887,6 @@ const commonHeaderCustomerProps = {
       );
     }
     
-   
     if (!found) {
       return {
         ...item,
@@ -4906,59 +4900,480 @@ const commonHeaderCustomerProps = {
     return found;
   }, [item, products, allProducts]);
   
-  const packGet = fullProduct.packGet || getProductPackGet(item.id) || 1;
+  const packGet = fullProduct.packGet || 1;
   const kgs = item.quantity * packGet;
-  const amount = (fullProduct.price || 0) * item.quantity * packGet;
+  const currentPrice = item.price || 0; 
+  const amount = currentPrice * item.quantity * packGet;
+
+  // Handle quantity click to start editing
+  const handleQtyClick = () => {
+    setIsEditingQty(true);
+    setTempQty(item.quantity.toString());
+  };
   
-  return (
+  // Handle quantity input change
+  const handleQtyChange = (e) => {
+    const value = e.target.value;
+    // Allow only numbers
+    if (value === '' || /^\d+$/.test(value)) {
+      setTempQty(value);
+    }
+  };
+  
+  // Save quantity changes
+  const handleQtySave = () => {
+    const newQty = parseInt(tempQty);
+    if (!isNaN(newQty) && newQty >= 0) {
+      if (newQty === 0) {
+        // Remove item if quantity is 0
+        removeItem(item.id);
+      } else {
+        // Update quantity directly
+        setCartItems(prev => {
+          const newCart = { ...prev, [item.id]: newQty };
+          localStorage.setItem('cartItems', JSON.stringify(newCart));
+          return newCart;
+        });
+        toast.success(`Quantity updated to ${newQty}`);
+      }
+    } else if (tempQty === '' || tempQty === '0') {
+      // If empty or 0, remove the item
+      removeItem(item.id);
+    } else {
+      toast.error("Please enter a valid quantity");
+    }
+    setIsEditingQty(false);
+    setTempQty("");
+  };
+  
+  // Cancel quantity editing
+  const handleQtyCancel = () => {
+    setIsEditingQty(false);
+    setTempQty("");
+  };
+  
+  // Handle Enter/Escape keys for quantity
+  const handleQtyKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleQtySave();
+    } else if (e.key === 'Escape') {
+      handleQtyCancel();
+    }
+  };
+
+  // Handle price click
+  const handlePriceClick = () => {
+    setIsEditingPrice(true);
+    setTempPrice(currentPrice.toString());
+  };
+  
+  // Handle price change
+  const handlePriceChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setTempPrice(value);
+    }
+  };
+  
+  // Save price changes
+  const handlePriceSave = () => {
+    const newPrice = parseFloat(tempPrice);
+    if (!isNaN(newPrice) && newPrice >= 0) {
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          String(p.id) === String(item.id) 
+            ? { ...p, price: newPrice }
+            : p
+        )
+      );
+      
+      setAllProducts(prevAllProducts => 
+        prevAllProducts.map(p => 
+          String(p.id) === String(item.id) || String(p.Product_Id) === String(item.id)
+            ? { ...p, price: newPrice }
+            : p
+        )
+      );
+
+      try {
+        const storedProducts = JSON.parse(localStorage.getItem('products') || '[]');
+        const updatedProducts = storedProducts.map(p => 
+          String(p.id) === String(item.id) 
+            ? { ...p, price: newPrice }
+            : p
+        );
+        localStorage.setItem('products', JSON.stringify(updatedProducts));
+      } catch (e) {
+        console.error("Error updating products in localStorage:", e);
+      }
+      
+      const editOrderData = localStorage.getItem('editOrderData');
+      if (editOrderData) {
+        try {
+          const editData = JSON.parse(editOrderData);
+          if (editData.productsList) {
+            editData.productsList = editData.productsList.map(p => 
+              String(p.id) === String(item.id) 
+                ? { ...p, price: newPrice, amount: (p.kgs || 0) * newPrice }
+                : p
+            );
+            localStorage.setItem('editOrderData', JSON.stringify(editData));
+          }
+        } catch (e) {
+          console.error("Error updating editOrderData:", e);
+        }
+      }
+      
+      try {
+        const editProductsStr = localStorage.getItem('editProductsList');
+        if (editProductsStr) {
+          const editProducts = JSON.parse(editProductsStr);
+          const updatedEditProducts = editProducts.map(p => 
+            String(p.id) === String(item.id) 
+              ? { ...p, price: newPrice, amount: (p.kgs || 0) * newPrice }
+              : p
+          );
+          localStorage.setItem('editProductsList', JSON.stringify(updatedEditProducts));
+        }
+      } catch (e) {
+        console.error("Error updating editProductsList:", e);
+      }
+      
+      toast.success(`Price updated to ₹${newPrice.toFixed(2)}/kg`);
+    } else {
+      toast.error("Please enter a valid price");
+    }
+    setIsEditingPrice(false);
+  };
+  
+  // Cancel price editing
+  const handlePriceCancel = () => {
+    setIsEditingPrice(false);
+    setTempPrice("");
+  };
+  
+  // Handle price key events
+  const handlePriceKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handlePriceSave();
+    } else if (e.key === 'Escape') {
+      handlePriceCancel();
+    }
+  };
+
+return (
     <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: isMobile ? "10px 0" : "12px 0", borderBottom: "1px dashed #ddd",
+      display: "flex", 
+      justifyContent: "space-between", 
+      alignItems: "center",
+      padding: isMobile ? "10px 0" : "12px 0", 
+      borderBottom: "1px dashed #ddd",
+      flexWrap: isMobile ? "wrap" : "nowrap",
+      gap: isMobile ? "8px" : "0",
     }}>
-      <div style={{ display: "flex", gap: "12px", alignItems: "center", flex: 1 }}>
+      {/* Left side - Product info */}
+      <div style={{ 
+        display: "flex", 
+        gap: "12px", 
+        alignItems: "center", 
+        flex: 1,
+        minWidth: isMobile ? "60%" : "auto",
+      }}>
         <img
           src={fullProduct.image} alt={fullProduct.name}
-          style={{ width: "50px", height: "50px", borderRadius: "6px", objectFit: "cover" }}
+          style={{ width: isMobile ? "40px" : "50px", height: isMobile ? "40px" : "50px", borderRadius: "6px", objectFit: "cover" }}
           onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=50&h=50&fit=crop"; }}
         />
-        <div>
-          <h3 style={{ fontSize: "15px", fontWeight: "600", color: BROWN, margin: "0 0 2px 0" }}>
-            {fullProduct.name?.length > 20 ? fullProduct.name.substring(0, 20) + '...' : fullProduct.name}
+        <div style={{ flex: 1, minWidth: "0" }}>
+          <h3 style={{ 
+            fontSize: isMobile ? "12px" : "15px", 
+            fontWeight: "600", 
+            color: BROWN, 
+            margin: "0 0 2px 0",
+            wordBreak: "break-word",
+          }}>
+            {fullProduct.name?.length > (isMobile ? 15 : 20) ? fullProduct.name.substring(0, isMobile ? 15 : 20) + '...' : fullProduct.name}
           </h3>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ background: "#f0e9e2", padding: "2px 8px", borderRadius: "12px", fontSize: "12px", color: BROWN }}>
-              ₹{(fullProduct.price || 0).toFixed(2)}/kg
+          
+          {/* Price section with edit functionality */}
+          <div style={{ 
+            display: "flex", 
+            gap: "6px", 
+            alignItems: "center", 
+            flexWrap: "wrap",
+          }}>
+            {isEditingPrice ? (
+              <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "4px",
+                flexWrap: "wrap",
+              }}>
+                <input
+                  type="text"
+                  value={tempPrice}
+                  onChange={handlePriceChange}
+                  onKeyDown={handlePriceKeyDown}
+                  autoFocus
+                  style={{
+                    width: isMobile ? "70px" : "80px",
+                    padding: isMobile ? "2px 6px" : "4px 8px",
+                    border: `2px solid ${BROWN}`,
+                    borderRadius: "12px",
+                    fontSize: isMobile ? "14px" : "18px",
+                    fontWeight: "600",
+                    color: BROWN,
+                    background: "#fff",
+                    outline: "none",
+                  }}
+                />
+                <span style={{ 
+                  fontSize: isMobile ? "14px" : "18px", 
+                  fontWeight: "600", 
+                  color: BROWN 
+                }}>/kg</span>
+                <div style={{ 
+                  display: "flex", 
+                  gap: "3px",
+                  alignItems: "center",
+                }}>
+                  <button
+                    onClick={handlePriceSave}
+                    style={{
+                      background: "#4CAF50",
+                      border: "none",
+                      borderRadius: "12px",
+                      padding: isMobile ? "2px 6px" : "4px 8px",
+                      color: "#fff",
+                      fontSize: isMobile ? "10px" : "12px",
+                      cursor: "pointer",
+                      minWidth: isMobile ? "16px" : "20px",
+                      minHeight: isMobile ? "16px" : "20px",
+                    }}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={handlePriceCancel}
+                    style={{
+                      background: "#f44336",
+                      border: "none",
+                      borderRadius: "12px",
+                      padding: isMobile ? "1px 5px" : "2px 6px",
+                      color: "#fff",
+                      fontSize: isMobile ? "8px" : "10px",
+                      cursor: "pointer",
+                      minWidth: isMobile ? "16px" : "20px",
+                      minHeight: isMobile ? "16px" : "20px",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <span 
+                onClick={handlePriceClick}
+                style={{ 
+                  background: "#f0e9e2", 
+                  padding: isMobile ? "2px 6px" : "4px 8px", 
+                  borderRadius: "12px", 
+                  fontSize: isMobile ? "13px" : "18px", 
+                  color: BROWN,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  fontWeight: "800",
+                  border: "1px solid transparent",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#e8ddd4";
+                  e.currentTarget.style.borderColor = BROWN;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#f0e9e2";
+                  e.currentTarget.style.borderColor = "transparent";
+                }}
+                title="Click to edit price"
+              >
+                ₹{(currentPrice || 0).toFixed(2)}/kg ✎
+              </span>
+            )}
+            
+            <span style={{ 
+              fontSize: isMobile ? "9px" : "11px", 
+              color: "#666",
+              whiteSpace: "nowrap",
+            }}>
+              Pack: {packGet}kg
             </span>
-            <span style={{ fontSize: "11px", color: "#666" }}>Pack: {packGet}kg</span>
           </div>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f5f0eb", padding: "2px 6px", borderRadius: "25px" }}>
-          <button onClick={() => updateQty(item.id, -1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "none", background: "#fff", color: BROWN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>-</button>
-          <span style={{ fontSize: "14px", fontWeight: "600", color: BROWN, minWidth: "20px", textAlign: "center" }}>{item.quantity}</span>
-          <button onClick={() => updateQty(item.id, 1)} style={{ width: "24px", height: "24px", borderRadius: "50%", border: "none", background: "#fff", color: BROWN, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>+</button>
+
+      {/* Right side - Quantity controls and amount */}
+      <div style={{ 
+        display: "flex", 
+        alignItems: "center", 
+        gap: isMobile ? "6px" : "16px",
+        flexShrink: 0,
+        marginLeft: isMobile ? "auto" : "0",
+      }}>
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: isMobile ? "2px" : "4px", 
+          background: "#f5f0eb", 
+          padding: isMobile ? "2px 3px" : "2px 4px", 
+          borderRadius: "25px",
+          flexShrink: 0,
+        }}>
+          <button 
+            onClick={() => updateQty(item.id, -1)} 
+            style={{ 
+              width: isMobile ? "28px" : "24px", 
+              height: isMobile ? "28px" : "24px", 
+              borderRadius: "50%", 
+              border: "none", 
+              background: "#fff", 
+              color: BROWN, 
+              cursor: "pointer", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              fontSize: isMobile ? "16px" : "12px", 
+              fontWeight: "bold", 
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              flexShrink: 0,
+            }}
+          >-</button>
+          
+          {/* Quantity display - clickable to edit */}
+          {isEditingQty ? (
+            <input
+              type="text"
+              value={tempQty}
+              onChange={handleQtyChange}
+              onKeyDown={handleQtyKeyDown}
+              autoFocus
+              style={{
+                width: isMobile ? "40px" : "40px",
+                padding: isMobile ? "4px 2px" : "2px 4px",
+                border: `2px solid ${BROWN}`,
+                borderRadius: "8px",
+                fontSize: isMobile ? "16px" : "16px",
+                fontWeight: "600",
+                color: BROWN,
+                background: "#fff",
+                textAlign: "center",
+                outline: "none",
+              }}
+              onBlur={() => {
+                if (tempQty && parseInt(tempQty) !== item.quantity) {
+                  handleQtySave();
+                } else {
+                  setIsEditingQty(false);
+                  setTempQty("");
+                }
+              }}
+            />
+          ) : (
+            <span 
+              onClick={handleQtyClick}
+              style={{ 
+                fontSize: isMobile ? "16px" : "16px", 
+                fontWeight: "600", 
+                color: BROWN, 
+                minWidth: isMobile ? "32px" : "30px", 
+                textAlign: "center",
+                cursor: "pointer",
+                padding: isMobile ? "4px 4px" : "2px 4px",
+                borderRadius: "4px",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#e8ddd4";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+              title="Click to edit quantity"
+            >
+              {item.quantity}
+            </span>
+          )}
+          
+          <button 
+            onClick={() => updateQty(item.id, 1)} 
+            style={{ 
+              width: isMobile ? "28px" : "24px", 
+              height: isMobile ? "28px" : "24px", 
+              borderRadius: "50%", 
+              border: "none", 
+              background: "#fff", 
+              color: BROWN, 
+              cursor: "pointer", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              fontSize: isMobile ? "16px" : "12px", 
+              fontWeight: "bold", 
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              flexShrink: 0,
+            }}
+          >+</button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        
+        <div style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: isMobile ? "2px" : "4px",
+          flexShrink: 0,
+        }}>
           <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: "14px", fontWeight: "600", color: BROWN, minWidth: "60px", display: "block" }}>₹{amount.toFixed(2)}</span>
-            <span style={{ fontSize: "10px", color: "#999", display: "block" }}>({item.quantity} × {packGet}kg)</span>
+            <span style={{ 
+              fontSize: isMobile ? "14px" : "14px", 
+              fontWeight: "700", 
+              color: BROWN, 
+              minWidth: isMobile ? "60px" : "60px", 
+              display: "block" 
+            }}>₹{amount.toFixed(2)}</span>
+            <span style={{ 
+              fontSize: isMobile ? "8px" : "10px", 
+              color: "#999", 
+              display: "block" 
+            }}>({item.quantity} × {packGet}kg)</span>
           </div>
           <div
             onClick={() => removeItem(item.id)}
-            style={{ color: "#999", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: "28px", height: "28px", borderRadius: "50%" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#fee"; e.currentTarget.style.color = "#ff4444"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#999"; }}
+            style={{ 
+              color: "#999", 
+              cursor: "pointer", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              width: isMobile ? "28px" : "28px", 
+              height: isMobile ? "28px" : "28px", 
+              borderRadius: "50%",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => { 
+              e.currentTarget.style.background = "#fee"; 
+              e.currentTarget.style.color = "#ff4444"; 
+            }}
+            onMouseLeave={(e) => { 
+              e.currentTarget.style.background = "transparent"; 
+              e.currentTarget.style.color = "#999"; 
+            }}
           >
-            <DeleteOutlineIcon style={{ fontSize: "18px" }} />
+            <DeleteOutlineIcon style={{ fontSize: isMobile ? "18px" : "18px" }} />
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-
   const labelStyle = { display: "block", fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#333", marginBottom: "6px" };
   const inputStyle = { width: "100%", padding: "12px", border: "1px solid #ddd", borderRadius: isMobile ? "10px" : "12px", fontSize: "14px", outline: "none", background: "#fff", boxSizing: "border-box" };
   const textareaStyle = { ...inputStyle, minHeight: isMobile ? "70px" : "100px", resize: "vertical", fontFamily: "inherit" };
@@ -5049,7 +5464,7 @@ const commonHeaderCustomerProps = {
   flexDirection: "column", 
   gap: "12px", 
   marginTop: "24px",
-  paddingBottom: "80px" // 👈 adjust to match your footer's height + a little buffer
+  paddingBottom: "80px" 
 }}>
   <button
     onClick={handleCheckout}
