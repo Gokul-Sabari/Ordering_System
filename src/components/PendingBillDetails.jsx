@@ -113,54 +113,101 @@ useEffect(() => {
     }
   };
 
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const isAdminUser = loginUser?.UserTypeId === "0" || loginUser?.UserType === "DEVELOPER";
+  // const fetchUsers = async () => {
+  //   setLoadingUsers(true);
+  //   try {
+  //     const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
+  //     const isAdminUser = loginUser?.UserTypeId === "0" || loginUser?.UserType === "DEVELOPER";
 
-      if (isAdminUser) {
-        const response = await fetchLink({
-          address: `pos/retailerMasterOptRetailerId?limit=100000&page=1`,
-          method: "GET",
-        });
+  //     if (isAdminUser) {
+  //       const response = await fetchLink({
+  //         address: `pos/retailerMasterOptRetailerId?limit=100000&page=1`,
+  //         method: "GET",
+  //       });
 
-        if (response?.success && Array.isArray(response.data)) {
-          const userList = response.data.map((user) => ({
-            id: user.Customer_Id || user.Ret_Id,
-            customerId: user.Customer_Id || user.Ret_Id,
-            name: user.Ledger_Name || user.Billl_Name || "Unknown",
-            ledgerName: user.Ledger_Name,
-            billName: user.Billl_Name,
-            location: user.Address || user.City || "",
-            city: user.City || "",
-            mobile: user.Mobile_No || "",
-          }));
-          setUsers(userList);
-        }
-      } else {
-        const localData = JSON.parse(localStorage.getItem("user") || "{}");
-        const retailerArray = Array.isArray(localData) ? localData : Object.values(localData);
-        const userList = retailerArray.map((user) => ({
-          id: user.Ret_Id,
-          customerId: user.Ret_Id,
-          name: user.Ledger_Name || "",
-          ledgerName: user.Ledger_Name || "",
-          billName: user.Party_Mailing_Name || "",
-          location: user.Party_Location || "",
-          city: user.Party_District || "",
-          mobile: user.Party_Mobile_1 || "",
+  //       if (response?.success && Array.isArray(response.data)) {
+  //         const userList = response.data.map((user) => ({
+  //           id: user.Customer_Id || user.Ret_Id,
+  //           customerId: user.Customer_Id || user.Ret_Id,
+  //           name: user.Ledger_Name || user.Billl_Name || "Unknown",
+  //           ledgerName: user.Ledger_Name,
+  //           billName: user.Billl_Name,
+  //           location: user.Address || user.City || "",
+  //           city: user.City || "",
+  //           mobile: user.Mobile_No || "",
+  //         }));
+  //         setUsers(userList);
+  //       }
+  //     } else {
+  //       const localData = JSON.parse(localStorage.getItem("user") || "{}");
+  //       const retailerArray = Array.isArray(localData) ? localData : Object.values(localData);
+  //       const userList = retailerArray.map((user) => ({
+  //         id: user.Ret_Id,
+  //         customerId: user.Ret_Id,
+  //         name: user.Ledger_Name || "",
+  //         ledgerName: user.Ledger_Name || "",
+  //         billName: user.Party_Mailing_Name || "",
+  //         location: user.Party_Location || "",
+  //         city: user.Party_District || "",
+  //         mobile: user.Party_Mobile_1 || "",
+  //       }));
+  //       setUsers(userList);
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+  //     toast.error("Failed to load users");
+  //   } finally {
+  //     setLoadingUsers(false);
+  //   }
+  // };
+
+ 
+ const fetchUsers = async () => {
+  setLoadingUsers(true);
+  try {
+    if (isEmployee) {
+      // Employees see the full customer/retailer list
+      const response = await fetchLink({
+        address: `pos/retailerMasterOpt?limit=100000&page=1`,
+        method: "GET",
+      });
+
+      if (response?.success && Array.isArray(response.data)) {
+        const userList = response.data.map((user) => ({
+          id: user.Customer_Id || user.Ret_Id,
+          customerId: user.Customer_Id || user.Ret_Id,
+          name: user.Ledger_Name || user.Billl_Name || user.Short_Name || "Unknown",
+          ledgerName: user.Ledger_Name,
+          billName: user.Billl_Name,
+          location: user.Address || user.City || "",
+          city: user.City || "",
+          mobile: user.Mobile_No || "",
         }));
         setUsers(userList);
+      } else {
+        toast.error(response?.message || "Failed to fetch customer list");
+        setUsers([]);
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load users");
-    } finally {
-      setLoadingUsers(false);
+    } else {
+      // Customer login: only their own account, no dropdown needed
+      const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const customerId = loginUser.Ret_Id || loginUser.Customer_Id || loginUser.id;
+      if (customerId) {
+        setUsers([{
+          id: customerId,
+          customerId,
+          name: loginUser.Ledger_Name || loginUser.Name || "You",
+        }]);
+      }
     }
-  };
-
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to load users");
+  } finally {
+    setLoadingUsers(false);
+  }
+};
+ 
   const handleUserSelect = React.useCallback((user) => {
     setSelectedUser({
       ...user,
@@ -244,17 +291,13 @@ useEffect(() => {
     });
   };
 
-  useEffect(() => {
-  const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
-
-  const isAdminUser =
-    loginUser?.UserTypeId === "0" ||
-    loginUser?.UserType === "DEVELOPER";
-
-  if (!isAdminUser) {
-    fetchUsers();
-  }
-}, []);
+useEffect(() => {
+     const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
+     const isAdminUser = loginUser?.UserTypeId === "0" || loginUser?.UserType === "DEVELOPER";
+     if (!isAdminUser) {
+       fetchUsers();
+     }
+   }, []);
 
 
 useEffect(() => {
