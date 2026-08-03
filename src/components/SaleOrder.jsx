@@ -6523,9 +6523,9 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
           </p>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "8px" }}>
             <span style={{ fontSize: "17px", fontWeight: "700", color: "#3a1f0e" }}>₹{product.price}</span>
-            {outOfStock ? (
+            {/* {outOfStock ? (
               <span style={{ fontSize: "11px", color: "#fff", background: "#b0a0a0", borderRadius: "10px", padding: "3px 8px" }}>Out of Stock</span>
-            ) : (
+            ) : ( */}
               <div style={{ display: "flex", alignItems: "center", background: "#6b5454", borderRadius: "20px", padding: "3px 8px", gap: "4px" }}>
                 <button
                   onClick={handleDecrease}
@@ -6594,7 +6594,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
                   }}
                 >+</button>
               </div>
-            )}
+            {/* )} */}
           </div>
         </div>
         <div style={{ width: "110px", minWidth: "110px", overflow: "hidden", background: "#f5f0eb" }}>
@@ -6620,11 +6620,11 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             <div className="bg-[#6b5454] h-[30px] overflow-clip px-3 flex items-center justify-center rounded">
               <p className="font-['Inter:Medium',sans-serif] font-medium leading-[normal] not-italic text-[20px] text-white m-0">₹{product.price}</p>
             </div>
-            {outOfStock ? (
+            {/* {outOfStock ? (
               <div className="bg-[#6b5454] h-[26px] rounded-[15px] px-3 opacity-50 flex items-center justify-center">
                 <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-white m-0">Out of Stock</p>
               </div>
-            ) : (
+            ) : ( */}
               <div className="bg-[#6b5454] h-[30px] flex items-center justify-between px-3 gap-1 rounded">
                 <button 
                   onClick={handleDecrease} 
@@ -6683,7 +6683,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
                   className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center"
                 >+</button>
               </div>
-            )}
+            {/* )} */}
           </div>
           <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic text-[12px] whitespace-nowrap m-0 ${outOfStock ? "text-red-500" : "text-[#403f3d]"}`}>
             Stock: {outOfStock ? "Out of Stock" : `${product.stock.toFixed(1)} Bags`}
@@ -7644,7 +7644,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
 }
 
 
-const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,createdOn, orderDate }, ref) => {
+const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,createdOn, orderDate,expenses }, ref) => {
   
   const safeNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
   const rupee = (n) =>
@@ -7652,6 +7652,13 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
 
   const totalKgs = cartItems?.length
     ? cartItems.reduce((sum, item) => sum + safeNum(item.kgs), 0) : 0;
+
+
+       const expenseRows = (Array.isArray(expenses) ? expenses : []).filter(
+      (e) => e && (e.Account_Name || e.Expence_Name) && Number(e.Expence_Value) !== 0
+    );
+
+
 
   const totalBags = cartItems?.length
     ? cartItems.reduce((sum, item) => {
@@ -7662,40 +7669,39 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
 
 
        const formatCreatedDate = () => {
-    // First try to use createdOn from the order
+  
     let dateToUse = createdOn || orderDate;
     
     if (dateToUse) {
       try {
         let dateObj;
         
-        // Handle different date formats
+
         if (typeof dateToUse === 'string') {
-          // Check if it's in "YYYY-MM-DD HH:MM:SS" format
+          
           if (dateToUse.includes(' ') && dateToUse.includes('-')) {
             const [datePart, timePart] = dateToUse.split(' ');
             const [year, month, day] = datePart.split('-');
             
             if (timePart) {
               const [hours, minutes] = timePart.split(':');
-              // Create date object with these parts
+              
               dateObj = new Date(year, parseInt(month) - 1, day, parseInt(hours), parseInt(minutes));
             } else {
               dateObj = new Date(year, parseInt(month) - 1, day);
             }
           } 
-          // Check if it's ISO format with T
+     
           else if (dateToUse.includes('T')) {
             dateObj = new Date(dateToUse);
           }
-          // Try parsing as regular date string
+     
           else {
             dateObj = new Date(dateToUse);
           }
-          
-          // Check if date is valid
+      
           if (!isNaN(dateObj.getTime())) {
-            // Format to DD/MM/YYYY HH:MM AM/PM
+          
             const day = String(dateObj.getDate()).padStart(2, '0');
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
             const year = dateObj.getFullYear();
@@ -7752,7 +7758,7 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
         }
       } catch (e) {}
     }
-    return formatCreatedDate().split(' ')[0]; // Return just the date part
+    return formatCreatedDate().split(' ')[0]; 
   };
 
   
@@ -7845,6 +7851,43 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
               )}
             </tbody>
           </table>
+          {expenseRows.length > 0 && (
+  <div style={{  padding: "1mm" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+      <tbody>
+        {expenseRows.map((exp, i) => {
+          const val = safeNum(exp.Expence_Value);
+          return (
+            <tr key={i}>
+              <td
+                style={{
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  padding: "0 4px 1px 0",
+                  width: "1%", 
+                }}
+              >
+                {val < 0 ? "-" : ""}₹{rupee(Math.abs(val))}
+              </td>
+              <td
+                style={{
+                  fontWeight: 700,
+                  textAlign: "center",
+                  
+                  padding: "0 0 1px 0",
+                }}
+              >
+                {(exp.Account_Name || exp.Expence_Name || "")}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+)}
+
+
           <div style={{
             background: "#f0f0f0", borderTop: "1px solid #000", padding: "1mm",
             display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -7864,7 +7907,7 @@ QuotationPrint.displayName = "QuotationPrint";
 
 
 
-const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrintAndSave, storage, isReprint = false,createdOn, orderDate }) => {
+const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrintAndSave, storage, isReprint = false,createdOn, orderDate ,expenses}) => {
   const printRef = useRef();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -7943,7 +7986,17 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
       .join("");
 
 
-
+ const expenseRowsHtml = (Array.isArray(expenses) ? expenses : [])
+      .filter(exp => exp && exp.Account_Name && Number(exp.Expence_Value) !== 0)
+      .map(exp => {
+        const val = safeNum(exp.Expence_Value);
+        return `
+          <div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:13px;font-weight:bold;border-bottom:1px dashed #ccc;">
+            <span>${val < 0 ? "-" : ""}₹${rupee(Math.abs(val))}</span>
+            <span>${exp.Account_Name}</span>
+          </div>`;
+      })
+      .join("");
       
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-GB");
@@ -8150,7 +8203,7 @@ return `<!DOCTYPE html>
             `}
           </tbody>
         </table>
-        
+         ${expenseRowsHtml}
         <div class="total-row">
           <span>₹${rupee(totals?.subtotal)}</span>
           <span>${totalKgs.toFixed(2)} KGS</span>
@@ -8232,6 +8285,7 @@ return `<!DOCTYPE html>
             customer={customer}
             cartItems={cartItems}
             totals={totals}
+            expenses={expenses} 
             storage={storage}
               createdOn={createdOn} // Pass this
             orderDate={orderDate} // Pass this
@@ -8257,9 +8311,8 @@ return `<!DOCTYPE html>
 };
 
 
-// iOS-specific print handler
 const handleIOSPrint = (html) => {
-  // Create a blob and open in new tab
+
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
@@ -8430,6 +8483,16 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
   );
 };
 
+const RoundNumber = (val) => {
+  const num = Number(val);
+  if (!Number.isFinite(num)) return 0;
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
+const getPercentage = (total, percent) =>
+  RoundNumber((Number(total) || 0) * (Number(percent) || 0) / 100);
+const Addition = (...args) =>
+  RoundNumber(args.reduce((s, v) => s + (Number(v) || 0), 0));
+
 const MobileCartDrawer = ({
   isOpen, onClose, cartItems, products, allProducts, onUpdateQty, onRemoveItem,
   isLoggedIn, onLoginClick, externalCustomers, onCustomerChange,
@@ -8462,11 +8525,15 @@ const MobileCartDrawer = ({
   const [brokerSearch, setBrokerSearch] = useState("");
   const [transporterSearch, setTransporterSearch] = useState("");
 
-
   const [customPrices, setCustomPrices] = useState({});
   const [editingProductId, setEditingProductId] = useState(null);
   const [editingField, setEditingField] = useState(null); // 'price' or 'qty'
   const [tempValue, setTempValue] = useState("");
+
+  // ── Expenses state ─────────────────────────────────────────────
+  const [expenseMaster, setExpenseMaster] = useState([]);
+  const [loadingExpenseMaster, setLoadingExpenseMaster] = useState(false);
+  const [invoiceExpenses, setInvoiceExpenses] = useState([]);
 
   const handleReactPrint = useReactToPrint({
     contentRef: printRef,
@@ -8487,7 +8554,7 @@ const MobileCartDrawer = ({
   });
 
   useEffect(() => {
-    if (isOpen) { fetchBrokers(); fetchTransporters(); }
+    if (isOpen) { fetchBrokers(); fetchTransporters(); fetchExpenseMaster(); }
   }, [isOpen]);
 
   const fetchBrokers = async () => {
@@ -8533,6 +8600,23 @@ const MobileCartDrawer = ({
       toast.error("Failed to load transporters");
     } finally {
       setLoadingTransporters(false);
+    }
+  };
+
+  // ── Fetch expense master (same endpoint desktop uses) ──────────
+  const fetchExpenseMaster = async () => {
+    if (expenseMaster.length > 0) return;
+    setLoadingExpenseMaster(true);
+    try {
+      const response = await fetchLink({ address: `masters/defaultAccountMaster?Type=SALE_ORDER` });
+      if (response?.success && Array.isArray(response.data)) {
+        setExpenseMaster(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load expense master:", error);
+      toast.error("Failed to load expense options");
+    } finally {
+      setLoadingExpenseMaster(false);
     }
   };
 
@@ -8645,6 +8729,22 @@ const MobileCartDrawer = ({
   const totalItems = enhancedCartItems.reduce((s, i) => s + i.quantity, 0);
   const totalKgs = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
   const subtotalAmount = enhancedCartItems.reduce((s, i) => s + i.amount, 0);
+
+  // ── Coolie expense, computed from product master data (matches desktop logic) ──
+  const coolieExp = useMemo(() => {
+    return enhancedCartItems.reduce((sum, item) => {
+      const coolieRate = parseFloat(item.coolie) || 0;
+      return Addition(sum, coolieRate * item.quantity);
+    }, 0);
+  }, [enhancedCartItems]);
+
+  // ── Running invoice total: subtotal + all expenses added so far ──
+  const Total_Invoice_value = useMemo(() => {
+    const totalExpenses = invoiceExpenses.reduce(
+      (acc, exp) => Addition(acc, parseFloat(exp.Expence_Value) || 0), 0
+    );
+    return Addition(subtotalAmount, totalExpenses);
+  }, [subtotalAmount, invoiceExpenses]);
 
   // Handle price click
   const handlePriceClick = (productId, currentPrice) => {
@@ -8768,19 +8868,79 @@ const MobileCartDrawer = ({
   const filteredBrokers = brokerSearch.trim()
     ? availableBrokers.filter(b => matchName(b.name, brokerSearch)) : availableBrokers;
 
-  const computeOrderTotals = () => {
-    const totalBeforeTax = enhancedCartItems.reduce((s, i) => {
-      const price = customPrices[i.id] !== undefined ? customPrices[i.id] : i.price;
-      return s + (price * i.kgs);
-    }, 0);
-    const totalTax = enhancedCartItems.reduce((s, i) => {
-      const price = customPrices[i.id] !== undefined ? customPrices[i.id] : i.price;
-      const taxRate = i.taxRate || 12;
-      return s + ((price * i.kgs) * (taxRate / 100));
-    }, 0);
-    const totalInvoiceValue = totalBeforeTax + totalTax;
-    return { totalBeforeTax, totalTax, totalInvoiceValue };
+
+  const handleSelectExpense = (index, expenseId) => {
+    if (!expenseId) {
+      setInvoiceExpenses(prev => prev.map((item, i) =>
+        i === index ? { Expense_Id: '', Account_Name: '', Group_Name: '', percentageValue: 0, Expence_Value: '' } : item
+      ));
+      return;
+    }
+
+    const selected = expenseMaster.find(exp => String(exp.Acc_Id) === String(expenseId));
+    if (!selected) return;
+
+    const isCoolie = (selected.Account_Name || '').trim().toUpperCase() === 'COOLIE EXPENSES';
+    const percentValue = Number(selected.percentageValue) || 0;
+
+    setInvoiceExpenses(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+
+      let value = '';
+      if (isCoolie) {
+        value = RoundNumber(-coolieExp);
+      } else if (percentValue !== 0) {
+        value = RoundNumber(getPercentage(Total_Invoice_value, percentValue));
+      }
+
+      return {
+        ...item,
+        Expense_Id: selected.Acc_Id,
+        Account_Name: selected.Account_Name,
+        Group_Name: selected.Group_Name,
+        percentageValue: selected.percentageValue,
+        Expence_Value: value,
+      };
+    }));
   };
+
+  // ── Manual entry (only enabled for non-percentage expenses) ──
+  const handleExpenseValueChange = (index, value) => {
+    if (value !== '' && !/^-?\d*\.?\d*$/.test(value)) return;
+    setInvoiceExpenses(prev => prev.map((item, i) =>
+      i === index ? { ...item, Expence_Value: value } : item
+    ));
+  };
+
+  const addExpenseRow = () => {
+    setInvoiceExpenses(prev => [
+      ...prev,
+      { Expense_Id: '', Account_Name: '', Group_Name: '', percentageValue: 0, Expence_Value: '' },
+    ]);
+  };
+
+  const removeExpenseRow = (index) => {
+    setInvoiceExpenses(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const getAvailableOptionsForRow = (rowIndex) =>
+    expenseMaster.filter(exp => {
+      if (String(exp.Acc_Id) === String(invoiceExpenses[rowIndex]?.Expense_Id)) return true;
+      return !invoiceExpenses.some((inv, idx) => idx !== rowIndex && String(inv.Expense_Id) === String(exp.Acc_Id));
+    });
+
+const computeOrderTotals = () => {
+  const totalBeforeTax = enhancedCartItems.reduce((s, i) => {
+    const price = customPrices[i.id] !== undefined ? customPrices[i.id] : i.price;
+    return s + (price * i.kgs);
+  }, 0);
+  const totalTax = 0; // Tax exempted sale order
+  const totalExpenses = invoiceExpenses.reduce(
+    (acc, exp) => Addition(acc, parseFloat(exp.Expence_Value) || 0), 0
+  );
+  const totalInvoiceValue = Addition(totalBeforeTax, totalExpenses);
+  return { totalBeforeTax, totalTax, totalExpenses, totalInvoiceValue };
+};
 
   const handleCheckout = async () => {
     if (!isLoggedIn) { toast.error("Please sign in to place an order"); setIsLoginPopupOpen(true); return; }
@@ -8831,6 +8991,15 @@ const MobileCartDrawer = ({
       }
     }
 
+    const Expence_Array = invoiceExpenses
+      .filter(e => e.Expense_Id)
+      .map(e => ({
+        Expense_Id: e.Expense_Id,
+        Account_Name: e.Account_Name,
+        Group_Name: e.Group_Name,
+        Expence_Value: RoundNumber(e.Expence_Value),
+      }));
+
     const generalInfo = {
       ...(isEditing && { So_Id: parseInt(editOrderId) }),
       So_Date: formattedDateOnly,
@@ -8838,7 +9007,8 @@ const MobileCartDrawer = ({
       Sales_Person_Id: storage?.user?.SalesPersonId || 0,
       Branch_Id: storage?.user?.BranchId || parseData?.BranchId,
       VoucherType: 200, GST_Inclusive: 2, IS_IGST: 0,
-      CSGT_Total: (totalTax / 2).toFixed(2), SGST_Total: (totalTax / 2).toFixed(2),
+      CSGT_Total: (totalTax / 2).toFixed(2), // → "0.00"
+SGST_Total: (totalTax / 2).toFixed(2), // → "0.00"
       IGST_Total: "0.00", Round_off: "0.00",
       Total_Before_Tax: totalBeforeTax.toFixed(2), Total_Tax: totalTax.toFixed(2),
       Total_Invoice_value: totalInvoiceValue.toFixed(2),
@@ -8853,31 +9023,32 @@ const MobileCartDrawer = ({
       Deliv_Address: deliveryAddress || shippingAddress || selectedCustomer.address || "",
       Total_Kgs: totalKgsValue.toFixed(2), Total_Items: enhancedCartItems.length,
       Staff_Involved_List,
+      Expence_Array,
     };
 
-    const stockInfo = enhancedCartItems.map((item, index) => {
-      const taxRate = item.taxRate || 12;
-      const cgstSgstRate = taxRate / 2;
-      const price = customPrices[item.id] !== undefined ? customPrices[item.id] : item.price;
-      const taxableAmount = price * item.kgs;
-      const taxAmount = taxableAmount * (taxRate / 100);
-      const cgstSgstAmount = taxAmount / 2;
-      const finalAmount = taxableAmount + taxAmount;
-      return {
-        So_Date: formattedDateOnly, S_No: index + 1, Item_Id: parseInt(item.id),
-        Bill_Qty: item.kgs.toFixed(2), Taxable_Rate: price.toFixed(2),
-        Item_Rate: price.toFixed(2), Amount: taxableAmount.toFixed(2), Free_Qty: "0.00",
-        Total_Qty: item.quantity.toString(), Taxble: taxAmount.toFixed(2),
-        HSN_Code: item.hsn || "210690", Unit_Id: item.unitId, Unit_Name: item.unitName,
-        Taxable_Amount: taxableAmount.toFixed(2), Tax_Rate: taxRate,
-        Cgst: cgstSgstRate, Cgst_Amo: cgstSgstAmount.toFixed(2),
-        Sgst: cgstSgstRate, Sgst_Amo: cgstSgstAmount.toFixed(2),
-        Igst: 0, Igst_Amo: "0.00", Final_Amo: finalAmount.toFixed(2),
-        Created_on: formattedDateTime, Product_Id: parseInt(item.id), Product_Name: item.name,
-        Quantity: item.quantity, Price: price, Total: taxableAmount.toFixed(2),
-        Weight: item.kgs.toString(), Unit: item.unit, PackGet: item.packGet,
-      };
-    });
+   const stockInfo = enhancedCartItems.map((item, index) => {
+  const taxRate = 0; // Tax exempted sale order
+  const cgstSgstRate = 0;
+  const price = customPrices[item.id] !== undefined ? customPrices[item.id] : item.price;
+  const taxableAmount = price * item.kgs;
+  const taxAmount = 0;
+  const cgstSgstAmount = 0;
+  const finalAmount = taxableAmount;
+  return {
+    So_Date: formattedDateOnly, S_No: index + 1, Item_Id: parseInt(item.id),
+    Bill_Qty: item.kgs.toFixed(2), Taxable_Rate: price.toFixed(2),
+    Item_Rate: price.toFixed(2), Amount: taxableAmount.toFixed(2), Free_Qty: "0.00",
+    Total_Qty: item.quantity.toString(), Taxble: taxAmount.toFixed(2),
+    HSN_Code: item.hsn || "210690", Unit_Id: item.unitId, Unit_Name: item.unitName,
+    Taxable_Amount: taxableAmount.toFixed(2), Tax_Rate: taxRate,
+    Cgst: cgstSgstRate, Cgst_Amo: cgstSgstAmount.toFixed(2),
+    Sgst: cgstSgstRate, Sgst_Amo: cgstSgstAmount.toFixed(2),
+    Igst: 0, Igst_Amo: "0.00", Final_Amo: finalAmount.toFixed(2),
+    Created_on: formattedDateTime, Product_Id: parseInt(item.id), Product_Name: item.name,
+    Quantity: item.quantity, Price: price, Total: taxableAmount.toFixed(2),
+    Weight: item.kgs.toString(), Unit: item.unit, PackGet: item.packGet,
+  };
+});
 
     const saleData = {
       generalInfo, stockInfo,
@@ -8929,6 +9100,7 @@ const MobileCartDrawer = ({
           orderId: response.data?.So_Id || response.data?.OrderId,
           customerData: customerDataForPrint, printCartItems,
           totals: { subtotal: totalInvoiceValue },
+          expenses: Expence_Array,
         });
         setPrintModalOpen(true);
       } else {
@@ -9256,6 +9428,50 @@ const MobileCartDrawer = ({
     );
   };
 
+  // ── Render one expense row ─────────────────────────────────────
+  const renderExpenseRow = (row, index) => {
+    const isDisabledInput = !row.Expense_Id || Number(row.percentageValue) !== 0;
+    return (
+      <div key={index} style={{
+        display: "flex", gap: "8px", alignItems: "center",
+        padding: "10px", background: "#f9f4ef", borderRadius: "8px",
+        border: "1px solid #e8ddd4", marginBottom: "8px", flexWrap: "wrap",
+      }}>
+        <select
+          value={row.Expense_Id}
+          onChange={(e) => handleSelectExpense(index, e.target.value)}
+          style={{
+            flex: "1 1 160px", padding: "8px", border: "1px solid #ddd",
+            borderRadius: "6px", fontSize: "13px", outline: "none", background: "#fff",
+          }}
+        >
+          <option value="">Select Expense</option>
+          {getAvailableOptionsForRow(index).map(exp => (
+            <option key={exp.Acc_Id} value={exp.Acc_Id}>{exp.Account_Name}</option>
+          ))}
+        </select>
+
+        <input
+          type="text"
+          value={row.Expence_Value}
+          disabled={isDisabledInput}
+          onChange={(e) => handleExpenseValueChange(index, e.target.value)}
+          placeholder="0.00"
+          style={{
+            width: "90px", padding: "8px", border: `1px solid ${BROWN}`,
+            borderRadius: "6px", fontSize: "13px", textAlign: "right",
+            outline: "none", background: isDisabledInput ? "#f0f0f0" : "#fff",
+          }}
+        />
+
+        <button
+          onClick={() => removeExpenseRow(index)}
+          style={{ background: "transparent", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "18px" }}
+        >✕</button>
+      </div>
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -9274,6 +9490,7 @@ const MobileCartDrawer = ({
             onClose();
           }}
           customer={lastOrderData.customerData}
+          expenses={lastOrderData?.expenses} 
           cartItems={lastOrderData.printCartItems}
           totals={lastOrderData.totals}
           storage={JSON.parse(localStorage.getItem('user') || '{}')}
@@ -9367,6 +9584,31 @@ const MobileCartDrawer = ({
                 </label>
                 {enhancedCartItems.map(item => renderCartItem(item))}
 
+                {/* ── Expenses section ── */}
+                <div style={{ marginTop: "16px", marginBottom: "4px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#333" }}>Expenses</label>
+                    <button
+                      onClick={addExpenseRow}
+                      disabled={expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length}
+                      style={{
+                        background: BROWN, color: "#fff", border: "none", borderRadius: "20px",
+                        padding: "6px 14px", fontSize: "12px", fontWeight: "600",
+                        cursor: (expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length) ? "not-allowed" : "pointer",
+                        opacity: (expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length) ? 0.5 : 1,
+                      }}
+                    >+ Add Expense</button>
+                  </div>
+
+                  {loadingExpenseMaster && (
+                    <div style={{ padding: "8px", textAlign: "center" }}>
+                      <CircularProgress size={16} style={{ color: BROWN }} />
+                    </div>
+                  )}
+
+                  {invoiceExpenses.map((row, index) => renderExpenseRow(row, index))}
+                </div>
+
                 {/* Order Summary */}
                 <div style={{
                   marginTop: "12px",
@@ -9378,17 +9620,23 @@ const MobileCartDrawer = ({
                   {[
                     ["Total Items:", totalItems],
                     ["Total Kgs:", `${totalKgs.toFixed(2)} kg`],
-                    ["Subtotal:", `₹${computeOrderTotals().totalBeforeTax.toFixed(2)}`],
-                    ["Tax:", `₹${computeOrderTotals().totalTax.toFixed(2)}`],
+                    ["Subtotal:", `₹${subtotalAmount.toFixed(2)}`],
+                    ...invoiceExpenses
+                      .filter(e => e.Account_Name)
+                      .map(e => [
+                        `${e.Account_Name}:`,
+                        `${Number(e.Expence_Value) < 0 ? "-" : ""}₹${Math.abs(Number(e.Expence_Value) || 0).toFixed(2)}`,
+                      ]),
+                  
                     ["Total:", `₹${computeOrderTotals().totalInvoiceValue.toFixed(2)}`],
                   ].map(([label, value]) => (
                     <div key={label} style={{ 
                       display: "flex", 
                       justifyContent: "space-between", 
-                      fontSize: label.includes("Total:") && !label.includes("Items") && !label.includes("Kgs") ? "15px" : "13px", 
-                      color: label.includes("Total:") && !label.includes("Items") && !label.includes("Kgs") ? BROWN_DARK : "#666", 
+                      fontSize: label === "Total:" ? "15px" : "13px", 
+                      color: label === "Total:" ? BROWN_DARK : "#666", 
                       marginBottom: "6px",
-                      fontWeight: label.includes("Total:") && !label.includes("Items") && !label.includes("Kgs") ? "bold" : "normal",
+                      fontWeight: label === "Total:" ? "bold" : "normal",
                     }}>
                       <span>{label}</span>
                       <span>{value}</span>
@@ -10509,6 +10757,10 @@ const [pendingUsername, setPendingUsername] = useState("");
   // }, []);
 
 
+
+
+
+  
   const getContactNumberFromURL = useCallback(() => {
   try {
     const path = window.location.pathname;
@@ -11034,7 +11286,8 @@ const fetchCompleteCustomerDetails = async (customerId) => {
         const pg = parseFloat(p.PackGet) || 1;
         return pg > 0 ? bq / pg > 0 : false;
       });
-      setAllProducts(inStock); setDisplayProducts(inStock);
+      // setAllProducts(inStock); setDisplayProducts(inStock);
+      setAllProducts(active); setDisplayProducts(active);
       localStorage.setItem("products", JSON.stringify(inStock.map(formatProduct)));
       setInitialLoadDone(true);
     } catch (error) { toast.error("Failed to load products"); }
@@ -11064,9 +11317,9 @@ const fetchCompleteCustomerDetails = async (customerId) => {
   }, 0);
 
   const filtered = displayProducts.filter((p) => {
-    const bq = parseFloat(p.Bal_Qty) || 0;
-    const pg = parseFloat(p.PackGet) || 1;
-    if (pg > 0 ? bq / pg <= 0 : true) return false;
+    // const bq = parseFloat(p.Bal_Qty) || 0;
+    // const pg = parseFloat(p.PackGet) || 1;
+    // if (pg > 0 ? bq / pg <= 0 : true) return false;
     if (!search) return true;
     const normalize = (str) => (str || "").toLowerCase().replace(/[.\-_\s]+/g, "");
     const sl = normalize(search);
@@ -11702,11 +11955,10 @@ function SaleOrders({ onBack }) {
   };
 
 const handlePrintOrder = async (e, order) => {
-
   e.stopPropagation();
   try {
     const productsList = order.Products_List || [];
-     const createdOnDate = order.Created_on || order.Created_On || order.created_on;
+    const createdOnDate = order.Created_on || order.Created_On || order.created_on;
     const orderDateValue = order.So_Date;
 
     const originalCustomerName = order.Retailers_Name || order.Customer_Name || order.Party_Name || order.Billl_Name || "";
@@ -11715,9 +11967,6 @@ const handlePrintOrder = async (e, order) => {
     const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
     const originalBrokerName = getBrokerName(order);
     const originalTransporterName = getTransporterName(order);
-    
-
-
 
     const printCartItems = productsList.map(p => ({
       Print_Name: p.Product_Short_Name || p.Product_Name || "",
@@ -11726,11 +11975,10 @@ const handlePrintOrder = async (e, order) => {
       price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
     }));
 
-    // Create customer data with correct field priorities
     let customerData = {
-      Billl_Name: originalCustomerName,  // Primary field for PARTY NAME
+      Billl_Name: originalCustomerName,
       Party_Mailing_Name: originalCustomerName,
-      Party_Location: originalCity,       // Primary field for LOCATION
+      Party_Location: originalCity,
       Party_Mailing_Address: originalAddress,
       City: originalCity,
       Mobile_No: originalMobile,
@@ -11741,17 +11989,16 @@ const handlePrintOrder = async (e, order) => {
 
     const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
     if (retailerId) {
-      const response = await fetchLink({ 
-        address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1` 
+      const response = await fetchLink({
+        address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1`
       });
       if (response?.success && Array.isArray(response.data)) {
         const found = response.data.find(c => String(c.Customer_Id) === String(retailerId));
         if (found) {
-        
           customerData = {
-            Billl_Name: originalCustomerName,  
+            Billl_Name: originalCustomerName,
             Party_Mailing_Name: originalCustomerName,
-            Party_Location: originalCity || found.City || "", 
+            Party_Location: originalCity || found.City || "",
             Party_Mailing_Address: originalAddress || found.Address || found.Party_Mailing_Address || "",
             City: originalCity || found.City || "",
             Mobile_No: originalMobile || found.Mobile_No || "",
@@ -11763,25 +12010,60 @@ const handlePrintOrder = async (e, order) => {
       }
     }
 
-    const totalInvoiceValue = parseFloat(order.Total_Invoice_value || 0);
+    // ── Expense array from the LIST/READ endpoint uses DR/CR columns,
+    //    not the single "Expence_Value" field used when creating an order.
+    const expenseList = order.Expence_Array || order.Expense_Array || [];
+    const normalizedExpenses = expenseList.map(exp => {
+      const dr = parseFloat(exp.Expence_Value_DR) || 0;
+      const cr = parseFloat(exp.Expence_Value_CR) || 0;
+      // Net signed value. Adjust the sign convention here if your
+      // ledger treats DR as an addition rather than a deduction.
+      const netValue = dr - cr;
+      return {
+        Account_Name: exp.Expence_Name || exp.Account_Name || "",
+        Expence_Value: netValue,
+      };
+    });
+
+    const totalExpensesValue = normalizedExpenses.reduce(
+      (acc, exp) => acc + (parseFloat(exp.Expence_Value) || 0), 0
+    );
+
+    // Sum of line items, independent of whatever Total_Invoice_value says
+    const totalBeforeTax = productsList.reduce((sum, p) => {
+      const amt = parseFloat(p.Amount);
+      if (!isNaN(amt) && amt !== 0) return sum + amt;
+      const rate = parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0;
+      const qty = parseFloat(p.Bill_Qty) || 0;
+      return sum + rate * qty;
+    }, 0);
+
+    // Recompute total so the expense is guaranteed to be reflected,
+    // instead of trusting the stored Total_Invoice_value as-is.
+    const totalInvoiceValue = totalBeforeTax + totalExpensesValue;
+
     const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
-    const totals = { 
-      subtotal: totalInvoiceValue, 
-      tax: 0, 
-      total: totalInvoiceValue, 
-      totalItems: productsList.length, 
-      totalKgs 
+
+    const totals = {
+      subtotal: totalInvoiceValue,
+      totalBeforeTax,
+      totalExpenses: totalExpensesValue,
+      tax: 0,
+      total: totalInvoiceValue,
+      totalItems: productsList.length,
+      totalKgs,
     };
-    
+
     const storage = JSON.parse(localStorage.getItem('user') || '{}');
-    
-    setPrintData({ 
-      customer: customerData, 
-      cartItems: printCartItems, 
-      totals, 
+
+    setPrintData({
+      customer: customerData,
+      cartItems: printCartItems,
+      totals,
+      expenses: normalizedExpenses,
       storage,
-      createdOn: createdOnDate,  // Add this
-      orderDate: orderDateValue,  // Add this
+      createdOn: createdOnDate,
+      orderDate: orderDateValue,
     });
     setPrintModalOpen(true);
   } catch (error) {
@@ -11789,6 +12071,95 @@ const handlePrintOrder = async (e, order) => {
     toast.error("Failed to prepare print data");
   }
 };
+
+// const handlePrintOrder = async (e, order) => {
+
+//   e.stopPropagation();
+//   try {
+//     const productsList = order.Products_List || [];
+//      const createdOnDate = order.Created_on || order.Created_On || order.created_on;
+//     const orderDateValue = order.So_Date;
+
+//     const originalCustomerName = order.Retailers_Name || order.Customer_Name || order.Party_Name || order.Billl_Name || "";
+//     const originalCity = order.City || "";
+//     const originalAddress = order.Shipp_Address || order.Shipping_Address || order.Address || "";
+//     const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
+//     const originalBrokerName = getBrokerName(order);
+//     const originalTransporterName = getTransporterName(order);
+    
+
+
+
+//     const printCartItems = productsList.map(p => ({
+//       Print_Name: p.Product_Short_Name || p.Product_Name || "",
+//       shortName: p.Short_Name || p.Product_Short_Name || p.Product_Name || "",
+//       kgs: parseFloat(p.Bill_Qty) || 0,
+//       price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
+//     }));
+
+   
+//     let customerData = {
+//       Billl_Name: originalCustomerName, 
+//       Party_Mailing_Name: originalCustomerName,
+//       Party_Location: originalCity,      
+//       Party_Mailing_Address: originalAddress,
+//       City: originalCity,
+//       Mobile_No: originalMobile,
+//       Land_Line: originalMobile,
+//       Transporter: originalTransporterName,
+//       Broker: originalBrokerName,
+//     };
+
+//     const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
+//     if (retailerId) {
+//       const response = await fetchLink({ 
+//         address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1` 
+//       });
+//       if (response?.success && Array.isArray(response.data)) {
+//         const found = response.data.find(c => String(c.Customer_Id) === String(retailerId));
+//         if (found) {
+        
+//           customerData = {
+//             Billl_Name: originalCustomerName,  
+//             Party_Mailing_Name: originalCustomerName,
+//             Party_Location: originalCity || found.City || "", 
+//             Party_Mailing_Address: originalAddress || found.Address || found.Party_Mailing_Address || "",
+//             City: originalCity || found.City || "",
+//             Mobile_No: originalMobile || found.Mobile_No || "",
+//             Land_Line: found.Land_Line || originalMobile || "",
+//             Transporter: originalTransporterName || found.Transporter || "",
+//             Broker: originalBrokerName || found.Broker || "",
+//           };
+//         }
+//       }
+//     }
+
+//     const totalInvoiceValue = parseFloat(order.Total_Invoice_value || 0);
+//     const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
+//     const totals = { 
+//       subtotal: totalInvoiceValue, 
+//       tax: 0, 
+//       total: totalInvoiceValue, 
+//       totalItems: productsList.length, 
+//       totalKgs 
+//     };
+    
+//     const storage = JSON.parse(localStorage.getItem('user') || '{}');
+    
+//     setPrintData({ 
+//       customer: customerData, 
+//       cartItems: printCartItems, 
+//       totals, 
+//       storage,
+//       createdOn: createdOnDate,  
+//       orderDate: orderDateValue,
+//     });
+//     setPrintModalOpen(true);
+//   } catch (error) {
+//     console.error("Error preparing print data:", error);
+//     toast.error("Failed to prepare print data");
+//   }
+// };
 
 
 
@@ -11896,7 +12267,7 @@ const handleEditOrder = async (e, order) => {
       orderNumber: order.So_Inv_No || order.So_No || order.OrderNumber,
       cartItems: cartItemsObj,
       productsList: productsList,
-      
+      Expence_Array: order.Expence_Array,
       brokerId: actualBrokerId,
       brokerName: actualBrokerName,
       transporterId: actualTransporterId,
@@ -12325,6 +12696,7 @@ const handleEditOrder = async (e, order) => {
         onClose={() => setPrintModalOpen(false)}
         customer={printData?.customer}
         cartItems={printData?.cartItems}
+        expenses={printData?.expenses} 
         totals={printData?.totals}
         storage={printData?.storage}
         isReprint={true}
