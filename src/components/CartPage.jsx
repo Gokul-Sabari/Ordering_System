@@ -19,7 +19,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { fetchLink } from "./fetchComponent";
 import CommonHeader from "./CommonHeader";
 import { encryptPasswordFun } from "./functions";
-import { ISOStrings } from "../components/functions";
+import { ISOStrings,Multiplication,isEqualNumber } from "../components/functions";
 
 /* ------------------------------------------------------------------ */
 /* Theme                                                               */
@@ -41,14 +41,24 @@ const RoundNumber = (val) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
+
+
+
+const calculateCoolieExpense = (product, quantity) => {
+
+  const coolieRate = product.coolieRate || 0; 
+  const packGet = product.packGet || 1;
+  const totalKgs = quantity * packGet;
+  return coolieRate * totalKgs;
+};
+
 const getPercentage = (total, percent) =>
   RoundNumber(((Number(total) || 0) * (Number(percent) || 0)) / 100);
 
 const Addition = (...args) =>
   RoundNumber(args.reduce((s, v) => s + (Number(v) || 0), 0));
 
-/** Local (IST-safe) YYYY-MM-DD. toISOString() shifts the date backwards for
- *  any time before 05:30 IST, which made "today" filters return yesterday. */
+
 const toLocalYMD = (value) => {
   const d = value instanceof Date ? value : new Date(value);
   if (!d || Number.isNaN(d.getTime())) return "";
@@ -58,8 +68,7 @@ const toLocalYMD = (value) => {
   return `${y}-${m}-${day}`;
 };
 
-/** username is written to localStorage as a raw string, so JSON.parse throws
- *  for any non-numeric username and killed the whole order fetch. */
+
 const getStoredUsername = () => {
   const raw = localStorage.getItem("username");
   if (!raw) return "";
@@ -88,11 +97,7 @@ const setOrRemove = (key, value) => {
   }
 };
 
-/** Saved orders return expenses split across debit and credit columns
- *  (Expence_Value_DR / Expence_Value_CR, name in Expence_Name). The cart works
- *  with one signed value per row: DR positive, CR negative. So the API's
- *  { COOLIE EXPENSES, DR 818.8 } becomes +818.80 and
- *  { Cash Discount @ 1%, CR 40 } becomes -40.00. */
+
 const mapOrderExpenses = (arr) =>
   (Array.isArray(arr) ? arr : [])
     .filter((e) => e && (e.Expense_Id || e.Acc_Id))
@@ -106,8 +111,7 @@ const mapOrderExpenses = (arr) =>
       ),
     }));
 
-/* Shared table styles (were declared twice — once inside SaleOrders, once at
-   module scope). Declared once, before first use. */
+
 const productTableHeaderStyle = {
   padding: "10px 12px",
   textAlign: "center",
@@ -134,9 +138,7 @@ const tableHeaderStyle = {
 
 
 
-/* ------------------------------------------------------------------ */
-/* Login popup                                                         */
-/* ------------------------------------------------------------------ */
+
 
 const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
   const [username, setUsername] = useState("");
@@ -191,6 +193,7 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
         localStorage.setItem("username", displayName || username.trim());
         localStorage.setItem("userType", "customer");
         localStorage.setItem("retId", customer.Ret_Id || "");
+        localStorage.setItem("userTypeId", String(customer.UserTypeId ?? data.UserTypeId ?? ""));
         toast.success("Signed in");
         setUsername("");
         setPassword("");
@@ -226,6 +229,7 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
         localStorage.setItem("loginAt", new Date().toString());
         localStorage.setItem("username", user?.Name || user?.name || username.trim());
         localStorage.setItem("userType", "employee");
+        localStorage.setItem("userTypeId", String(user?.UserTypeId ?? user?.User_Type_Id ?? ""));  // ADD
         localStorage.removeItem("retId");
         toast.success("Signed in");
         setUsername("");
@@ -1429,9 +1433,9 @@ const CartItemRow = ({
                     background: "#4CAF50",
                     border: "none",
                     borderRadius: "12px",
-                    padding: isMobile ? "2px 6px" : "4px 8px",
+                    padding: isMobile ? "4px 6px" : "4px 8px",
                     color: "#fff",
-                    fontSize: isMobile ? "10px" : "12px",
+                    fontSize: isMobile ? "13px" : "12px",
                     cursor: "pointer",
                   }}
                 >
@@ -1443,9 +1447,9 @@ const CartItemRow = ({
                     background: "#f44336",
                     border: "none",
                     borderRadius: "12px",
-                    padding: isMobile ? "1px 5px" : "2px 6px",
+                    padding: isMobile ? "4px 6px" : "2px 6px",
                     color: "#fff",
-                    fontSize: isMobile ? "8px" : "10px",
+                    fontSize: isMobile ? "13px" : "12px",
                     cursor: "pointer",
                   }}
                 >
@@ -1462,7 +1466,7 @@ const CartItemRow = ({
                   background: "#f0e9e2",
                   padding: isMobile ? "2px 6px" : "4px 8px",
                   borderRadius: "12px",
-                  fontSize: isMobile ? "13px" : "18px",
+                  fontSize: isMobile ? "17px" : "18px",
                   color: BROWN,
                   cursor: "pointer",
                   fontWeight: "800",
@@ -1747,6 +1751,7 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
   const [tempToDate, setTempToDate] = useState(null);
   const [tempBrokerFilter, setTempBrokerFilter] = useState("");
   const [tempTransporterFilter, setTempTransporterFilter] = useState("");
+  const [originalProductIds, setOriginalProductIds] = useState(new Set());
 
   const uniqueBrokers = useMemo(() => {
     const set = new Set();
@@ -1788,13 +1793,14 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
         const userId =
           userData.UserId || userData.user_id || userData.User_Id || sessionData?.userId || "";
         const mobileNo = getStoredUsername();
-
+        const usertypeid = userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || "";
+        console.log("usertypeid",usertypeid)
         const response = await fetchLink({
           address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
             userId
           )}&Mobile_No=${encodeURIComponent(mobileNo)}&FromDate=${toLocalYMD(
             fromDate
-          )}&ToDate=${toLocalYMD(toDate)}`,
+          )}&ToDate=${toLocalYMD(toDate)}&UserTypeId=${encodeURIComponent(usertypeid)}`,
           method: "GET",
         });
 
@@ -1955,9 +1961,7 @@ const handlePrintOrder = async (e, order) => {
       }
     }
 
-    // ── Expenses: reuse the same mapOrderExpenses() used by handleEditOrder,
-    //    instead of ignoring order.Expence_Array like before. It already
-    //    knows how to read Expence_Value_DR / Expence_Value_CR correctly.
+    // Expenses: reuse mapOrderExpenses() (reads Expence_Value_DR / _CR correctly).
     const normalizedExpenses = mapOrderExpenses(order.Expence_Array);
     const totalExpensesValue = normalizedExpenses.reduce(
       (sum, exp) => sum + (parseFloat(exp.Expence_Value) || 0),
@@ -2651,7 +2655,7 @@ const handlePrintOrder = async (e, order) => {
                         >
                           🖨️ Print
                         </button>
-                        <button
+                     {order.convertedto == 1 || order.Cancel_status==4  ? '' :    <button
                           onClick={(e) => handleEditOrder(e, order)}
                           style={{
                             padding: "6px 12px",
@@ -2665,6 +2669,7 @@ const handlePrintOrder = async (e, order) => {
                         >
                           ✏️ Edit
                         </button>
+              }
                       </div>
                     </div>
 
@@ -2796,7 +2801,7 @@ const handlePrintOrder = async (e, order) => {
                               >
                                 🖨️ Print
                               </button>
-                              <button
+                         {order.convertedto == 1 || order.Cancel_status==4  ? '' :  <button
                                 onClick={(e) => handleEditOrder(e, order)}
                                 title="Edit order"
                                 style={{
@@ -2812,6 +2817,7 @@ const handlePrintOrder = async (e, order) => {
                               >
                                 ✏️ Edit
                               </button>
+                  }
                             </div>
                           </td>
                         </tr>
@@ -2914,16 +2920,20 @@ export default function CartPage() {
 
   const [showDashboard, setShowDashboard] = useState(false);
   const [cartHeaderMenuOpen, setCartHeaderMenuOpen] = useState(false);
+  const [originalProductIds, setOriginalProductIds] = useState(new Set());
 
-  // Credit + expenses
+  
   const [creditInfo, setCreditInfo] = useState(null);
   const [expenseMaster, setExpenseMaster] = useState([]);
   const [loadingExpenseMaster, setLoadingExpenseMaster] = useState(false);
   const [invoiceExpenses, setInvoiceExpenses] = useState([]);
+ 
+  const [manualExpenseEdits, setManualExpenseEdits] = useState({});
 
   const handleDashboard = () => setShowDashboard(true);
   const handleBackFromDashboard = () => setShowDashboard(false);
   const handleSaleOrdersClick = () => setShowSaleOrders(true);
+const restoredEditExpensesRef = useRef(false);
 
   const isEditingOrder = Boolean(localStorage.getItem("editOrderId"));
 
@@ -2972,12 +2982,91 @@ export default function CartPage() {
     });
   }, [location.state]);
 
-  /* ---------------- Restore an in-progress edit ---------------- */
+const buildRestoredExpenses = (rawArr, masterList) => {
+  // Get original products from edit data for coolie calculation
+  const editData = safeParse("editOrderData", null);
+  const originalProductsList = editData?.productsList || [];
+  
+  // Build a map of original product IDs and their quantities for reference
+  const originalProductMap = new Map();
+  originalProductsList.forEach(p => {
+    if (p.id) {
+      originalProductMap.set(String(p.id), {
+        quantity: parseInt(p.quantity) || 0,
+        coolieRate: parseFloat(p.coolieRate) || 0,
+        kgs: parseFloat(p.kgs) || 0,
+      });
+    }
+  });
+  
+  // Store both the IDs and the map for later use
+  setOriginalProductIds(new Set(originalProductMap.keys()));
 
-  useEffect(() => {
-    const isEditing = localStorage.getItem("isEditingOrder") === "true";
-    const editData = safeParse("editOrderData", null);
-    if (!isEditing || !editData) return;
+  // Calculate original coolie total from saved order
+  const originalCoolieTotal = originalProductsList.reduce((sum, item) => {
+    const coolieRate = parseFloat(item.coolieRate) || 0;
+    const quantity = parseInt(item.quantity) || 0;
+    return sum + (coolieRate * quantity);
+  }, 0);
+
+  // Also look for existing Coolie expense in the order
+  let savedCoolieValue = 0;
+  const existingCoolie = (Array.isArray(rawArr) ? rawArr : []).find(
+    e => (e.Account_Name || e.Expence_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
+  );
+  if (existingCoolie) {
+    savedCoolieValue = existingCoolie.Expence_Value !== undefined && existingCoolie.Expence_Value !== null && existingCoolie.Expence_Value !== ''
+      ? parseFloat(existingCoolie.Expence_Value)
+      : (parseFloat(existingCoolie.Expence_Value_DR) || 0) - (parseFloat(existingCoolie.Expence_Value_CR) || 0);
+  }
+
+  return mapOrderExpenses(rawArr).map((row) => {
+    const master = masterList.find(
+      (m) =>
+        String(m.Acc_Id) === String(row.Expense_Id) ||
+        (m.Account_Name || "").trim().toUpperCase() === (row.Account_Name || "").trim().toUpperCase()
+    );
+    
+    const isCoolie = (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+    const pct = master ? Number(master.percentageValue) || 0 : row.percentageValue || 0;
+    
+    if (isCoolie) {
+      return {
+        ...row,
+        percentageValue: 0,
+        baseCoolieValue: savedCoolieValue || row.Expence_Value || 0,
+        originalCoolieTotal: originalCoolieTotal,
+        Expense_Id: row.Expense_Id,
+        originalProductMap: originalProductMap, // Store the original product map for delta calculation
+        isRestored: true,
+      };
+    }
+    
+    // For all other expenses (including percentage-based), store the percentage but allow editing
+    return {
+      ...row,
+      percentageValue: pct,
+      baseValue: row.Expence_Value || 0,
+      isRestored: true,
+    };
+  });
+};
+
+useEffect(() => {
+  const isEditing = localStorage.getItem("isEditingOrder") === "true";
+  const editData = safeParse("editOrderData", null);
+  if (!isEditing || !editData) {
+    restoredEditExpensesRef.current = false;
+    setOriginalProductIds(new Set()); // Reset on exit
+    return;
+  }
+
+  // Capture original product IDs for coolie calculation
+  const ids = new Set();
+  (editData.productsList || []).forEach(p => {
+    if (p.id) ids.add(String(p.id));
+  });
+  setOriginalProductIds(ids);
 
     const originalCustomerName =
       localStorage.getItem("editCustomerOriginalName") || editData.customerName;
@@ -3010,8 +3099,6 @@ export default function CartPage() {
       }
     }
 
-    
-
     const brokerIdNum = parseInt(editData.brokerId, 10);
     if (!Number.isNaN(brokerIdNum) && brokerIdNum > 0) {
       setSelectedBroker({ id: brokerIdNum, name: editData.brokerName || "" });
@@ -3024,12 +3111,27 @@ export default function CartPage() {
       setTransporter(editData.transporterName || "");
     }
 
-    /* Expense rows saved with the order (coolie, cash discount, …). */
-    setInvoiceExpenses(
-      Array.isArray(editData.expenses) ? editData.expenses : mapOrderExpenses(editData.Expence_Array)
-    );
 
-    if (Array.isArray(editData.productsList) && editData.productsList.length > 0) {
+if (!restoredEditExpensesRef.current && expenseMaster.length > 0) {
+  const raw =
+    Array.isArray(editData.expenses) && editData.expenses.length
+      ? editData.expenses
+      : editData.Expence_Array;
+  const restored = buildRestoredExpenses(raw, expenseMaster);
+  setInvoiceExpenses(restored);
+
+  // DO NOT protect ANY expenses from auto-recalculation in edit mode
+  // This allows Coolie and percentage-based expenses to recalculate when quantity changes
+  setManualExpenseEdits({});
+  restoredEditExpensesRef.current = true;
+}
+
+    const existingCart = safeParse("cartItems", {});
+    const hasExistingCart = existingCart && Object.keys(existingCart).length > 0;
+
+    if (hasExistingCart) {
+      setCartItems(existingCart);
+    } else if (Array.isArray(editData.productsList) && editData.productsList.length > 0) {
       const restored = {};
       editData.productsList.forEach((p) => {
         if (p.id && p.quantity > 0) restored[p.id] = p.quantity;
@@ -3037,18 +3139,13 @@ export default function CartPage() {
       setCartItems(restored);
       localStorage.setItem("cartItems", JSON.stringify(restored));
       localStorage.setItem("editProductsList", JSON.stringify(editData.productsList));
-    } else {
-      const existingCart = safeParse("cartItems", {});
-      if (existingCart && Object.keys(existingCart).length > 0) {
-        setCartItems(existingCart);
-      } else if (editData.cartItems && Object.keys(editData.cartItems).length > 0) {
-        setCartItems(editData.cartItems);
-        localStorage.setItem("cartItems", JSON.stringify(editData.cartItems));
-      }
+    } else if (editData.cartItems && Object.keys(editData.cartItems).length > 0) {
+      setCartItems(editData.cartItems);
+      localStorage.setItem("cartItems", JSON.stringify(editData.cartItems));
     }
 
     if (isMobile) setStep(2);
-  }, [isMobile]);
+  }, [isMobile, expenseMaster]);
 
   /* ---------------- Session ---------------- */
 
@@ -3275,19 +3372,23 @@ export default function CartPage() {
 
   useEffect(() => {
     fetchCreditInfo(customer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [customer]);
 
-  const loadAllProducts = async () => {
-    try {
-      const response = await fetchLink({ address: "products?limit=1000" });
-      if (response?.success && Array.isArray(response.data)) {
-        setAllProducts(response.data.map((p) => ({ ...p, shortName: p.Short_Name || p.name })));
-      }
-    } catch (error) {
-      console.error("Error loading products:", error);
+const loadAllProducts = async () => {
+  try {
+    const response = await fetchLink({ address: "products?limit=1000" });
+    if (response?.success && Array.isArray(response.data)) {
+      setAllProducts(response.data.map((p) => ({ 
+        ...p, 
+        shortName: p.Short_Name || p.name,
+        coolieRate: p.Coolie_Rate || 0 
+      })));
     }
-  };
+  } catch (error) {
+    console.error("Error loading products:", error);
+  }
+};
 
   const loadCartData = () => {
     setLoading(true);
@@ -3659,112 +3760,137 @@ export default function CartPage() {
     return null;
   };
 
-  const enhancedCartItems = useMemo(() => {
-    let editProductsList = [];
-    const editData = safeParse("editOrderData", null);
-    if (Array.isArray(editData?.productsList)) editProductsList = editData.productsList;
-    if (editProductsList.length === 0) {
-      const fallback = safeParse("editProductsList", null);
-      if (Array.isArray(fallback)) editProductsList = fallback;
+const enhancedCartItems = useMemo(() => {
+  let editProductsList = [];
+  const editData = safeParse("editOrderData", null);
+  if (Array.isArray(editData?.productsList)) editProductsList = editData.productsList;
+  if (editProductsList.length === 0) {
+    const fallback = safeParse("editProductsList", null);
+    if (Array.isArray(fallback)) editProductsList = fallback;
+  }
+
+  const editProductsMap = new Map();
+  editProductsList.forEach((p) => {
+    if (p.id) {
+      editProductsMap.set(String(p.id), {
+        ...p,
+        originalQuantity: parseInt(p.quantity) || 0,
+        originalCoolieRate: parseFloat(p.coolieRate) || 0,
+      });
     }
+  });
 
-    const editProductsMap = new Map();
-    editProductsList.forEach((p) => {
-      if (p.id) editProductsMap.set(String(p.id), p);
-    });
+  return Object.entries(cartItems)
+    .filter(([, qty]) => qty > 0)
+    .map(([productId, qty]) => {
+      const sid = String(productId);
+      const editP = editProductsMap.get(sid);
+      
+      // Get the live product for coolie rate
+      const liveProduct =
+        products.find((p) => String(p.id) === sid) ||
+        allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
+      
+      // Priority: live product coolie rate > edit data coolie rate > 0
+      const coolieRate = liveProduct
+        ? liveProduct.coolie ?? liveProduct.coolieRate ?? liveProduct.Coolie_Rate ?? liveProduct.Coolie ?? 0
+        : editP?.coolieRate || 0;
 
-    return Object.entries(cartItems)
-      .filter(([, qty]) => qty > 0)
-      .map(([productId, qty]) => {
-        const sid = String(productId);
-
-        const editP = editProductsMap.get(sid);
-        if (editP && editP.name) {
-          const packGet = Number(editP.packGet) || 1;
-          const kgs = qty * packGet;
-          const price = Number(editP.price) || 0;
-          return {
-            id: productId,
-            name: editP.name,
-            shortName: editP.shortName || editP.name,
-            quantity: qty,
-            kgs,
-            price,
-            packGet,
-            amount: price * kgs,
-            Print_Name: editP.name,
-            hsn: editP.hsn || "",
-            taxRate: Number(editP.taxRate) || 0,
-            unitId: editP.unitId,
-            unitName: editP.unitName,
-            unit: editP.unit,
-            image: editP.image || "",
-          };
-        }
-
-        const product = products.find((p) => String(p.id) === sid);
-        if (product && product.name) {
-          const packGet = parseFloat(product.packGet) || 1;
-          const editedPrice = getEditedPrice(productId);
-          const price = editedPrice !== null ? editedPrice : parseFloat(product.price) || 0;
-          const kgs = qty * packGet;
-          return {
-            id: productId,
-            name: product.name,
-            shortName: product.shortName || product.Short_Name || product.name,
-            quantity: qty,
-            kgs,
-            price,
-            packGet,
-            amount: price * kgs,
-            Print_Name: product.name,
-            hsn: product.hsnCode || product.hsn || "",
-            taxRate: Number(product.taxRate) || 0,
-            unitId: product.unitId,
-            unitName: product.unitName,
-            unit: product.unit,
-            image: product.image || "",
-          };
-        }
+      if (editP && editP.name) {
+        const packGet = Number(editP.packGet) || 1;
+        const kgs = qty * packGet;
+        const price = Number(editP.price) || 0;
 
         return {
           id: productId,
-          name: `Product ${productId}`,
-          shortName: `Product ${productId}`,
+          name: editP.name,
+          shortName: editP.shortName || editP.name,
           quantity: qty,
-          kgs: qty,
-          price: 0,
-          packGet: 1,
-          amount: 0,
-          Print_Name: `Product ${productId}`,
-          hsn: "",
-          taxRate: 0,
+          originalQuantity: editP.originalQuantity || 0,
+          kgs,
+          price,
+          packGet,
+          amount: price * kgs,
+          Print_Name: editP.name,
+          coolieRate,
+          hsn: editP.hsn || "",
+          taxRate: Number(editP.taxRate) || 0,
+          unitId: editP.unitId,
+          unitName: editP.unitName,
+          unit: editP.unit,
+          image: editP.image || "",
+          isNew: !editP.originalQuantity || editP.originalQuantity === 0,
         };
-      });
-  }, [cartItems, products]);
+      }
+
+      const product = products.find((p) => String(p.id) === sid);
+      if (product && product.name) {
+        const packGet = parseFloat(product.packGet) || 1;
+        const editedPrice = getEditedPrice(productId);
+        const price = editedPrice !== null ? editedPrice : parseFloat(product.price) || 0;
+        const kgs = qty * packGet;
+        return {
+          id: productId,
+          name: product.name,
+          shortName: product.shortName || product.Short_Name || product.name,
+          quantity: qty,
+          originalQuantity: 0,
+          kgs,
+          price,
+          packGet,
+          amount: price * kgs,
+          Print_Name: product.name,
+          coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? product.coolie ?? product.coolieRate ?? 0,
+          hsn: product.hsnCode || product.hsn || "",
+          taxRate: Number(product.taxRate) || 0,
+          unitId: product.unitId,
+          unitName: product.unitName,
+          unit: product.unit,
+          image: product.image || "",
+          isNew: true,
+        };
+      }
+
+      return {
+        id: productId,
+        name: `Product ${productId}`,
+        shortName: `Product ${productId}`,
+        quantity: qty,
+        originalQuantity: 0,
+        kgs: qty,
+        price: 0,
+        packGet: 1,
+        amount: 0,
+        Print_Name: `Product ${productId}`,
+        coolieRate: 0,
+        hsn: "",
+        taxRate: 0,
+        isNew: true,
+      };
+    });
+}, [cartItems, products, allProducts]);
 
   const totalItems = enhancedCartItems.reduce((s, i) => s + i.quantity, 0);
   const totalKgs = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
   const subtotalAmount = RoundNumber(enhancedCartItems.reduce((s, i) => s + i.amount, 0));
 
-  /* These three used to be declared ABOVE enhancedCartItems/subtotalAmount,
-     so the component threw "Cannot access 'enhancedCartItems' before
-     initialization" on every mount. They now sit after their inputs. */
-  const coolieExp = useMemo(
-    () =>
-      enhancedCartItems.reduce(
-        (sum, item) => Addition(sum, (parseFloat(item.coolie) || 0) * item.quantity),
-        0
-      ),
-    [enhancedCartItems]
-  );
+const coolieExp = useMemo(() => {
+  return enhancedCartItems.reduce((sum, item) => {
+    const quantity = item.quantity || 0;
+      
+
+    const coolieRatePerKg = item.coolieRate || 0; 
+     return Addition(sum, Multiplication(coolieRatePerKg, quantity));
+  }, 0);
+}, [enhancedCartItems]);
+
 
   const totalExpensesValue = useMemo(
     () => invoiceExpenses.reduce((acc, exp) => Addition(acc, parseFloat(exp.Expence_Value) || 0), 0),
     [invoiceExpenses]
   );
 
-  /* Flat (non-percentage) expense rows — coolie and friends. */
+ 
   const flatExpensesTotal = useMemo(
     () =>
       invoiceExpenses.reduce(
@@ -3775,86 +3901,228 @@ export default function CartPage() {
     [invoiceExpenses]
   );
 
-  /* Percentage expenses (cash discount, etc.) are charged on the subtotal
-     PLUS the flat expenses already added — e.g. 1452 + 548 = 2000, so 1% is
-     20.00, not 14.52. */
-  const percentageBase = useMemo(
-    () => Addition(subtotalAmount, flatExpensesTotal),
-    [subtotalAmount, flatExpensesTotal]
-  );
+const percentageBase = subtotalAmount;
 
   const grandTotal = useMemo(
     () => Addition(subtotalAmount, totalExpensesValue),
     [subtotalAmount, totalExpensesValue]
   );
 
-  /* ---------------- Expenses ---------------- */
+const handleSelectExpense = (index, expenseId) => {
+  const prevExpId = invoiceExpenses[index]?.Expense_Id;
+  if (prevExpId) {
+    setManualExpenseEdits((prev) => {
+      if (!(prevExpId in prev)) return prev;
+      const next = { ...prev };
+      delete next[prevExpId];
+      return next;
+    });
+  }
 
-  const handleSelectExpense = (index, expenseId) => {
-    if (!expenseId) {
-      setInvoiceExpenses((prev) =>
-        prev.map((item, i) =>
-          i === index
-            ? { Expense_Id: "", Account_Name: "", Group_Name: "", percentageValue: 0, Expence_Value: "" }
-            : item
-        )
+  if (!expenseId) {
+    setInvoiceExpenses((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? { Expense_Id: "", Account_Name: "", Group_Name: "", percentageValue: 0, Expence_Value: "" }
+          : item
+      )
+    );
+    return;
+  }
+
+  const selected = expenseMaster.find((exp) => String(exp.Acc_Id) === String(expenseId));
+  if (!selected) return;
+
+  const isCoolie = (selected.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+  const percentValue = Number(selected.percentageValue) || 0;
+
+  setInvoiceExpenses((prev) =>
+    prev.map((item, i) => {
+      if (i !== index) return item;
+      let value = "";
+      
+      if (isCoolie) {
+        if (isEditingOrder) {
+          // Get the original product map from existing row
+          const existingRow = prev.find(
+            r => (r.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
+          );
+          const originalMap = existingRow?.originalProductMap || new Map();
+          
+          // Calculate delta coolie
+          let deltaCoolie = 0;
+          enhancedCartItems.forEach((cartItem) => {
+            const itemId = String(cartItem.id);
+            const currentQty = parseInt(cartItem.quantity) || 0;
+            const coolieRate = parseFloat(cartItem.coolieRate) || 0;
+            
+            const originalData = originalMap.get(itemId);
+            if (originalData) {
+              const originalQty = parseInt(originalData.quantity) || 0;
+              const qtyDelta = currentQty - originalQty;
+              if (qtyDelta > 0) {
+                deltaCoolie += (coolieRate * qtyDelta);
+              }
+            } else {
+              deltaCoolie += (coolieRate * currentQty);
+            }
+          });
+          
+          const baseValue = existingRow?.baseCoolieValue || item.Expence_Value || 0;
+          value = RoundNumber(parseFloat(baseValue) + deltaCoolie);
+        } else {
+          value = RoundNumber(coolieExp);
+        }
+      } else if (percentValue !== 0) {
+        value = RoundNumber(getPercentage(percentageBase, percentValue));
+      }
+      
+      return {
+        ...item,
+        Expense_Id: selected.Acc_Id,
+        Account_Name: selected.Account_Name,
+        Group_Name: selected.Group_Name,
+        percentageValue: selected.percentageValue,
+        Expence_Value: value,
+        ...(isCoolie && isEditingOrder ? { originalProductMap: prev.find(
+          r => (r.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
+        )?.originalProductMap || new Map() } : {}),
+      };
+    })
+  );
+};
+const handleExpenseValueChange = (index, value) => {
+  if (value !== "" && !/^-?\d*\.?\d*$/.test(value)) return;
+  
+  setInvoiceExpenses((prev) =>
+    prev.map((item, i) => {
+      if (i === index) {
+        const newItem = { ...item, Expence_Value: value };
+       
+        const isCoolie = (item.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+        if (isCoolie) {
+          newItem.baseCoolieValue = parseFloat(value) || 0;
+        }
+        return newItem;
+      }
+      return item;
+    })
+  );
+  
+  const expId = invoiceExpenses[index]?.Expense_Id;
+ 
+  const isCoolie = (invoiceExpenses[index]?.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+  if (expId && !isCoolie) {
+    setManualExpenseEdits((prev) => ({ ...prev, [expId]: true }));
+  }
+};
+
+
+// Force recalculation of expenses when cart items change in edit mode
+useEffect(() => {
+  if (!isEditingOrder) return;
+  if (Object.keys(cartItems).length === 0) return;
+
+  // Recalculate expenses based on current cart items
+  setInvoiceExpenses((prev) => {
+    let changed = false;
+    let next = [...prev];
+
+    // Find the existing Coolie row
+    const coolieRowIndex = prev.findIndex(
+      (row) => (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
+    );
+
+    if (coolieRowIndex >= 0) {
+      const existingRow = next[coolieRowIndex];
+      
+      // REMOVE the manual edit check - always recalculate based on delta
+      // Get the original product map from the existing row or build it
+      const originalMap = existingRow.originalProductMap || new Map();
+      
+      // Calculate delta coolie for ALL changes:
+      // 1. New items added
+      // 2. Quantity increases on existing items
+      let deltaCoolie = 0;
+      
+      enhancedCartItems.forEach((item) => {
+        const itemId = String(item.id);
+        const currentQty = parseInt(item.quantity) || 0;
+        const coolieRate = parseFloat(item.coolieRate) || 0;
+        
+        const originalData = originalMap.get(itemId);
+        if (originalData) {
+          // Existing item - calculate quantity delta
+          const originalQty = parseInt(originalData.quantity) || 0;
+          const qtyDelta = currentQty - originalQty;
+          if (qtyDelta > 0) {
+            // Only add coolie for INCREASED quantity
+            deltaCoolie += (coolieRate * qtyDelta);
+          }
+        } else {
+          // New item - add full coolie
+          deltaCoolie += (coolieRate * currentQty);
+        }
+      });
+
+      // The total coolie should be: base value + delta coolie
+      const baseValue = existingRow.baseCoolieValue || existingRow.Expence_Value || 0;
+      const totalCoolie = RoundNumber(parseFloat(baseValue) + deltaCoolie);
+
+      if (Number(existingRow.Expence_Value) !== totalCoolie) {
+        next[coolieRowIndex] = {
+          ...existingRow,
+          Expence_Value: totalCoolie,
+        };
+        changed = true;
+      }
+    } else {
+      // No coolie row exists - create one from scratch
+      const coolieMaster = expenseMaster.find(
+        (m) => (m.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
       );
-      return;
+      if (coolieMaster) {
+        const totalCoolie = enhancedCartItems.reduce((sum, item) => {
+          const currentQty = parseInt(item.quantity) || 0;
+          const coolieRate = parseFloat(item.coolieRate) || 0;
+          return sum + (coolieRate * currentQty);
+        }, 0);
+        
+        next = [
+          ...next,
+          {
+            Expense_Id: coolieMaster.Acc_Id,
+            Account_Name: coolieMaster.Account_Name,
+            Group_Name: coolieMaster.Group_Name,
+            percentageValue: 0,
+            Expence_Value: RoundNumber(totalCoolie),
+            baseCoolieValue: RoundNumber(totalCoolie),
+            originalProductMap: new Map(),
+          },
+        ];
+        changed = true;
+      }
     }
 
-    const selected = expenseMaster.find((exp) => String(exp.Acc_Id) === String(expenseId));
-    if (!selected) return;
+    // Recalculate percentage-based expenses (Discount, etc.) based on new subtotal
+    next = next.map((row, index) => {
+      if (!row.Expense_Id) return row;
+      
+      const isCoolie = (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+      if (isCoolie) return row;
 
-    const isCoolie = (selected.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
-    const percentValue = Number(selected.percentageValue) || 0;
-
-    setInvoiceExpenses((prev) =>
-      prev.map((item, i) => {
-        if (i !== index) return item;
-        let value = "";
-        if (isCoolie) value = RoundNumber(-coolieExp);
-        else if (percentValue !== 0) value = RoundNumber(getPercentage(percentageBase, percentValue));
-        return {
-          ...item,
-          Expense_Id: selected.Acc_Id,
-          Account_Name: selected.Account_Name,
-          Group_Name: selected.Group_Name,
-          percentageValue: selected.percentageValue,
-          Expence_Value: value,
-        };
-      })
-    );
-  };
-
-  const handleExpenseValueChange = (index, value) => {
-    if (value !== "" && !/^-?\d*\.?\d*$/.test(value)) return;
-    setInvoiceExpenses((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, Expence_Value: value } : item))
-    );
-  };
-
-  /* Keep percentage rows in step with the base — editing the coolie amount or
-     changing the cart used to leave a stale discount on screen. Percentage
-     rows aren't part of the base, so this can't loop. */
-  useEffect(() => {
-    /* On an edit restore the expense rows land before the cart lines resolve.
-       Recomputing against a zero subtotal would wipe the saved discount, so
-       wait until there's something to charge against. */
-    if (subtotalAmount <= 0) return;
-    setInvoiceExpenses((prev) => {
-      let changed = false;
-      const next = prev.map((row) => {
-        const pct = Number(row.percentageValue) || 0;
-        if (!row.Expense_Id || pct === 0) return row;
-        const value = RoundNumber(getPercentage(percentageBase, pct));
-        if (Number(row.Expence_Value) === value) return row;
-        changed = true;
-        return { ...row, Expence_Value: value };
-      });
-      return changed ? next : prev;
+      const pct = Number(row.percentageValue) || 0;
+      if (pct === 0) return row;
+      
+      const value = RoundNumber(getPercentage(percentageBase, pct));
+      if (Number(row.Expence_Value) === value) return row;
+      changed = true;
+      return { ...row, Expence_Value: value };
     });
-  }, [percentageBase, subtotalAmount]);
 
+    return changed ? next : prev;
+  });
+}, [cartItems, enhancedCartItems, percentageBase, isEditingOrder, expenseMaster]);
   const addExpenseRow = () =>
     setInvoiceExpenses((prev) => [
       ...prev,
@@ -3874,28 +4142,28 @@ export default function CartPage() {
 
   /* ---------------- Cart mutations ---------------- */
 
-  const updateQty = (id, delta) => {
-    setCartItems((prev) => {
-      const next = Math.max(0, (prev[id] || 0) + delta);
-      let newCart;
-      if (next === 0) {
-        const { [id]: _removed, ...rest } = prev;
-        newCart = rest;
-      } else {
-        newCart = { ...prev, [id]: next };
-      }
-      localStorage.setItem("cartItems", JSON.stringify(newCart));
-      return newCart;
-    });
-  };
+const updateQty = (id, delta) => {
+  setCartItems((prev) => {
+    const next = Math.max(0, (prev[id] || 0) + delta);
+    let newCart;
+    if (next === 0) {
+      const { [id]: _removed, ...rest } = prev;
+      newCart = rest;
+    } else {
+      newCart = { ...prev, [id]: next };
+    }
+    localStorage.setItem("cartItems", JSON.stringify(newCart));
+    return newCart;
+  });
+};
 
-  const setItemQty = (id, qty) => {
-    setCartItems((prev) => {
-      const newCart = { ...prev, [id]: qty };
-      localStorage.setItem("cartItems", JSON.stringify(newCart));
-      return newCart;
-    });
-  };
+const setItemQty = (id, qty) => {
+  setCartItems((prev) => {
+    const newCart = { ...prev, [id]: qty };
+    localStorage.setItem("cartItems", JSON.stringify(newCart));
+    return newCart;
+  });
+};
 
   const removeItem = (id) => {
     const product = enhancedCartItems.find((p) => String(p.id) === String(id));
@@ -3936,7 +4204,7 @@ export default function CartPage() {
       "cartPageDeliveryAddress",
       "cartPageDescription",
     ].forEach((key) => localStorage.removeItem(key));
-
+  setOriginalProductIds(new Set()); 
     setCartItems({});
     setCustomer("");
     setContactNumber("");
@@ -3951,6 +4219,8 @@ export default function CartPage() {
     setPrefilledCustomer(null);
     setSelectedDetails(null);
     setInvoiceExpenses([]);
+    // FIX (Block 9): reset the manual-edit tracker when leaving edit mode.
+    setManualExpenseEdits({});
 
     toast.success("Edit cancelled");
     navigate("/");
@@ -3999,6 +4269,8 @@ export default function CartPage() {
     setDeliveryAddress("");
     setDescription("");
     setInvoiceExpenses([]);
+    // FIX (Block 10): reset the manual-edit tracker after checkout too.
+    setManualExpenseEdits({});
     setSelectedBroker({ id: null, name: "" });
     setSelectedTransporter({ id: null, name: "" });
     setHeaderSelectedCustomer(null);
@@ -4006,7 +4278,7 @@ export default function CartPage() {
     setIsPrintModalOpen(false);
     setLastOrderData(null);
     setStep(1);
-
+  setOriginalProductIds(new Set());
     navigate("/", { replace: true });
   };
 
@@ -4051,11 +4323,12 @@ export default function CartPage() {
     const totalTax = RoundNumber(lineTotals.reduce((s, l) => s + l.taxAmount, 0));
     const totalKgsValue = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
 
+    // FIX (Block 7): stop force-recomputing Coolie here — use exactly what's
+    // on screen (invoiceExpenses), which the sync effect above now keeps
+    // correct without clobbering manual edits.
     const Expence_Array = invoiceExpenses
       .filter((e) => e.Expense_Id)
       .map((e) => {
-        /* Restored rows carry only the name the order returned, so fill the
-           group back in from the master before posting. */
         const master = expenseMaster.find((m) => String(m.Acc_Id) === String(e.Expense_Id));
         return {
           Expense_Id: e.Expense_Id,
@@ -4232,33 +4505,35 @@ export default function CartPage() {
         billName: selectedDetails?.billName || "",
       };
 
-      setLastOrderData({
-        saleData,
-        responseData: response.data,
-        customerData,
-        printCartItems: enhancedCartItems.map((item) => ({
-          ...item,
-          Print_Name: item.name,
-          kgs: item.kgs || 0,
-          price: item.price || 0,
-          packGet: item.packGet || 1,
-        })),
-        totals: {
-          subtotal: subtotalAmount,
-          tax: totalTax,
-          total: totalInvoiceValue,
-          totalItems: enhancedCartItems.length,
-          totalKgs: totalKgsValue,
-        },
-     expenses: invoiceExpenses 
+     setLastOrderData({
+  saleData,
+  responseData: response.data,
+  customerData,
+  printCartItems: enhancedCartItems.map((item) => ({
+    ...item,
+    Print_Name: item.name,
+    kgs: item.kgs || 0,
+    price: item.price || 0,
+    packGet: item.packGet || 1,
+  })),
+  totals: {
+    subtotal: subtotalAmount,
+    tax: totalTax,
+    total: totalInvoiceValue,
+    totalItems: enhancedCartItems.length,
+    totalKgs: totalKgsValue,
+  },
+  // FIX (Block 8): stop force-recomputing Coolie in the print payload —
+  // use exactly what's on screen, same as Block 7.
+  expenses: invoiceExpenses
     .filter((e) => e.Expense_Id && e.Account_Name)
-    .map((e) => ({ Account_Name: e.Account_Name, Expence_Value: RoundNumber(e.Expence_Value) })),
+    .map((e) => ({
+      Account_Name: e.Account_Name,
+      Expence_Value: RoundNumber(e.Expence_Value),
+    })),
 });
 
-      /* The old flow opened this modal AND called window.print() on a timer,
-         so the browser dialog fired twice and the redirect ran on the first
-         afterprint event. Now the modal owns printing, and the cart is only
-         cleared once the user is done with it. */
+   
       setIsPrintModalOpen(true);
     } catch (error) {
       toast.dismiss(loadingToast);
@@ -4303,6 +4578,7 @@ export default function CartPage() {
           setDeliveryAddress(editData.deliveryAddress || "");
           setDescription(editData.description || "");
           setInvoiceExpenses(Array.isArray(editData.expenses) ? editData.expenses : []);
+          setManualExpenseEdits({});
 
           if (editData.brokerId && editData.brokerName) {
             setSelectedBroker({ id: editData.brokerId, name: editData.brokerName });
@@ -4524,77 +4800,77 @@ export default function CartPage() {
     </>
   );
 
-  const renderExpenseRow = (row, index) => {
-    const isDisabledInput = !row.Expense_Id || Number(row.percentageValue) !== 0;
-    return (
-      <div
-        key={index}
+const renderExpenseRow = (row, index) => {
+  // Remove the isDisabledInput check - allow all expenses to be editable
+  return (
+    <div
+      key={index}
+      style={{
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        padding: "10px",
+        background: "#f9f4ef",
+        borderRadius: "8px",
+        border: "1px solid #e8ddd4",
+        marginBottom: "8px",
+        flexWrap: "wrap",
+      }}
+    >
+      <select
+        value={row.Expense_Id}
+        onChange={(e) => handleSelectExpense(index, e.target.value)}
         style={{
-          display: "flex",
-          gap: "8px",
-          alignItems: "center",
-          padding: "10px",
-          background: "#f9f4ef",
-          borderRadius: "8px",
-          border: "1px solid #e8ddd4",
-          marginBottom: "8px",
-          flexWrap: "wrap",
+          flex: "1 1 160px",
+          padding: "8px",
+          border: "1px solid #ddd",
+          borderRadius: "6px",
+          fontSize: "13px",
+          outline: "none",
+          background: "#fff",
         }}
       >
-        <select
-          value={row.Expense_Id}
-          onChange={(e) => handleSelectExpense(index, e.target.value)}
-          style={{
-            flex: "1 1 160px",
-            padding: "8px",
-            border: "1px solid #ddd",
-            borderRadius: "6px",
-            fontSize: "13px",
-            outline: "none",
-            background: "#fff",
-          }}
-        >
-          <option value="">Select an expense</option>
-          {getAvailableOptionsForRow(index).map((exp) => (
-            <option key={exp.Acc_Id} value={exp.Acc_Id}>
-              {exp.Account_Name}
-            </option>
-          ))}
-        </select>
+        <option value="">Select an expense</option>
+        {getAvailableOptionsForRow(index).map((exp) => (
+          <option key={exp.Acc_Id} value={exp.Acc_Id}>
+            {exp.Account_Name}
+          </option>
+        ))}
+      </select>
 
-        <input
-          type="text"
-          value={row.Expence_Value}
-          disabled={isDisabledInput}
-          onChange={(e) => handleExpenseValueChange(index, e.target.value)}
-          placeholder="0.00"
-          style={{
-            width: "90px",
-            padding: "8px",
-            border: `1px solid ${BROWN}`,
-            borderRadius: "6px",
-            fontSize: "13px",
-            textAlign: "right",
-            outline: "none",
-            background: isDisabledInput ? "#f0f0f0" : "#fff",
-          }}
-        />
+      <input
+        type="text"
+        value={row.Expence_Value}
+        // REMOVE: disabled={isDisabledInput}
+        onChange={(e) => handleExpenseValueChange(index, e.target.value)}
+        placeholder="0.00"
+        style={{
+          width: "90px",
+          padding: "8px",
+          border: `1px solid ${BROWN}`,
+          borderRadius: "6px",
+          fontSize: "13px",
+          textAlign: "right",
+          outline: "none",
+          background: "#fff",
+        }}
+      />
 
-        <button
-          onClick={() => removeExpenseRow(index)}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#e74c3c",
-            cursor: "pointer",
-            fontSize: "18px",
-          }}
-        >
-          ✕
-        </button>
-      </div>
-    );
-  };
+      <button
+        onClick={() => removeExpenseRow(index)}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#e74c3c",
+          cursor: "pointer",
+          fontSize: "18px",
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+};
 
   const cartRowProps = {
     isMobile,
@@ -4764,24 +5040,31 @@ if (isMobile && step === 2) {
                   borderTop: "1px dashed #ccc",
                 }}
               >
-                {invoiceExpenses
-                  .filter(e => e.Account_Name && e.Expence_Value)
-                  .map((e, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: "12px",
-                        marginBottom: "2px",
-                      }}
-                    >
-                      <span style={{ color: "#666" }}>{e.Account_Name}</span>
-                      <span style={{ color: Number(e.Expence_Value) < 0 ? "#e74c3c" : "#2ecc71" }}>
-                        {Number(e.Expence_Value) < 0 ? "-" : ""}₹{Math.abs(Number(e.Expence_Value) || 0).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
+          
+{/* FIX (Block 11): show the row's actual Expence_Value directly —
+    the previous version force-displayed `coolieExp` for the Coolie row,
+    which could differ from what was actually stored/about to be saved. */}
+{invoiceExpenses
+  .filter(e => e.Account_Name && e.Expence_Value)
+  .map((e, idx) => {
+    const displayValue = Number(e.Expence_Value) || 0;
+    return (
+      <div
+        key={idx}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: "12px",
+          marginBottom: "2px",
+        }}
+      >
+        <span style={{ color: "#666" }}>{e.Account_Name}</span>
+        <span style={{ color: Number(displayValue) < 0 ? "#e74c3c" : "#2ecc71" }}>
+          {Number(displayValue) < 0 ? "-" : ""}₹{Math.abs(Number(displayValue) || 0).toFixed(2)}
+        </span>
+      </div>
+    );
+  })}
               </div>
             </>
           )}
@@ -5862,33 +6145,38 @@ function Dashboard({
   useEffect(() => {
     let cancelled = false;
 
-    const fetchTodayOrders = async () => {
-      setLoading(true);
-      try {
-        const userData = safeParse("user", {});
-        const userId = userData.UserId || userData.user_id || userData.User_Id || "";
-        const mobileNo = getStoredUsername();
-        const today = toLocalYMD(new Date());
+   const fetchTodayOrders = async () => {
+  setLoading(true);
+  try {
+    const userData = safeParse("user", {});
+    const sessionData = safeParse("session", {});
+    const userId = userData.UserId || userData.user_id || userData.User_Id || "";
+    const mobileNo = getStoredUsername();
+    const usertypeid =
+      userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || "";
+    const today = toLocalYMD(new Date());
 
-        const response = await fetchLink({
-          address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
-            userId
-          )}&Mobile_No=${encodeURIComponent(mobileNo)}&FromDate=${today}&ToDate=${today}`,
-          method: "GET",
-        });
+    const response = await fetchLink({
+      address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
+        userId
+      )}&Mobile_No=${encodeURIComponent(mobileNo)}&FromDate=${today}&ToDate=${today}&UserTypeId=${encodeURIComponent(
+        usertypeid
+      )}`,
+      method: "GET",
+    });
 
-        if (cancelled) return;
-        const orderData = response?.success ? response.data || response.Data || [] : [];
-        setOrders(Array.isArray(orderData) ? orderData : []);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Error fetching dashboard orders:", error);
-          setOrders([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
+    if (cancelled) return;
+    const orderData = response?.success ? response.data || response.Data || [] : [];
+    setOrders(Array.isArray(orderData) ? orderData : []);
+  } catch (error) {
+    if (!cancelled) {
+      console.error("Error fetching dashboard orders:", error);
+      setOrders([]);
+    }
+  } finally {
+    if (!cancelled) setLoading(false);
+  }
+};
 
     fetchTodayOrders();
     return () => {
