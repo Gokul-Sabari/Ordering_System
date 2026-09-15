@@ -19,7 +19,9 @@ import "react-datepicker/dist/react-datepicker.css";
 import { fetchLink } from "./fetchComponent";
 import CommonHeader from "./CommonHeader";
 import { encryptPasswordFun } from "./functions";
-import { ISOStrings,Multiplication,isEqualNumber } from "../components/functions";
+import { ISOStrings, Multiplication, isEqualNumber } from "../components/functions";
+import TransactionDetails from './TransactionDetails';
+import PendingBillDetails from './PendingBillDetails';
 
 /* ------------------------------------------------------------------ */
 /* Theme                                                               */
@@ -46,7 +48,7 @@ const RoundNumber = (val) => {
 
 const calculateCoolieExpense = (product, quantity) => {
 
-  const coolieRate = product.coolieRate || 0; 
+  const coolieRate = product.coolieRate || 0;
   const packGet = product.packGet || 1;
   const totalKgs = quantity * packGet;
   return coolieRate * totalKgs;
@@ -156,14 +158,14 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess }) => {
 
 
   useEffect(() => {
-  if (!isOpen || localStorage.getItem('isEditingOrder') !== 'true') return;
-  try {
-    const d = JSON.parse(localStorage.getItem('editOrderData') || '{}');
-    setInvoiceExpenses(
-      Array.isArray(d.expenses) ? d.expenses : mapOrderExpenses(d.Expence_Array)
-    );
-  } catch (e) {}
-}, [isOpen]);
+    if (!isOpen || localStorage.getItem('isEditingOrder') !== 'true') return;
+    try {
+      const d = JSON.parse(localStorage.getItem('editOrderData') || '{}');
+      setInvoiceExpenses(
+        Array.isArray(d.expenses) ? d.expenses : mapOrderExpenses(d.Expence_Array)
+      );
+    } catch (e) { }
+  }, [isOpen]);
 
   const handleUsernameSubmit = async (e) => {
     e.preventDefault();
@@ -1036,9 +1038,9 @@ const PartyDropdown = ({
 
   const filtered = searchTerm.trim()
     ? options.filter((o) => {
-        const s = searchTerm.toLowerCase().trim();
-        return (o.name || "").toLowerCase().includes(s) || (o.alias || "").toLowerCase().includes(s);
-      })
+      const s = searchTerm.toLowerCase().trim();
+      return (o.name || "").toLowerCase().includes(s) || (o.alias || "").toLowerCase().includes(s);
+    })
     : options;
 
   return (
@@ -1794,7 +1796,7 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
           userData.UserId || userData.user_id || userData.User_Id || sessionData?.userId || "";
         const mobileNo = getStoredUsername();
         const usertypeid = userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || "";
-        console.log("usertypeid",usertypeid)
+        console.log("usertypeid", usertypeid)
         const response = await fetchLink({
           address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
             userId
@@ -1910,94 +1912,94 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
   const toggleOrderExpansion = (orderId) =>
     setExpandedOrders((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
 
-const handlePrintOrder = async (e, order) => {
-  e.stopPropagation();
-  try {
-    const productsList = order.Products_List || [];
+  const handlePrintOrder = async (e, order) => {
+    e.stopPropagation();
+    try {
+      const productsList = order.Products_List || [];
 
-    const printCartItems = productsList.map((p) => ({
-      Print_Name: p.Product_Short_Name || p.Product_Name || "",
-      shortName: p.Product_Short_Name || p.Short_Name || "",
-      name: p.Product_Name || "",
-      kgs: parseFloat(p.Bill_Qty) || 0,
-      price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
-      packGet: parseFloat(p.PackGet) || 1,
-    }));
+      const printCartItems = productsList.map((p) => ({
+        Print_Name: p.Product_Short_Name || p.Product_Name || "",
+        shortName: p.Product_Short_Name || p.Short_Name || "",
+        name: p.Product_Name || "",
+        kgs: parseFloat(p.Bill_Qty) || 0,
+        price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
+        packGet: parseFloat(p.PackGet) || 1,
+      }));
 
-    let customerData = {
-      Billl_Name: order.Retailer_Name || order.Customer_Name || "",
-      Short_Name: order.Retailer_Name || order.Customer_Name || "",
-      Party_Mailing_Name: order.Retailer_Name || order.Customer_Name || "",
-      Party_Location: order.Shipp_Address || order.Address || "",
-      City: order.City || "",
-      Mobile_No: order.Ord_Mobile_No || order.Mobile_No || "",
-      Land_Line: "",
-      Transporter: getTransporterName(order),
-      Broker: getBrokerName(order),
-    };
+      let customerData = {
+        Billl_Name: order.Retailer_Name || order.Customer_Name || "",
+        Short_Name: order.Retailer_Name || order.Customer_Name || "",
+        Party_Mailing_Name: order.Retailer_Name || order.Customer_Name || "",
+        Party_Location: order.Shipp_Address || order.Address || "",
+        City: order.City || "",
+        Mobile_No: order.Ord_Mobile_No || order.Mobile_No || "",
+        Land_Line: "",
+        Transporter: getTransporterName(order),
+        Broker: getBrokerName(order),
+      };
 
-    const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
+      const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
 
-    if (retailerId) {
-      const response = await fetchLink({
-        address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1`,
-      });
-      if (response?.success && Array.isArray(response.data)) {
-        const found = response.data.find((c) => String(c.Customer_Id) === String(retailerId));
-        if (found) {
-          customerData = {
-            Billl_Name: found.Billl_Name || found.Short_Name || customerData.Billl_Name,
-            Short_Name: found.Short_Name || customerData.Short_Name,
-            Party_Mailing_Name:
-              found.Party_Mailing_Name || found.Billl_Name || customerData.Party_Mailing_Name,
-            Party_Location: found.Address || found.Party_Mailing_Address || "",
-            City: found.City || "",
-            Mobile_No: found.Mobile_No || order.Ord_Mobile_No || "",
-            Land_Line: found.Land_Line || "",
-            Transporter: getTransporterName(order) || found.Transporter_Name || found.Transporter || "",
-            Broker: getBrokerName(order) || found.Broker_Name || found.Broker || "",
-          };
+      if (retailerId) {
+        const response = await fetchLink({
+          address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1`,
+        });
+        if (response?.success && Array.isArray(response.data)) {
+          const found = response.data.find((c) => String(c.Customer_Id) === String(retailerId));
+          if (found) {
+            customerData = {
+              Billl_Name: found.Billl_Name || found.Short_Name || customerData.Billl_Name,
+              Short_Name: found.Short_Name || customerData.Short_Name,
+              Party_Mailing_Name:
+                found.Party_Mailing_Name || found.Billl_Name || customerData.Party_Mailing_Name,
+              Party_Location: found.Address || found.Party_Mailing_Address || "",
+              City: found.City || "",
+              Mobile_No: found.Mobile_No || order.Ord_Mobile_No || "",
+              Land_Line: found.Land_Line || "",
+              Transporter: getTransporterName(order) || found.Transporter_Name || found.Transporter || "",
+              Broker: getBrokerName(order) || found.Broker_Name || found.Broker || "",
+            };
+          }
         }
       }
+
+      // Expenses: reuse mapOrderExpenses() (reads Expence_Value_DR / _CR correctly).
+      const normalizedExpenses = mapOrderExpenses(order.Expence_Array);
+      const totalExpensesValue = normalizedExpenses.reduce(
+        (sum, exp) => sum + (parseFloat(exp.Expence_Value) || 0),
+        0
+      );
+
+      const subtotal = productsList.reduce((sum, p) => sum + (parseFloat(p.Amount) || 0), 0);
+      const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
+
+      // Recompute the total locally so the expense is guaranteed to show,
+      // rather than trusting order.Total_Invoice_value as-is.
+      const computedTotal = Addition(subtotal, totalExpensesValue);
+
+      setPrintData({
+        customer: customerData,
+        cartItems: printCartItems,
+        totals: {
+          subtotal,
+          totalExpenses: totalExpensesValue,
+          tax: 0,
+          total: computedTotal,
+          totalItems: productsList.length,
+          totalKgs,
+        },
+        expenses: normalizedExpenses,
+        storage: safeParse("user", {}),
+        createdOn: order.Created_on || order.Created_On || order.created_on,
+        orderDate: order.So_Date,
+      });
+
+      setPrintModalOpen(true);
+    } catch (error) {
+      console.error("Error preparing print data:", error);
+      toast.error("Couldn't prepare the print preview");
     }
-
-    // Expenses: reuse mapOrderExpenses() (reads Expence_Value_DR / _CR correctly).
-    const normalizedExpenses = mapOrderExpenses(order.Expence_Array);
-    const totalExpensesValue = normalizedExpenses.reduce(
-      (sum, exp) => sum + (parseFloat(exp.Expence_Value) || 0),
-      0
-    );
-
-    const subtotal = productsList.reduce((sum, p) => sum + (parseFloat(p.Amount) || 0), 0);
-    const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
-
-    // Recompute the total locally so the expense is guaranteed to show,
-    // rather than trusting order.Total_Invoice_value as-is.
-    const computedTotal = Addition(subtotal, totalExpensesValue);
-
-    setPrintData({
-      customer: customerData,
-      cartItems: printCartItems,
-      totals: {
-        subtotal,
-        totalExpenses: totalExpensesValue,
-        tax: 0,
-        total: computedTotal,
-        totalItems: productsList.length,
-        totalKgs,
-      },
-      expenses: normalizedExpenses,
-      storage: safeParse("user", {}),
-      createdOn: order.Created_on || order.Created_On || order.created_on,
-      orderDate: order.So_Date,
-    });
-
-    setPrintModalOpen(true);
-  } catch (error) {
-    console.error("Error preparing print data:", error);
-    toast.error("Couldn't prepare the print preview");
-  }
-};
+  };
 
   const handleEditOrder = async (e, order) => {
     e.stopPropagation();
@@ -2655,7 +2657,7 @@ const handlePrintOrder = async (e, order) => {
                         >
                           🖨️ Print
                         </button>
-                     {order.convertedto == 1 || order.Cancel_status==4  ? '' :    <button
+                        {order.convertedto == 1 || order.Cancel_status == 4 ? '' : <button
                           onClick={(e) => handleEditOrder(e, order)}
                           style={{
                             padding: "6px 12px",
@@ -2669,7 +2671,7 @@ const handlePrintOrder = async (e, order) => {
                         >
                           ✏️ Edit
                         </button>
-              }
+                        }
                       </div>
                     </div>
 
@@ -2801,7 +2803,7 @@ const handlePrintOrder = async (e, order) => {
                               >
                                 🖨️ Print
                               </button>
-                         {order.convertedto == 1 || order.Cancel_status==4  ? '' :  <button
+                              {order.convertedto == 1 || order.Cancel_status == 4 ? '' : <button
                                 onClick={(e) => handleEditOrder(e, order)}
                                 title="Edit order"
                                 style={{
@@ -2817,7 +2819,7 @@ const handlePrintOrder = async (e, order) => {
                               >
                                 ✏️ Edit
                               </button>
-                  }
+                              }
                             </div>
                           </td>
                         </tr>
@@ -2847,7 +2849,7 @@ const handlePrintOrder = async (e, order) => {
           customer={printData?.customer}
           cartItems={printData?.cartItems}
           totals={printData?.totals}
-          expenses={printData?.expenses} 
+          expenses={printData?.expenses}
           onPrintAndSave={async () => true}
           storage={printData?.storage}
           isReprint
@@ -2859,7 +2861,7 @@ const handlePrintOrder = async (e, order) => {
       {isMobile && (
         <MobileTabBar
           activeTab="saleOrders"
-          onSaleOrders={() => {}}
+          onSaleOrders={() => { }}
           onDashboard={onDashboard}
           onHome={onBack}
         />
@@ -2922,18 +2924,18 @@ export default function CartPage() {
   const [cartHeaderMenuOpen, setCartHeaderMenuOpen] = useState(false);
   const [originalProductIds, setOriginalProductIds] = useState(new Set());
 
-  
+
   const [creditInfo, setCreditInfo] = useState(null);
   const [expenseMaster, setExpenseMaster] = useState([]);
   const [loadingExpenseMaster, setLoadingExpenseMaster] = useState(false);
   const [invoiceExpenses, setInvoiceExpenses] = useState([]);
- 
+
   const [manualExpenseEdits, setManualExpenseEdits] = useState({});
 
   const handleDashboard = () => setShowDashboard(true);
   const handleBackFromDashboard = () => setShowDashboard(false);
   const handleSaleOrdersClick = () => setShowSaleOrders(true);
-const restoredEditExpensesRef = useRef(false);
+  const restoredEditExpensesRef = useRef(false);
 
   const isEditingOrder = Boolean(localStorage.getItem("editOrderId"));
 
@@ -2982,91 +2984,91 @@ const restoredEditExpensesRef = useRef(false);
     });
   }, [location.state]);
 
-const buildRestoredExpenses = (rawArr, masterList) => {
-  // Get original products from edit data for coolie calculation
-  const editData = safeParse("editOrderData", null);
-  const originalProductsList = editData?.productsList || [];
-  
-  // Build a map of original product IDs and their quantities for reference
-  const originalProductMap = new Map();
-  originalProductsList.forEach(p => {
-    if (p.id) {
-      originalProductMap.set(String(p.id), {
-        quantity: parseInt(p.quantity) || 0,
-        coolieRate: parseFloat(p.coolieRate) || 0,
-        kgs: parseFloat(p.kgs) || 0,
-      });
-    }
-  });
-  
-  // Store both the IDs and the map for later use
-  setOriginalProductIds(new Set(originalProductMap.keys()));
+  const buildRestoredExpenses = (rawArr, masterList) => {
+    // Get original products from edit data for coolie calculation
+    const editData = safeParse("editOrderData", null);
+    const originalProductsList = editData?.productsList || [];
 
-  // Calculate original coolie total from saved order
-  const originalCoolieTotal = originalProductsList.reduce((sum, item) => {
-    const coolieRate = parseFloat(item.coolieRate) || 0;
-    const quantity = parseInt(item.quantity) || 0;
-    return sum + (coolieRate * quantity);
-  }, 0);
+    // Build a map of original product IDs and their quantities for reference
+    const originalProductMap = new Map();
+    originalProductsList.forEach(p => {
+      if (p.id) {
+        originalProductMap.set(String(p.id), {
+          quantity: parseInt(p.quantity) || 0,
+          coolieRate: parseFloat(p.coolieRate) || 0,
+          kgs: parseFloat(p.kgs) || 0,
+        });
+      }
+    });
 
-  // Also look for existing Coolie expense in the order
-  let savedCoolieValue = 0;
-  const existingCoolie = (Array.isArray(rawArr) ? rawArr : []).find(
-    e => (e.Account_Name || e.Expence_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-  );
-  if (existingCoolie) {
-    savedCoolieValue = existingCoolie.Expence_Value !== undefined && existingCoolie.Expence_Value !== null && existingCoolie.Expence_Value !== ''
-      ? parseFloat(existingCoolie.Expence_Value)
-      : (parseFloat(existingCoolie.Expence_Value_DR) || 0) - (parseFloat(existingCoolie.Expence_Value_CR) || 0);
-  }
+    // Store both the IDs and the map for later use
+    setOriginalProductIds(new Set(originalProductMap.keys()));
 
-  return mapOrderExpenses(rawArr).map((row) => {
-    const master = masterList.find(
-      (m) =>
-        String(m.Acc_Id) === String(row.Expense_Id) ||
-        (m.Account_Name || "").trim().toUpperCase() === (row.Account_Name || "").trim().toUpperCase()
+    // Calculate original coolie total from saved order
+    const originalCoolieTotal = originalProductsList.reduce((sum, item) => {
+      const coolieRate = parseFloat(item.coolieRate) || 0;
+      const quantity = parseInt(item.quantity) || 0;
+      return sum + (coolieRate * quantity);
+    }, 0);
+
+    // Also look for existing Coolie expense in the order
+    let savedCoolieValue = 0;
+    const existingCoolie = (Array.isArray(rawArr) ? rawArr : []).find(
+      e => (e.Account_Name || e.Expence_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
     );
-    
-    const isCoolie = (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
-    const pct = master ? Number(master.percentageValue) || 0 : row.percentageValue || 0;
-    
-    if (isCoolie) {
+    if (existingCoolie) {
+      savedCoolieValue = existingCoolie.Expence_Value !== undefined && existingCoolie.Expence_Value !== null && existingCoolie.Expence_Value !== ''
+        ? parseFloat(existingCoolie.Expence_Value)
+        : (parseFloat(existingCoolie.Expence_Value_DR) || 0) - (parseFloat(existingCoolie.Expence_Value_CR) || 0);
+    }
+
+    return mapOrderExpenses(rawArr).map((row) => {
+      const master = masterList.find(
+        (m) =>
+          String(m.Acc_Id) === String(row.Expense_Id) ||
+          (m.Account_Name || "").trim().toUpperCase() === (row.Account_Name || "").trim().toUpperCase()
+      );
+
+      const isCoolie = (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+      const pct = master ? Number(master.percentageValue) || 0 : row.percentageValue || 0;
+
+      if (isCoolie) {
+        return {
+          ...row,
+          percentageValue: 0,
+          baseCoolieValue: savedCoolieValue || row.Expence_Value || 0,
+          originalCoolieTotal: originalCoolieTotal,
+          Expense_Id: row.Expense_Id,
+          originalProductMap: originalProductMap, // Store the original product map for delta calculation
+          isRestored: true,
+        };
+      }
+
+      // For all other expenses (including percentage-based), store the percentage but allow editing
       return {
         ...row,
-        percentageValue: 0,
-        baseCoolieValue: savedCoolieValue || row.Expence_Value || 0,
-        originalCoolieTotal: originalCoolieTotal,
-        Expense_Id: row.Expense_Id,
-        originalProductMap: originalProductMap, // Store the original product map for delta calculation
+        percentageValue: pct,
+        baseValue: row.Expence_Value || 0,
         isRestored: true,
       };
+    });
+  };
+
+  useEffect(() => {
+    const isEditing = localStorage.getItem("isEditingOrder") === "true";
+    const editData = safeParse("editOrderData", null);
+    if (!isEditing || !editData) {
+      restoredEditExpensesRef.current = false;
+      setOriginalProductIds(new Set()); // Reset on exit
+      return;
     }
-    
-    // For all other expenses (including percentage-based), store the percentage but allow editing
-    return {
-      ...row,
-      percentageValue: pct,
-      baseValue: row.Expence_Value || 0,
-      isRestored: true,
-    };
-  });
-};
 
-useEffect(() => {
-  const isEditing = localStorage.getItem("isEditingOrder") === "true";
-  const editData = safeParse("editOrderData", null);
-  if (!isEditing || !editData) {
-    restoredEditExpensesRef.current = false;
-    setOriginalProductIds(new Set()); // Reset on exit
-    return;
-  }
-
-  // Capture original product IDs for coolie calculation
-  const ids = new Set();
-  (editData.productsList || []).forEach(p => {
-    if (p.id) ids.add(String(p.id));
-  });
-  setOriginalProductIds(ids);
+    // Capture original product IDs for coolie calculation
+    const ids = new Set();
+    (editData.productsList || []).forEach(p => {
+      if (p.id) ids.add(String(p.id));
+    });
+    setOriginalProductIds(ids);
 
     const originalCustomerName =
       localStorage.getItem("editCustomerOriginalName") || editData.customerName;
@@ -3112,19 +3114,19 @@ useEffect(() => {
     }
 
 
-if (!restoredEditExpensesRef.current && expenseMaster.length > 0) {
-  const raw =
-    Array.isArray(editData.expenses) && editData.expenses.length
-      ? editData.expenses
-      : editData.Expence_Array;
-  const restored = buildRestoredExpenses(raw, expenseMaster);
-  setInvoiceExpenses(restored);
+    if (!restoredEditExpensesRef.current && expenseMaster.length > 0) {
+      const raw =
+        Array.isArray(editData.expenses) && editData.expenses.length
+          ? editData.expenses
+          : editData.Expence_Array;
+      const restored = buildRestoredExpenses(raw, expenseMaster);
+      setInvoiceExpenses(restored);
 
-  // DO NOT protect ANY expenses from auto-recalculation in edit mode
-  // This allows Coolie and percentage-based expenses to recalculate when quantity changes
-  setManualExpenseEdits({});
-  restoredEditExpensesRef.current = true;
-}
+      // DO NOT protect ANY expenses from auto-recalculation in edit mode
+      // This allows Coolie and percentage-based expenses to recalculate when quantity changes
+      setManualExpenseEdits({});
+      restoredEditExpensesRef.current = true;
+    }
 
     const existingCart = safeParse("cartItems", {});
     const hasExistingCart = existingCart && Object.keys(existingCart).length > 0;
@@ -3307,7 +3309,7 @@ if (!restoredEditExpensesRef.current && expenseMaster.length > 0) {
         }
       }
     } catch (error) {
-      toast.error("Couldn't load brokers");
+      console.error("Couldn't load brokers:", error);
     } finally {
       setLoadingBrokers(false);
     }
@@ -3333,7 +3335,7 @@ if (!restoredEditExpensesRef.current && expenseMaster.length > 0) {
         }
       }
     } catch (error) {
-      toast.error("Couldn't load transporters");
+      console.error("Couldn't load transporters:", error);
     } finally {
       setLoadingTransporters(false);
     }
@@ -3347,7 +3349,6 @@ if (!restoredEditExpensesRef.current && expenseMaster.length > 0) {
       if (response?.success && Array.isArray(response.data)) setExpenseMaster(response.data);
     } catch (error) {
       console.error("Failed to load expense master:", error);
-      toast.error("Couldn't load expense options");
     } finally {
       setLoadingExpenseMaster(false);
     }
@@ -3375,20 +3376,20 @@ if (!restoredEditExpensesRef.current && expenseMaster.length > 0) {
 
   }, [customer]);
 
-const loadAllProducts = async () => {
-  try {
-    const response = await fetchLink({ address: "products?limit=1000" });
-    if (response?.success && Array.isArray(response.data)) {
-      setAllProducts(response.data.map((p) => ({ 
-        ...p, 
-        shortName: p.Short_Name || p.name,
-        coolieRate: p.Coolie_Rate || 0 
-      })));
+  const loadAllProducts = async () => {
+    try {
+      const response = await fetchLink({ address: "products?limit=1000" });
+      if (response?.success && Array.isArray(response.data)) {
+        setAllProducts(response.data.map((p) => ({
+          ...p,
+          shortName: p.Short_Name || p.name,
+          coolieRate: p.Coolie_Rate || 0
+        })));
+      }
+    } catch (error) {
+      console.error("Error loading products:", error);
     }
-  } catch (error) {
-    console.error("Error loading products:", error);
-  }
-};
+  };
 
   const loadCartData = () => {
     setLoading(true);
@@ -3760,129 +3761,131 @@ const loadAllProducts = async () => {
     return null;
   };
 
-const enhancedCartItems = useMemo(() => {
-  let editProductsList = [];
-  const editData = safeParse("editOrderData", null);
-  if (Array.isArray(editData?.productsList)) editProductsList = editData.productsList;
-  if (editProductsList.length === 0) {
-    const fallback = safeParse("editProductsList", null);
-    if (Array.isArray(fallback)) editProductsList = fallback;
-  }
-
-  const editProductsMap = new Map();
-  editProductsList.forEach((p) => {
-    if (p.id) {
-      editProductsMap.set(String(p.id), {
-        ...p,
-        originalQuantity: parseInt(p.quantity) || 0,
-        originalCoolieRate: parseFloat(p.coolieRate) || 0,
-      });
+  const enhancedCartItems = useMemo(() => {
+    let editProductsList = [];
+    const editData = safeParse("editOrderData", null);
+    if (Array.isArray(editData?.productsList)) editProductsList = editData.productsList;
+    if (editProductsList.length === 0) {
+      const fallback = safeParse("editProductsList", null);
+      if (Array.isArray(fallback)) editProductsList = fallback;
     }
-  });
 
-  return Object.entries(cartItems)
-    .filter(([, qty]) => qty > 0)
-    .map(([productId, qty]) => {
-      const sid = String(productId);
-      const editP = editProductsMap.get(sid);
-      
-      // Get the live product for coolie rate
-      const liveProduct =
-        products.find((p) => String(p.id) === sid) ||
-        allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
-      
-      // Priority: live product coolie rate > edit data coolie rate > 0
-      const coolieRate = liveProduct
-        ? liveProduct.coolie ?? liveProduct.coolieRate ?? liveProduct.Coolie_Rate ?? liveProduct.Coolie ?? 0
-        : editP?.coolieRate || 0;
-
-      if (editP && editP.name) {
-        const packGet = Number(editP.packGet) || 1;
-        const kgs = qty * packGet;
-        const price = Number(editP.price) || 0;
-
-        return {
-          id: productId,
-          name: editP.name,
-          shortName: editP.shortName || editP.name,
-          quantity: qty,
-          originalQuantity: editP.originalQuantity || 0,
-          kgs,
-          price,
-          packGet,
-          amount: price * kgs,
-          Print_Name: editP.name,
-          coolieRate,
-          hsn: editP.hsn || "",
-          taxRate: Number(editP.taxRate) || 0,
-          unitId: editP.unitId,
-          unitName: editP.unitName,
-          unit: editP.unit,
-          image: editP.image || "",
-          isNew: !editP.originalQuantity || editP.originalQuantity === 0,
-        };
+    const editProductsMap = new Map();
+    editProductsList.forEach((p) => {
+      if (p.id) {
+        editProductsMap.set(String(p.id), {
+          ...p,
+          originalQuantity: parseInt(p.quantity) || 0,
+          originalCoolieRate: parseFloat(p.coolieRate) || 0,
+        });
       }
+    });
 
-      const product = products.find((p) => String(p.id) === sid);
-      if (product && product.name) {
-        const packGet = parseFloat(product.packGet) || 1;
-        const editedPrice = getEditedPrice(productId);
-        const price = editedPrice !== null ? editedPrice : parseFloat(product.price) || 0;
-        const kgs = qty * packGet;
+    return Object.entries(cartItems)
+      .filter(([, qty]) => qty > 0)
+      .map(([productId, qty]) => {
+        const sid = String(productId);
+        const editP = editProductsMap.get(sid);
+
+        // Get the live product for coolie rate
+        const liveProduct =
+          products.find((p) => String(p.id) === sid) ||
+          allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
+
+        // Priority: live product coolie rate > edit data coolie rate > 0
+        const coolieRate = liveProduct
+          ? liveProduct.coolie ?? liveProduct.coolieRate ?? liveProduct.Coolie_Rate ?? liveProduct.Coolie ?? 0
+          : editP?.coolieRate || 0;
+
+        if (editP && editP.name) {
+          const packGet = Number(editP.packGet) || 1;
+          const kgs = qty * packGet;
+          const price = Number(editP.price) || 0;
+
+          return {
+            id: productId,
+            name: editP.name,
+            shortName: editP.shortName || editP.name,
+            quantity: qty,
+            originalQuantity: editP.originalQuantity || 0,
+            kgs,
+            price,
+            packGet,
+            amount: price * kgs,
+            Print_Name: editP.name,
+            coolieRate,
+            hsn: editP.hsn || "",
+            taxRate: Number(editP.taxRate) || 0,
+            unitId: editP.unitId,
+            unitName: editP.unitName,
+            unit: editP.unit,
+            image: editP.image || "",
+            isNew: !editP.originalQuantity || editP.originalQuantity === 0,
+          };
+        }
+
+        const product =
+          products.find((p) => String(p.id) === sid || String(p.Product_Id) === sid) ||
+          allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
+        if (product && product.name) {
+          const packGet = parseFloat(product.packGet) || 1;
+          const editedPrice = getEditedPrice(productId);
+          const price = editedPrice !== null ? editedPrice : parseFloat(product.price) || 0;
+          const kgs = qty * packGet;
+          return {
+            id: productId,
+            name: product.name,
+            shortName: product.shortName || product.Short_Name || product.name,
+            quantity: qty,
+            originalQuantity: 0,
+            kgs,
+            price,
+            packGet,
+            amount: price * kgs,
+            Print_Name: product.name,
+            coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? liveProduct?.Coolie_Rate ?? liveProduct?.Coolie ?? product.coolie ?? product.coolieRate ?? product.Coolie_Rate ?? product.Coolie ?? 0,
+            hsn: product.hsnCode || product.hsn || "",
+            taxRate: Number(product.taxRate) || 0,
+            unitId: product.unitId,
+            unitName: product.unitName,
+            unit: product.unit,
+            image: product.image || "",
+            isNew: true,
+          };
+        }
+
         return {
           id: productId,
-          name: product.name,
-          shortName: product.shortName || product.Short_Name || product.name,
+          name: `Product ${productId}`,
+          shortName: `Product ${productId}`,
           quantity: qty,
           originalQuantity: 0,
-          kgs,
-          price,
-          packGet,
-          amount: price * kgs,
-          Print_Name: product.name,
-          coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? product.coolie ?? product.coolieRate ?? 0,
-          hsn: product.hsnCode || product.hsn || "",
-          taxRate: Number(product.taxRate) || 0,
-          unitId: product.unitId,
-          unitName: product.unitName,
-          unit: product.unit,
-          image: product.image || "",
+          kgs: qty,
+          price: 0,
+          packGet: 1,
+          amount: 0,
+          Print_Name: `Product ${productId}`,
+          coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? liveProduct?.Coolie_Rate ?? liveProduct?.Coolie ?? 0,
+          hsn: "",
+          taxRate: 0,
           isNew: true,
         };
-      }
-
-      return {
-        id: productId,
-        name: `Product ${productId}`,
-        shortName: `Product ${productId}`,
-        quantity: qty,
-        originalQuantity: 0,
-        kgs: qty,
-        price: 0,
-        packGet: 1,
-        amount: 0,
-        Print_Name: `Product ${productId}`,
-        coolieRate: 0,
-        hsn: "",
-        taxRate: 0,
-        isNew: true,
-      };
-    });
-}, [cartItems, products, allProducts]);
+      });
+  }, [cartItems, products, allProducts]);
 
   const totalItems = enhancedCartItems.reduce((s, i) => s + i.quantity, 0);
   const totalKgs = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
   const subtotalAmount = RoundNumber(enhancedCartItems.reduce((s, i) => s + i.amount, 0));
 
-const coolieExp = useMemo(() => {
-  return enhancedCartItems.reduce((sum, item) => {
-    const quantity = item.quantity || 0;
-      
+  const coolieExp = useMemo(() => {
+    return enhancedCartItems.reduce((sum, item) => {
+      const quantity = item.quantity || 0;
 
-    const coolieRatePerKg = item.coolieRate || 0; 
-     return Addition(sum, Multiplication(coolieRatePerKg, quantity));
-  }, 0);
-}, [enhancedCartItems]);
+
+      const coolieRatePerKg = item.coolieRate || 0;
+      return Addition(sum, Multiplication(coolieRatePerKg, quantity));
+    }, 0);
+  }, [enhancedCartItems]);
 
 
   const totalExpensesValue = useMemo(
@@ -3890,7 +3893,7 @@ const coolieExp = useMemo(() => {
     [invoiceExpenses]
   );
 
- 
+
   const flatExpensesTotal = useMemo(
     () =>
       invoiceExpenses.reduce(
@@ -3901,228 +3904,159 @@ const coolieExp = useMemo(() => {
     [invoiceExpenses]
   );
 
-const percentageBase = subtotalAmount;
+  const percentageBase = subtotalAmount;
 
   const grandTotal = useMemo(
     () => Addition(subtotalAmount, totalExpensesValue),
     [subtotalAmount, totalExpensesValue]
   );
 
-const handleSelectExpense = (index, expenseId) => {
-  const prevExpId = invoiceExpenses[index]?.Expense_Id;
-  if (prevExpId) {
-    setManualExpenseEdits((prev) => {
-      if (!(prevExpId in prev)) return prev;
-      const next = { ...prev };
-      delete next[prevExpId];
-      return next;
-    });
-  }
-
-  if (!expenseId) {
-    setInvoiceExpenses((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? { Expense_Id: "", Account_Name: "", Group_Name: "", percentageValue: 0, Expence_Value: "" }
-          : item
-      )
-    );
-    return;
-  }
-
-  const selected = expenseMaster.find((exp) => String(exp.Acc_Id) === String(expenseId));
-  if (!selected) return;
-
-  const isCoolie = (selected.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
-  const percentValue = Number(selected.percentageValue) || 0;
-
-  setInvoiceExpenses((prev) =>
-    prev.map((item, i) => {
-      if (i !== index) return item;
-      let value = "";
-      
-      if (isCoolie) {
-        if (isEditingOrder) {
-          // Get the original product map from existing row
-          const existingRow = prev.find(
-            r => (r.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-          );
-          const originalMap = existingRow?.originalProductMap || new Map();
-          
-          // Calculate delta coolie
-          let deltaCoolie = 0;
-          enhancedCartItems.forEach((cartItem) => {
-            const itemId = String(cartItem.id);
-            const currentQty = parseInt(cartItem.quantity) || 0;
-            const coolieRate = parseFloat(cartItem.coolieRate) || 0;
-            
-            const originalData = originalMap.get(itemId);
-            if (originalData) {
-              const originalQty = parseInt(originalData.quantity) || 0;
-              const qtyDelta = currentQty - originalQty;
-              if (qtyDelta > 0) {
-                deltaCoolie += (coolieRate * qtyDelta);
-              }
-            } else {
-              deltaCoolie += (coolieRate * currentQty);
-            }
-          });
-          
-          const baseValue = existingRow?.baseCoolieValue || item.Expence_Value || 0;
-          value = RoundNumber(parseFloat(baseValue) + deltaCoolie);
-        } else {
-          value = RoundNumber(coolieExp);
-        }
-      } else if (percentValue !== 0) {
-        value = RoundNumber(getPercentage(percentageBase, percentValue));
-      }
-      
-      return {
-        ...item,
-        Expense_Id: selected.Acc_Id,
-        Account_Name: selected.Account_Name,
-        Group_Name: selected.Group_Name,
-        percentageValue: selected.percentageValue,
-        Expence_Value: value,
-        ...(isCoolie && isEditingOrder ? { originalProductMap: prev.find(
-          r => (r.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-        )?.originalProductMap || new Map() } : {}),
-      };
-    })
-  );
-};
-const handleExpenseValueChange = (index, value) => {
-  if (value !== "" && !/^-?\d*\.?\d*$/.test(value)) return;
-  
-  setInvoiceExpenses((prev) =>
-    prev.map((item, i) => {
-      if (i === index) {
-        const newItem = { ...item, Expence_Value: value };
-       
-        const isCoolie = (item.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
-        if (isCoolie) {
-          newItem.baseCoolieValue = parseFloat(value) || 0;
-        }
-        return newItem;
-      }
-      return item;
-    })
-  );
-  
-  const expId = invoiceExpenses[index]?.Expense_Id;
- 
-  const isCoolie = (invoiceExpenses[index]?.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
-  if (expId && !isCoolie) {
-    setManualExpenseEdits((prev) => ({ ...prev, [expId]: true }));
-  }
-};
-
-
-// Force recalculation of expenses when cart items change in edit mode
-useEffect(() => {
-  if (!isEditingOrder) return;
-  if (Object.keys(cartItems).length === 0) return;
-
-  // Recalculate expenses based on current cart items
-  setInvoiceExpenses((prev) => {
-    let changed = false;
-    let next = [...prev];
-
-    // Find the existing Coolie row
-    const coolieRowIndex = prev.findIndex(
-      (row) => (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-    );
-
-    if (coolieRowIndex >= 0) {
-      const existingRow = next[coolieRowIndex];
-      
-      // REMOVE the manual edit check - always recalculate based on delta
-      // Get the original product map from the existing row or build it
-      const originalMap = existingRow.originalProductMap || new Map();
-      
-      // Calculate delta coolie for ALL changes:
-      // 1. New items added
-      // 2. Quantity increases on existing items
-      let deltaCoolie = 0;
-      
-      enhancedCartItems.forEach((item) => {
-        const itemId = String(item.id);
-        const currentQty = parseInt(item.quantity) || 0;
-        const coolieRate = parseFloat(item.coolieRate) || 0;
-        
-        const originalData = originalMap.get(itemId);
-        if (originalData) {
-          // Existing item - calculate quantity delta
-          const originalQty = parseInt(originalData.quantity) || 0;
-          const qtyDelta = currentQty - originalQty;
-          if (qtyDelta > 0) {
-            // Only add coolie for INCREASED quantity
-            deltaCoolie += (coolieRate * qtyDelta);
-          }
-        } else {
-          // New item - add full coolie
-          deltaCoolie += (coolieRate * currentQty);
-        }
+  const handleSelectExpense = (index, expenseId) => {
+    const prevExpId = invoiceExpenses[index]?.Expense_Id;
+    if (prevExpId) {
+      setManualExpenseEdits((prev) => {
+        if (!(prevExpId in prev)) return prev;
+        const next = { ...prev };
+        delete next[prevExpId];
+        return next;
       });
-
-      // The total coolie should be: base value + delta coolie
-      const baseValue = existingRow.baseCoolieValue || existingRow.Expence_Value || 0;
-      const totalCoolie = RoundNumber(parseFloat(baseValue) + deltaCoolie);
-
-      if (Number(existingRow.Expence_Value) !== totalCoolie) {
-        next[coolieRowIndex] = {
-          ...existingRow,
-          Expence_Value: totalCoolie,
-        };
-        changed = true;
-      }
-    } else {
-      // No coolie row exists - create one from scratch
-      const coolieMaster = expenseMaster.find(
-        (m) => (m.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-      );
-      if (coolieMaster) {
-        const totalCoolie = enhancedCartItems.reduce((sum, item) => {
-          const currentQty = parseInt(item.quantity) || 0;
-          const coolieRate = parseFloat(item.coolieRate) || 0;
-          return sum + (coolieRate * currentQty);
-        }, 0);
-        
-        next = [
-          ...next,
-          {
-            Expense_Id: coolieMaster.Acc_Id,
-            Account_Name: coolieMaster.Account_Name,
-            Group_Name: coolieMaster.Group_Name,
-            percentageValue: 0,
-            Expence_Value: RoundNumber(totalCoolie),
-            baseCoolieValue: RoundNumber(totalCoolie),
-            originalProductMap: new Map(),
-          },
-        ];
-        changed = true;
-      }
     }
 
-    // Recalculate percentage-based expenses (Discount, etc.) based on new subtotal
-    next = next.map((row, index) => {
-      if (!row.Expense_Id) return row;
-      
-      const isCoolie = (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
-      if (isCoolie) return row;
+    if (!expenseId) {
+      setInvoiceExpenses((prev) =>
+        prev.map((item, i) =>
+          i === index
+            ? { Expense_Id: "", Account_Name: "", Group_Name: "", percentageValue: 0, Expence_Value: "" }
+            : item
+        )
+      );
+      return;
+    }
 
-      const pct = Number(row.percentageValue) || 0;
-      if (pct === 0) return row;
-      
-      const value = RoundNumber(getPercentage(percentageBase, pct));
-      if (Number(row.Expence_Value) === value) return row;
-      changed = true;
-      return { ...row, Expence_Value: value };
+    const selected = expenseMaster.find((exp) => String(exp.Acc_Id) === String(expenseId));
+    if (!selected) return;
+
+    const accNameUpper = (selected.Account_Name || "").trim().toUpperCase();
+    const groupNameUpper = (selected.Group_Name || "").trim().toUpperCase();
+    const isCoolie = accNameUpper === "COOLIE EXPENSES";
+    const isDiscount = accNameUpper.includes("DISCOUNT") || groupNameUpper.includes("DISCOUNT");
+
+    const percentValue = Number(
+      selected.percentageValue ??
+      selected.percentage ??
+      selected.Percentage ??
+      selected.Percentage_Value ??
+      selected.percentValue ??
+      selected.Discount_Percentage ??
+      0
+    );
+
+    setInvoiceExpenses((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        let value = "";
+
+        if (isCoolie) {
+          // Always use the directly computed coolie from current cart items
+          value = RoundNumber(coolieExp);
+        } else if (percentValue !== 0) {
+          const calcVal = RoundNumber(getPercentage(percentageBase, Math.abs(percentValue)));
+          value = isDiscount || percentValue < 0 ? -calcVal : calcVal;
+        }
+
+        return {
+          ...item,
+          Expense_Id: selected.Acc_Id,
+          Account_Name: selected.Account_Name,
+          Group_Name: selected.Group_Name,
+          percentageValue: percentValue,
+          Expence_Value: value,
+        };
+      })
+    );
+  };
+  const handleExpenseValueChange = (index, value) => {
+    if (value !== "" && !/^-?\d*\.?\d*$/.test(value)) return;
+
+    setInvoiceExpenses((prev) =>
+      prev.map((item, i) => {
+        if (i === index) {
+          const newItem = { ...item, Expence_Value: value };
+
+          const isCoolie = (item.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+          if (isCoolie) {
+            newItem.baseCoolieValue = parseFloat(value) || 0;
+          }
+          return newItem;
+        }
+        return item;
+      })
+    );
+
+    const expId = invoiceExpenses[index]?.Expense_Id;
+
+    const isCoolie = (invoiceExpenses[index]?.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
+    if (expId && !isCoolie) {
+      setManualExpenseEdits((prev) => ({ ...prev, [expId]: true }));
+    }
+  };
+
+
+  // Force recalculation of expenses when cart items change in normal or edit mode
+  useEffect(() => {
+    if (Object.keys(cartItems).length === 0 && enhancedCartItems.length === 0) return;
+
+    // Recalculate expenses based on current cart items
+    setInvoiceExpenses((prev) => {
+      let changed = false;
+      let next = [...prev];
+
+      // Find the existing Coolie row
+      const coolieRowIndex = prev.findIndex(
+        (row) => (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
+      );
+
+      const totalCoolie = RoundNumber(coolieExp);
+
+      if (coolieRowIndex >= 0) {
+        const existingRow = next[coolieRowIndex];
+
+        if (Number(existingRow.Expence_Value) !== totalCoolie) {
+          next[coolieRowIndex] = {
+            ...existingRow,
+            Expence_Value: totalCoolie,
+          };
+          changed = true;
+        }
+      }
+
+      // Recalculate percentage-based expenses (Discount, etc.) based on new subtotal
+      next = next.map((row) => {
+        if (!row.Expense_Id) return row;
+
+        const accNameUpper = (row.Account_Name || "").trim().toUpperCase();
+        const groupNameUpper = (row.Group_Name || "").trim().toUpperCase();
+        const isCoolie = accNameUpper === "COOLIE EXPENSES";
+        if (isCoolie) return row;
+
+        const isDiscount = accNameUpper.includes("DISCOUNT") || groupNameUpper.includes("DISCOUNT");
+        const pct = Number(row.percentageValue) || 0;
+        const isPercentageExp = pct !== 0;
+
+        if (!isPercentageExp && manualExpenseEdits[row.Expense_Id]) return row;
+
+        if (pct === 0) return row;
+
+        const calcVal = RoundNumber(getPercentage(percentageBase, Math.abs(pct)));
+        const value = isDiscount || pct < 0 ? -calcVal : calcVal;
+        if (Number(row.Expence_Value) === value) return row;
+        changed = true;
+        return { ...row, Expence_Value: value };
+      });
+
+      return changed ? next : prev;
     });
-
-    return changed ? next : prev;
-  });
-}, [cartItems, enhancedCartItems, percentageBase, isEditingOrder, expenseMaster]);
+  }, [cartItems, enhancedCartItems, coolieExp, percentageBase, isEditingOrder, expenseMaster, manualExpenseEdits]);
   const addExpenseRow = () =>
     setInvoiceExpenses((prev) => [
       ...prev,
@@ -4142,28 +4076,28 @@ useEffect(() => {
 
   /* ---------------- Cart mutations ---------------- */
 
-const updateQty = (id, delta) => {
-  setCartItems((prev) => {
-    const next = Math.max(0, (prev[id] || 0) + delta);
-    let newCart;
-    if (next === 0) {
-      const { [id]: _removed, ...rest } = prev;
-      newCart = rest;
-    } else {
-      newCart = { ...prev, [id]: next };
-    }
-    localStorage.setItem("cartItems", JSON.stringify(newCart));
-    return newCart;
-  });
-};
+  const updateQty = (id, delta) => {
+    setCartItems((prev) => {
+      const next = Math.max(0, (prev[id] || 0) + delta);
+      let newCart;
+      if (next === 0) {
+        const { [id]: _removed, ...rest } = prev;
+        newCart = rest;
+      } else {
+        newCart = { ...prev, [id]: next };
+      }
+      localStorage.setItem("cartItems", JSON.stringify(newCart));
+      return newCart;
+    });
+  };
 
-const setItemQty = (id, qty) => {
-  setCartItems((prev) => {
-    const newCart = { ...prev, [id]: qty };
-    localStorage.setItem("cartItems", JSON.stringify(newCart));
-    return newCart;
-  });
-};
+  const setItemQty = (id, qty) => {
+    setCartItems((prev) => {
+      const newCart = { ...prev, [id]: qty };
+      localStorage.setItem("cartItems", JSON.stringify(newCart));
+      return newCart;
+    });
+  };
 
   const removeItem = (id) => {
     const product = enhancedCartItems.find((p) => String(p.id) === String(id));
@@ -4204,7 +4138,7 @@ const setItemQty = (id, qty) => {
       "cartPageDeliveryAddress",
       "cartPageDescription",
     ].forEach((key) => localStorage.removeItem(key));
-  setOriginalProductIds(new Set()); 
+    setOriginalProductIds(new Set());
     setCartItems({});
     setCustomer("");
     setContactNumber("");
@@ -4278,7 +4212,7 @@ const setItemQty = (id, qty) => {
     setIsPrintModalOpen(false);
     setLastOrderData(null);
     setStep(1);
-  setOriginalProductIds(new Set());
+    setOriginalProductIds(new Set());
     navigate("/", { replace: true });
   };
 
@@ -4505,35 +4439,35 @@ const setItemQty = (id, qty) => {
         billName: selectedDetails?.billName || "",
       };
 
-     setLastOrderData({
-  saleData,
-  responseData: response.data,
-  customerData,
-  printCartItems: enhancedCartItems.map((item) => ({
-    ...item,
-    Print_Name: item.name,
-    kgs: item.kgs || 0,
-    price: item.price || 0,
-    packGet: item.packGet || 1,
-  })),
-  totals: {
-    subtotal: subtotalAmount,
-    tax: totalTax,
-    total: totalInvoiceValue,
-    totalItems: enhancedCartItems.length,
-    totalKgs: totalKgsValue,
-  },
-  // FIX (Block 8): stop force-recomputing Coolie in the print payload —
-  // use exactly what's on screen, same as Block 7.
-  expenses: invoiceExpenses
-    .filter((e) => e.Expense_Id && e.Account_Name)
-    .map((e) => ({
-      Account_Name: e.Account_Name,
-      Expence_Value: RoundNumber(e.Expence_Value),
-    })),
-});
+      setLastOrderData({
+        saleData,
+        responseData: response.data,
+        customerData,
+        printCartItems: enhancedCartItems.map((item) => ({
+          ...item,
+          Print_Name: item.name,
+          kgs: item.kgs || 0,
+          price: item.price || 0,
+          packGet: item.packGet || 1,
+        })),
+        totals: {
+          subtotal: subtotalAmount,
+          tax: totalTax,
+          total: totalInvoiceValue,
+          totalItems: enhancedCartItems.length,
+          totalKgs: totalKgsValue,
+        },
+        // FIX (Block 8): stop force-recomputing Coolie in the print payload —
+        // use exactly what's on screen, same as Block 7.
+        expenses: invoiceExpenses
+          .filter((e) => e.Expense_Id && e.Account_Name)
+          .map((e) => ({
+            Account_Name: e.Account_Name,
+            Expence_Value: RoundNumber(e.Expence_Value),
+          })),
+      });
 
-   
+
       setIsPrintModalOpen(true);
     } catch (error) {
       toast.dismiss(loadingToast);
@@ -4800,77 +4734,77 @@ const setItemQty = (id, qty) => {
     </>
   );
 
-const renderExpenseRow = (row, index) => {
-  // Remove the isDisabledInput check - allow all expenses to be editable
-  return (
-    <div
-      key={index}
-      style={{
-        display: "flex",
-        gap: "8px",
-        alignItems: "center",
-        padding: "10px",
-        background: "#f9f4ef",
-        borderRadius: "8px",
-        border: "1px solid #e8ddd4",
-        marginBottom: "8px",
-        flexWrap: "wrap",
-      }}
-    >
-      <select
-        value={row.Expense_Id}
-        onChange={(e) => handleSelectExpense(index, e.target.value)}
+  const renderExpenseRow = (row, index) => {
+    // Remove the isDisabledInput check - allow all expenses to be editable
+    return (
+      <div
+        key={index}
         style={{
-          flex: "1 1 160px",
-          padding: "8px",
-          border: "1px solid #ddd",
-          borderRadius: "6px",
-          fontSize: "13px",
-          outline: "none",
-          background: "#fff",
+          display: "flex",
+          gap: "8px",
+          alignItems: "center",
+          padding: "10px",
+          background: "#f9f4ef",
+          borderRadius: "8px",
+          border: "1px solid #e8ddd4",
+          marginBottom: "8px",
+          flexWrap: "wrap",
         }}
       >
-        <option value="">Select an expense</option>
-        {getAvailableOptionsForRow(index).map((exp) => (
-          <option key={exp.Acc_Id} value={exp.Acc_Id}>
-            {exp.Account_Name}
-          </option>
-        ))}
-      </select>
+        <select
+          value={row.Expense_Id}
+          onChange={(e) => handleSelectExpense(index, e.target.value)}
+          style={{
+            flex: "1 1 160px",
+            padding: "8px",
+            border: "1px solid #ddd",
+            borderRadius: "6px",
+            fontSize: "13px",
+            outline: "none",
+            background: "#fff",
+          }}
+        >
+          <option value="">Select an expense</option>
+          {getAvailableOptionsForRow(index).map((exp) => (
+            <option key={exp.Acc_Id} value={exp.Acc_Id}>
+              {exp.Account_Name}
+            </option>
+          ))}
+        </select>
 
-      <input
-        type="text"
-        value={row.Expence_Value}
-        // REMOVE: disabled={isDisabledInput}
-        onChange={(e) => handleExpenseValueChange(index, e.target.value)}
-        placeholder="0.00"
-        style={{
-          width: "90px",
-          padding: "8px",
-          border: `1px solid ${BROWN}`,
-          borderRadius: "6px",
-          fontSize: "13px",
-          textAlign: "right",
-          outline: "none",
-          background: "#fff",
-        }}
-      />
+        <input
+          type="text"
+          value={row.Expence_Value}
+          // REMOVE: disabled={isDisabledInput}
+          onChange={(e) => handleExpenseValueChange(index, e.target.value)}
+          placeholder="0.00"
+          style={{
+            width: "90px",
+            padding: "8px",
+            border: `1px solid ${BROWN}`,
+            borderRadius: "6px",
+            fontSize: "13px",
+            textAlign: "right",
+            outline: "none",
+            background: "#fff",
+          }}
+        />
 
-      <button
-        onClick={() => removeExpenseRow(index)}
-        style={{
-          background: "transparent",
-          border: "none",
-          color: "#e74c3c",
-          cursor: "pointer",
-          fontSize: "18px",
-        }}
-      >
-        ✕
-      </button>
-    </div>
-  );
-};
+        <button
+          onClick={() => removeExpenseRow(index)}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#e74c3c",
+            cursor: "pointer",
+            fontSize: "18px",
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    );
+  };
 
   const cartRowProps = {
     isMobile,
@@ -4895,250 +4829,250 @@ const renderExpenseRow = (row, index) => {
       customer={lastOrderData?.customerData}
       cartItems={lastOrderData?.printCartItems}
       totals={lastOrderData?.totals}
-      expenses={lastOrderData?.expenses} 
+      expenses={lastOrderData?.expenses}
       storage={safeParse("user", {})}
       onPrintAndSave={async () => true}
       onPrinted={finishOrderCleanup}
-       autoPrint={Boolean(lastOrderData)}
+      autoPrint={Boolean(lastOrderData)}
     />
   );
 
   /* ---------------- Mobile: order details ---------------- */
 
-// Mobile: order details
-if (isMobile && step === 2) {
-  return (
-    <>
-      <CommonHeader
-        title="Order details"
-        logo="SMT"
-        showSearch={false}
-        showCart={false}
-        showBackButton
-        showTitle
-        cartItemCount={0}
-        onBackClick={() => setStep(1)}
-        isMobile={isMobile}
-        backgroundColor={BROWN_DARK}
-        isLoggedIn={isLoggedIn}
-        userName={userName}
-        onSaleOrders={handleSaleOrdersClick}
-        {...commonHeaderCustomerProps}
-        customActions={
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {renderThreeDotsMenu()}
-          </div>
-        }
-      />
-
-      <div style={{ padding: "20px 16px", background: BG_COLOR, minHeight: "100vh", paddingBottom: "120px" }}>
-        {renderOrderForm()}
-
-        {/* Expense Section - Added for mobile view */}
-        <div style={{ marginTop: "16px", marginBottom: "16px" }}>
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "10px",
-          }}>
-            <label style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>Expenses</label>
-            <button
-              onClick={addExpenseRow}
-              disabled={expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length}
-              style={{
-                background: BROWN,
-                color: "#fff",
-                border: "none",
-                borderRadius: "20px",
-                padding: "6px 14px",
-                fontSize: "12px",
-                fontWeight: "600",
-                cursor: expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length
-                  ? "not-allowed"
-                  : "pointer",
-                opacity: expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length ? 0.5 : 1,
-              }}
-            >
-              + Add expense
-            </button>
-          </div>
-
-          {loadingExpenseMaster && (
-            <div style={{ padding: "8px", textAlign: "center" }}>
-              <CircularProgress size={16} style={{ color: BROWN }} />
+  // Mobile: order details
+  if (isMobile && step === 2) {
+    return (
+      <>
+        <CommonHeader
+          title="Order details"
+          logo="SMT"
+          showSearch={false}
+          showCart={false}
+          showBackButton
+          showTitle
+          cartItemCount={0}
+          onBackClick={() => setStep(1)}
+          isMobile={isMobile}
+          backgroundColor={BROWN_DARK}
+          isLoggedIn={isLoggedIn}
+          userName={userName}
+          onSaleOrders={handleSaleOrdersClick}
+          {...commonHeaderCustomerProps}
+          customActions={
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {renderThreeDotsMenu()}
             </div>
-          )}
+          }
+        />
 
-          {invoiceExpenses.map((row, index) => renderExpenseRow(row, index))}
-          
-          {invoiceExpenses.length === 0 && (
+        <div style={{ padding: "20px 16px", background: BG_COLOR, minHeight: "100vh", paddingBottom: "120px" }}>
+          {renderOrderForm()}
+
+          {/* Expense Section - Added for mobile view */}
+          <div style={{ marginTop: "16px", marginBottom: "16px" }}>
             <div style={{
-              padding: "12px",
-              textAlign: "center",
-              color: "#999",
-              fontSize: "13px",
-              background: "#f9f4ef",
-              borderRadius: "8px",
-              border: "1px dashed #ddd",
-            }}>
-              No expenses added
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            background: "#f9f4ef",
-            padding: "12px",
-            borderRadius: "10px",
-            fontSize: "13px",
-            color: BROWN,
-            marginBottom: "16px",
-          }}
-        >
-          <div
-            style={{
               display: "flex",
               justifyContent: "space-between",
-              marginBottom: "8px",
-              paddingBottom: "8px",
-              borderBottom: "1px dashed #ccc",
-            }}
-          >
-            <span style={{ fontWeight: "bold" }}>Products</span>
-            <span
-              style={{ color: BROWN, cursor: "pointer" }}
-              onClick={() => {
-                setCartItems({});
-                localStorage.removeItem("cartItems");
-                setStep(1);
-              }}
-            >
-              Clear
-            </span>
-          </div>
-          {enhancedCartItems.map((item) => (
-            <div
-              key={item.id}
-              style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}
-            >
-              <span>
-                • {item.name} × {item.quantity} ({item.kgs.toFixed(2)} kg)
-              </span>
-              <span>₹{item.amount.toFixed(2)}</span>
-            </div>
-          ))}
-          
-          {/* Expense breakdown in summary */}
-          {invoiceExpenses.filter(e => e.Account_Name && e.Expence_Value).length > 0 && (
-            <>
-              <div
+              alignItems: "center",
+              marginBottom: "10px",
+            }}>
+              <label style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>Expenses</label>
+              <button
+                onClick={addExpenseRow}
+                disabled={expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length}
                 style={{
-                  marginTop: "8px",
-                  paddingTop: "8px",
-                  borderTop: "1px dashed #ccc",
+                  background: BROWN,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "20px",
+                  padding: "6px 14px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length
+                    ? "not-allowed"
+                    : "pointer",
+                  opacity: expenseMaster.length === 0 || invoiceExpenses.length >= expenseMaster.length ? 0.5 : 1,
                 }}
               >
-          
-{/* FIX (Block 11): show the row's actual Expence_Value directly —
-    the previous version force-displayed `coolieExp` for the Coolie row,
-    which could differ from what was actually stored/about to be saved. */}
-{invoiceExpenses
-  .filter(e => e.Account_Name && e.Expence_Value)
-  .map((e, idx) => {
-    const displayValue = Number(e.Expence_Value) || 0;
-    return (
-      <div
-        key={idx}
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "12px",
-          marginBottom: "2px",
-        }}
-      >
-        <span style={{ color: "#666" }}>{e.Account_Name}</span>
-        <span style={{ color: Number(displayValue) < 0 ? "#e74c3c" : "#2ecc71" }}>
-          {Number(displayValue) < 0 ? "-" : ""}₹{Math.abs(Number(displayValue) || 0).toFixed(2)}
-        </span>
-      </div>
-    );
-  })}
+                + Add expense
+              </button>
+            </div>
+
+            {loadingExpenseMaster && (
+              <div style={{ padding: "8px", textAlign: "center" }}>
+                <CircularProgress size={16} style={{ color: BROWN }} />
               </div>
-            </>
-          )}
+            )}
+
+            {invoiceExpenses.map((row, index) => renderExpenseRow(row, index))}
+
+            {invoiceExpenses.length === 0 && (
+              <div style={{
+                padding: "12px",
+                textAlign: "center",
+                color: "#999",
+                fontSize: "13px",
+                background: "#f9f4ef",
+                borderRadius: "8px",
+                border: "1px dashed #ddd",
+              }}>
+                No expenses added
+              </div>
+            )}
+          </div>
 
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: "8px",
-              paddingTop: "8px",
-              borderTop: "1px dashed #ccc",
-              fontWeight: "bold",
+              background: "#f9f4ef",
+              padding: "12px",
+              borderRadius: "10px",
+              fontSize: "13px",
+              color: BROWN,
+              marginBottom: "16px",
             }}
           >
-            <span>Total</span>
-            <span>₹{grandTotal.toFixed(2)}</span>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+                paddingBottom: "8px",
+                borderBottom: "1px dashed #ccc",
+              }}
+            >
+              <span style={{ fontWeight: "bold" }}>Products</span>
+              <span
+                style={{ color: BROWN, cursor: "pointer" }}
+                onClick={() => {
+                  setCartItems({});
+                  localStorage.removeItem("cartItems");
+                  setStep(1);
+                }}
+              >
+                Clear
+              </span>
+            </div>
+            {enhancedCartItems.map((item) => (
+              <div
+                key={item.id}
+                style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}
+              >
+                <span>
+                  • {item.name} × {item.quantity} ({item.kgs.toFixed(2)} kg)
+                </span>
+                <span>₹{item.amount.toFixed(2)}</span>
+              </div>
+            ))}
+
+            {/* Expense breakdown in summary */}
+            {invoiceExpenses.filter(e => e.Account_Name && e.Expence_Value).length > 0 && (
+              <>
+                <div
+                  style={{
+                    marginTop: "8px",
+                    paddingTop: "8px",
+                    borderTop: "1px dashed #ccc",
+                  }}
+                >
+
+                  {/* FIX (Block 11): show the row's actual Expence_Value directly —
+    the previous version force-displayed `coolieExp` for the Coolie row,
+    which could differ from what was actually stored/about to be saved. */}
+                  {invoiceExpenses
+                    .filter(e => e.Account_Name && e.Expence_Value)
+                    .map((e, idx) => {
+                      const displayValue = Number(e.Expence_Value) || 0;
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "12px",
+                            marginBottom: "2px",
+                          }}
+                        >
+                          <span style={{ color: "#666" }}>{e.Account_Name}</span>
+                          <span style={{ color: Number(displayValue) < 0 ? "#e74c3c" : "#2ecc71" }}>
+                            {Number(displayValue) < 0 ? "-" : ""}₹{Math.abs(Number(displayValue) || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: "8px",
+                paddingTop: "8px",
+                borderTop: "1px dashed #ccc",
+                fontWeight: "bold",
+              }}
+            >
+              <span>Total</span>
+              <span>₹{grandTotal.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <button
+              onClick={handleCheckout}
+              style={{
+                width: "100%",
+                padding: "18px 12px",
+                background: isEditingOrder ? ACCENT : BROWN,
+                color: isEditingOrder ? BROWN_DARK : "#fff",
+                border: "none",
+                borderRadius: "50px",
+                fontSize: "18px",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(74,44,26,0.2)",
+              }}
+            >
+              {isEditingOrder ? "Update order" : "Place order"}
+            </button>
+
+            {isEditingOrder && (
+              <button
+                onClick={handleCancelEdit}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  background: "#e74c3c",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "50px",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel edit
+              </button>
+            )}
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <button
-            onClick={handleCheckout}
-            style={{
-              width: "100%",
-              padding: "18px 12px",
-              background: isEditingOrder ? ACCENT : BROWN,
-              color: isEditingOrder ? BROWN_DARK : "#fff",
-              border: "none",
-              borderRadius: "50px",
-              fontSize: "18px",
-              fontWeight: "700",
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(74,44,26,0.2)",
-            }}
-          >
-            {isEditingOrder ? "Update order" : "Place order"}
-          </button>
-
-          {isEditingOrder && (
-            <button
-              onClick={handleCancelEdit}
-              style={{
-                width: "100%",
-                padding: "14px",
-                background: "#e74c3c",
-                color: "#fff",
-                border: "none",
-                borderRadius: "50px",
-                fontSize: "16px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Cancel edit
-            </button>
-          )}
-        </div>
-      </div>
-
-      {printModal}
-      <LoginPopup
-        isOpen={isLoginPopupOpen}
-        onClose={() => setIsLoginPopupOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
-      <MobileTabBar
-        activeTab="home"
-        onHome={() => navigate("/")}
-        onSaleOrders={handleSaleOrdersClick}
-        onDashboard={handleDashboard}
-      />
-    </>
-  );
-}
+        {printModal}
+        <LoginPopup
+          isOpen={isLoginPopupOpen}
+          onClose={() => setIsLoginPopupOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+        <MobileTabBar
+          activeTab="home"
+          onHome={() => navigate("/")}
+          onSaleOrders={handleSaleOrdersClick}
+          onDashboard={handleDashboard}
+        />
+      </>
+    );
+  }
 
   /* ---------------- Mobile: cart ---------------- */
 
@@ -5631,25 +5565,25 @@ if (isMobile && step === 2) {
 /* Print                                                               */
 /* ------------------------------------------------------------------ */
 
-const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, createdOn, orderDate,expenses  }, ref) => {
+const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, createdOn, orderDate, expenses }, ref) => {
   const safeNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
   const rupee = (n) =>
     safeNum(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-     const items = Array.isArray(cartItems) ? cartItems : [];
-    const expenseRows = (Array.isArray(expenses) ? expenses : []).filter(
-      (e) => e && (e.Account_Name || e.Expence_Name) && Number(e.Expence_Value) !== 0
-    );
-
-const packWeight = parseFloat(items.Print_Name?.match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]) || 0;
-const bags = packWeight > 0 ? safeNum(items.kgs) / packWeight : 0;
-
-const packWeightOf = (item) => {
-  const fromName = parseFloat(
-    String(item.shortName || item.Print_Name || item.name || "").match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]
+  const items = Array.isArray(cartItems) ? cartItems : [];
+  const expenseRows = (Array.isArray(expenses) ? expenses : []).filter(
+    (e) => e && (e.Account_Name || e.Expence_Name) && Number(e.Expence_Value) !== 0
   );
-  return fromName || safeNum(item.packGet) || 0;
-};
+
+  const packWeight = parseFloat(items.Print_Name?.match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]) || 0;
+  const bags = packWeight > 0 ? safeNum(items.kgs) / packWeight : 0;
+
+  const packWeightOf = (item) => {
+    const fromName = parseFloat(
+      String(item.shortName || item.Print_Name || item.name || "").match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]
+    );
+    return fromName || safeNum(item.packGet) || 0;
+  };
   const totalKgs = items.reduce((sum, item) => sum + safeNum(item.kgs), 0);
   const totalBags = items.reduce((sum, item) => {
     const pw = packWeightOf(item);
@@ -5814,93 +5748,93 @@ const packWeightOf = (item) => {
             <tbody>
               {items.length > 0
                 ? items.map((item, i) => {
-                    const pw = packWeightOf(item);
-                    const bags = pw > 0 ? safeNum(item.kgs) / pw : 0;
+                  const pw = packWeightOf(item);
+                  const bags = pw > 0 ? safeNum(item.kgs) / pw : 0;
+                  return (
+                    <tr key={i}>
+                      <td
+                        style={{
+                          border: "0.5px solid #000",
+                          padding: "2mm 1mm",
+                          textAlign: "center",
+                          verticalAlign: "middle",
+                          fontSize: "14px",
+                        }}
+                      >
+                        ₹{rupee(item.price)}
+                      </td>
+                      <td
+                        style={{
+                          border: "0.5px solid #000",
+                          textAlign: "left",
+                          padding: "0 1.5mm",
+                          verticalAlign: "middle",
+                          fontSize: "12px",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {item.shortName || item.Print_Name || item.name || "—"}
+                      </td>
+                      <td
+                        style={{
+                          border: "0.5px solid #000",
+                          textAlign: "center",
+                          padding: "0.3mm",
+                          verticalAlign: "middle",
+                          fontSize: "14px",
+                        }}
+                      >
+                        {bags > 0 ? bags.toFixed(0) : "0"}
+                      </td>
+                    </tr>
+                  );
+                })
+                : Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    <td style={{ border: "0.5px solid #000", padding: "2px" }} />
+                    <td style={{ border: "0.5px solid #000", padding: "2px" }} />
+                    <td style={{ border: "0.5px solid #000", padding: "2px" }} />
+                  </tr>
+                ))}
+
+            </tbody>
+
+          </table>
+          {expenseRows.length > 0 && (
+            <div style={{ padding: "1mm" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <tbody>
+                  {expenseRows.map((exp, i) => {
+                    const val = safeNum(exp.Expence_Value);
                     return (
                       <tr key={i}>
                         <td
                           style={{
-                            border: "0.5px solid #000",
-                            padding: "2mm 1mm",
-                            textAlign: "center",
-                            verticalAlign: "middle",
-                            fontSize: "14px",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            padding: "0 4px 1px 0",
+                            width: "1%",
                           }}
                         >
-                          ₹{rupee(item.price)}
+                          {val < 0 ? "-" : ""}₹{rupee(Math.abs(val))}
                         </td>
                         <td
                           style={{
-                            border: "0.5px solid #000",
-                            textAlign: "left",
-                            padding: "0 1.5mm",
-                            verticalAlign: "middle",
-                            fontSize: "12px",
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {item.shortName || item.Print_Name || item.name || "—"}
-                        </td>
-                        <td
-                          style={{
-                            border: "0.5px solid #000",
+                            fontWeight: 700,
                             textAlign: "center",
-                            padding: "0.3mm",
-                            verticalAlign: "middle",
-                            fontSize: "14px",
+
+                            padding: "0 0 1px 0",
                           }}
                         >
-                          {bags > 0 ? bags.toFixed(0) : "0"}
+                          {(exp.Account_Name || exp.Expence_Name || "")}
                         </td>
                       </tr>
                     );
-                  })
-                : Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i}>
-                      <td style={{ border: "0.5px solid #000", padding: "2px" }} />
-                      <td style={{ border: "0.5px solid #000", padding: "2px" }} />
-                      <td style={{ border: "0.5px solid #000", padding: "2px" }} />
-                    </tr>
-                  ))}
-                  
-            </tbody>
- 
-          </table>
-{expenseRows.length > 0 && (
-  <div style={{  padding: "1mm" }}>
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-      <tbody>
-        {expenseRows.map((exp, i) => {
-          const val = safeNum(exp.Expence_Value);
-          return (
-            <tr key={i}>
-              <td
-                style={{
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                  padding: "0 4px 1px 0",
-                  width: "1%", 
-                }}
-              >
-                {val < 0 ? "-" : ""}₹{rupee(Math.abs(val))}
-              </td>
-              <td
-                style={{
-                  fontWeight: 700,
-                  textAlign: "center",
-                  
-                  padding: "0 0 1px 0",
-                }}
-              >
-                {(exp.Account_Name || exp.Expence_Name || "")}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-)}
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
           <div
             style={{
               background: "#f0f0f0",
@@ -6012,7 +5946,7 @@ const PrintPreviewModal = ({
             customer={customer}
             cartItems={cartItems}
             totals={totals}
-            expenses={expenses} 
+            expenses={expenses}
             storage={storage}
             createdOn={createdOn}
             orderDate={orderDate}
@@ -6141,44 +6075,93 @@ function Dashboard({
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stockGroupsCount, setStockGroupsCount] = useState(0);
+  const [pendingBills, setPendingBills] = useState(0);
+  const [transactions, setTransactions] = useState(0);
+  const [showTransactionDetails, setShowTransactionDetails] = useState(false);
+  const [showPendingBills, setShowPendingBills] = useState(false);
+
+  const handleTransactionClick = () => {
+    setShowTransactionDetails(true);
+  };
+
+  const handlePendingBillsClick = () => {
+    setShowPendingBills(true);
+  };
+
+  const fetchDashboardStats = async () => {
+    try {
+      const userData = safeParse("user", {});
+      const sessionData = safeParse("session", {});
+      const userType = localStorage.getItem('userType');
+      
+      let userId = null;
+      if (userType === 'employee') {
+        userId = userData.UserId || userData.user_id || userData.User_Id || '';
+      } else if (userType === 'customer') {
+        userId = userData.Ret_Id || userData.Customer_Id || userData.id || sessionData?.retId || '';
+      }
+      if (!userId) {
+        userId = sessionData?.userId || sessionData?.Ret_Id || '';
+      }
+
+      const pendingResponse = await fetchLink({
+        address: `sales/pendingBills?Created_by=${userId}`,
+        method: 'GET',
+      });
+      if (pendingResponse?.success) {
+        setPendingBills(pendingResponse.data?.count || 0);
+      }
+
+      const transactionResponse = await fetchLink({
+        address: `sales/transactions/count?Created_by=${userId}`,
+        method: 'GET',
+      });
+      if (transactionResponse?.success) {
+        setTransactions(transactionResponse.data?.count || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
 
-   const fetchTodayOrders = async () => {
-  setLoading(true);
-  try {
-    const userData = safeParse("user", {});
-    const sessionData = safeParse("session", {});
-    const userId = userData.UserId || userData.user_id || userData.User_Id || "";
-    const mobileNo = getStoredUsername();
-    const usertypeid =
-      userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || "";
-    const today = toLocalYMD(new Date());
+    const fetchTodayOrders = async () => {
+      setLoading(true);
+      try {
+        const userData = safeParse("user", {});
+        const sessionData = safeParse("session", {});
+        const userId = userData.UserId || userData.user_id || userData.User_Id || "";
+        const mobileNo = getStoredUsername();
+        const usertypeid =
+          userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || "";
+        const today = toLocalYMD(new Date());
 
-    const response = await fetchLink({
-      address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
-        userId
-      )}&Mobile_No=${encodeURIComponent(mobileNo)}&FromDate=${today}&ToDate=${today}&UserTypeId=${encodeURIComponent(
-        usertypeid
-      )}`,
-      method: "GET",
-    });
+        const response = await fetchLink({
+          address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
+            userId
+          )}&Mobile_No=${encodeURIComponent(mobileNo)}&FromDate=${today}&ToDate=${today}&UserTypeId=${encodeURIComponent(
+            usertypeid
+          )}`,
+          method: "GET",
+        });
 
-    if (cancelled) return;
-    const orderData = response?.success ? response.data || response.Data || [] : [];
-    setOrders(Array.isArray(orderData) ? orderData : []);
-  } catch (error) {
-    if (!cancelled) {
-      console.error("Error fetching dashboard orders:", error);
-      setOrders([]);
-    }
-  } finally {
-    if (!cancelled) setLoading(false);
-  }
-};
+        if (cancelled) return;
+        const orderData = response?.success ? response.data || response.Data || [] : [];
+        setOrders(Array.isArray(orderData) ? orderData : []);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Error fetching dashboard orders:", error);
+          setOrders([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
 
     fetchTodayOrders();
+    fetchDashboardStats();
     return () => {
       cancelled = true;
     };
@@ -6210,11 +6193,19 @@ function Dashboard({
   });
 
   const statCards = [
-    { label: "Orders today", value: loading ? "—" : todaysOrders, icon: "📦", iconBg: "#f0e9e2" },
-    { label: "Customers", value: totalCustomers || "—", icon: "🏪", iconBg: "#e8f0e2" },
-    { label: "Kgs sold today", value: loading ? "—" : `${todaysKgs.toFixed(0)} kg`, icon: "⚖️", iconBg: "#f0e6d8" },
-    { label: "Categories", value: stockGroupsCount || "—", icon: "🗂️", iconBg: "#ece2f0" },
+    { label: "Orders today", value: loading ? "—" : todaysOrders, icon: "📦", iconBg: "#f0e9e2", color: BROWN_DARK },
+    { label: "Pending Bills", value: loading ? "—" : pendingBills, icon: "📋", iconBg: "#fef3e2", color: "#e67e22", onClick: handlePendingBillsClick },
+    { label: "Transactions", value: loading ? "—" : transactions, icon: "💰", iconBg: "#e2f0f0", color: "#2980b9", onClick: handleTransactionClick },
+    { label: "Kgs sold today", value: loading ? "—" : `${todaysKgs.toFixed(0)} kg`, icon: "⚖️", iconBg: "#f0e6d8", color: BROWN_DARK },
   ];
+
+  if (showTransactionDetails) {
+    return <TransactionDetails onBack={() => setShowTransactionDetails(false)} isMobile={isMobile} isModal={!isMobile} />;
+  }
+
+  if (showPendingBills) {
+    return <PendingBillDetails onBack={() => setShowPendingBills(false)} />;
+  }
 
   return (
     <div
@@ -6301,11 +6292,27 @@ function Dashboard({
           {statCards.map((card) => (
             <div
               key={card.label}
+              onClick={card.onClick}
               style={{
                 background: "#fff",
                 borderRadius: "16px",
                 padding: isMobile ? "16px" : "20px",
                 border: "1px solid #e8ddd4",
+                cursor: card.onClick ? "pointer" : "default",
+                transition: "transform 0.2s, box-shadow 0.2s",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              }}
+              onMouseEnter={(e) => {
+                if (card.onClick) {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (card.onClick) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                }
               }}
             >
               <div
@@ -6324,7 +6331,7 @@ function Dashboard({
                 {card.icon}
               </div>
               <div style={{ fontSize: "12px", color: "#888", marginBottom: "4px" }}>{card.label}</div>
-              <div style={{ fontSize: isMobile ? "22px" : "26px", fontWeight: "bold", color: BROWN_DARK }}>
+              <div style={{ fontSize: isMobile ? "22px" : "26px", fontWeight: "bold", color: card.color || BROWN_DARK }}>
                 {card.value}
               </div>
               <div style={{ fontSize: "11px", color: "#aaa", marginTop: "8px" }}>Updated {todayLabel}</div>
@@ -6337,7 +6344,7 @@ function Dashboard({
         <MobileTabBar
           activeTab={activeTab}
           onHome={onHome}
-          onDashboard={() => {}}
+          onDashboard={() => { }}
           onSaleOrders={onSaleOrders}
         />
       )}

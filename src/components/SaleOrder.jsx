@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef, useMemo,useCallback } from "react";
+import React, { useState, useEffect, useRef, forwardRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchLink } from './fetchComponent';
 import { toast } from 'react-toastify';
@@ -17,7 +17,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
-import { getSessionUser,ISOStrings,Multiplication } from "../components/functions";
+import { getSessionUser, ISOStrings, Multiplication } from "../components/functions";
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import TransactionDetails from './TransactionDetails'
@@ -35,36 +35,140 @@ import beansImg from '../assets/images/categoryImages/Beans.jpg';
 import desiCpImg from '../assets/images/categoryImages/desi.jpeg';
 import dhallImg from '../assets/images/categoryImages/dhall.jpg';
 import iiItemImg from '../assets/images/categoryImages/2item.jpeg';
-// import kabuliCpImg from '../assets/images/categoryImages/Kabuli_cp.jpg';
-import kabuliCpImg from '../assets/images/categoryImages/kabuli.jpeg';
-import kanamImg from '../assets/images/categoryImages/kanam.jpeg';
+import kabuliCpJpg from '../assets/images/categoryImages/Kabuli_cp.jpg';
+import kabuliJpeg from '../assets/images/categoryImages/kabuli.jpeg';
+import kanamJpg from '../assets/images/categoryImages/Kanam.jpg';
+import kanamJpeg from '../assets/images/categoryImages/kanam.jpeg';
 import masoorImg from '../assets/images/categoryImages/Masoor.jpg';
-import milletsImg from '../assets/images/categoryImages/millets.jpeg';
+import milletsJpg from '../assets/images/categoryImages/Millets.jpg';
+import milletsJpeg from '../assets/images/categoryImages/millets.jpeg';
 import mochaiImg from '../assets/images/categoryImages/Mochai.jpg';
-import moongImg from '../assets/images/categoryImages/moong_dhal.jpg';
+import moonDalJpg from '../assets/images/categoryImages/Moon_Dal.jpg';
+import moongDhalJpg from '../assets/images/categoryImages/moong_dhal.jpg';
 import peasImg from '../assets/images/categoryImages/Peas.jpg';
 import riceImg from '../assets/images/categoryImages/Rice.jpg';
 import thattaiImg from '../assets/images/categoryImages/Thattai.jpg';
-import retailImg from '../assets/images/categoryImages/Kabuli_cp.jpg';
+import maldaImg from '../assets/images/categoryImages/malda.jpg';
 
-const categoryImages = {
+const categoryImagesMap = {
+  // Legacy indexed keys
   "1.BEANS": beansImg,
   "2.Desi cp": desiCpImg,
   "3.DHALL": dhallImg,
   "4.II Item": iiItemImg,
-  "5.Kabuli cp": kabuliCpImg,
-  "6.KANAM": kanamImg,
+  "5.Kabuli cp": kabuliJpeg,
+  "6.KANAM": kanamJpeg,
   "7.MASOOR": masoorImg,
-  "8.MILLETS": milletsImg,
+  "8.MILLETS": milletsJpeg,
   "9.Mochai": mochaiImg,
-  "10.Moong": moongImg,
+  "10.Moong": moongDhalJpg,
   "11.PEAS": peasImg,
   "12.RICE": riceImg,
   "13.Thattai": thattaiImg,
-  "15.Retail": retailImg,
+  "15.Retail": kabuliCpJpg,
+
+  // Direct category names (case-insensitive keys handled in lookup)
+  "BEANS": beansImg,
+  "DESI CP": desiCpImg,
+  "DESI": desiCpImg,
+  "DHALL": dhallImg,
+  "DHAL": dhallImg,
+  "DAL": dhallImg,
+  "II ITEM": iiItemImg,
+  "2ITEM": iiItemImg,
+  "2 ITEM": iiItemImg,
+  "KABULI CP": kabuliJpeg || kabuliCpJpg,
+  "KABULI": kabuliJpeg || kabuliCpJpg,
+  "KANAM": kanamJpeg || kanamJpg,
+  "MASOOR": masoorImg,
+  "MILLETS": milletsJpeg || milletsJpg,
+  "MOCHAI": mochaiImg,
+  "MOONG": moongDhalJpg || moonDalJpg,
+  "MOONG DHAL": moongDhalJpg,
+  "MOONG DAL": moonDalJpg,
+  "PEAS": peasImg,
+  "RICE": riceImg,
+  "THATTAI": thattaiImg,
+  "RETAIL": kabuliCpJpg,
+  "MALDA": maldaImg,
 };
 
-const getCategoryImage = (categoryName) => categoryImages[categoryName];
+const categoryImagesList = [
+  beansImg,
+  desiCpImg,
+  dhallImg,
+  iiItemImg,
+  kabuliJpeg,
+  kanamJpeg,
+  masoorImg,
+  milletsJpeg,
+  mochaiImg,
+  moongDhalJpg,
+  peasImg,
+  riceImg,
+  thattaiImg,
+  kabuliCpJpg,
+  maldaImg,
+  kanamJpg,
+  milletsJpg,
+  moonDalJpg
+];
+
+const stringHash = (str) => {
+  let hash = 0;
+  const s = String(str || "");
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash << 5) - hash + s.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const getCategoryImage = (categoryName) => {
+  if (!categoryName) return categoryImagesList[0];
+
+  // 1. Direct exact match
+  if (categoryImagesMap[categoryName]) {
+    return categoryImagesMap[categoryName];
+  }
+
+  const rawStr = String(categoryName).trim();
+  const upper = rawStr.toUpperCase();
+
+  // 2. Direct uppercase match
+  if (categoryImagesMap[upper]) {
+    return categoryImagesMap[upper];
+  }
+
+  // 3. Match after stripping number prefixes (e.g., "1.BEANS" -> "BEANS", "10. MOONG" -> "MOONG")
+  const strippedNumber = upper.replace(/^\d+[\.\s\-]*/, '').trim();
+  if (categoryImagesMap[strippedNumber]) {
+    return categoryImagesMap[strippedNumber];
+  }
+
+  // 4. Keyword / fuzzy matching on cleaned name
+  const cleanKey = strippedNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  if (cleanKey.includes("bean")) return beansImg;
+  if (cleanKey.includes("desi")) return desiCpImg;
+  if (cleanKey.includes("kabuli")) return kabuliJpeg || kabuliCpJpg;
+  if (cleanKey.includes("kanam")) return kanamJpeg || kanamJpg;
+  if (cleanKey.includes("masoor")) return masoorImg;
+  if (cleanKey.includes("millet")) return milletsJpeg || milletsJpg;
+  if (cleanKey.includes("mochai")) return mochaiImg;
+  if (cleanKey.includes("moong") || cleanKey.includes("moon")) return moongDhalJpg || moonDalJpg;
+  if (cleanKey.includes("peas")) return peasImg;
+  if (cleanKey.includes("rice")) return riceImg;
+  if (cleanKey.includes("thattai")) return thattaiImg;
+  if (cleanKey.includes("retail")) return kabuliCpJpg;
+  if (cleanKey.includes("malda")) return maldaImg;
+  if (cleanKey.includes("2item") || cleanKey.includes("iiitem") || cleanKey.includes("item")) return iiItemImg;
+  if (cleanKey.includes("dhall") || cleanKey.includes("dhal") || cleanKey.includes("dal")) return dhallImg;
+
+  // 5. Deterministic fallback: pick a unique image from local assets using category name hash
+  const index = stringHash(rawStr) % categoryImagesList.length;
+  return categoryImagesList[index];
+};
 
 
 
@@ -87,32 +191,32 @@ const buildPrintHtml = (customer, cartItems, totals, storage, createdOn, orderDa
 
   const formatDateTime = () => {
     let dateToUse = createdOn || orderDate;
-    
+
     if (dateToUse) {
       try {
         let dateObj;
-        
+
         if (typeof dateToUse === 'string') {
 
           if (dateToUse.includes(' ') && dateToUse.includes('-')) {
             const [datePart, timePart] = dateToUse.split(' ');
             const [year, month, day] = datePart.split('-');
-            
+
             if (timePart) {
               const [hours, minutes] = timePart.split(':');
               dateObj = new Date(year, parseInt(month) - 1, day, parseInt(hours), parseInt(minutes));
             } else {
               dateObj = new Date(year, parseInt(month) - 1, day);
             }
-          } 
-        
+          }
+
           else if (dateToUse.includes('T')) {
             dateObj = new Date(dateToUse);
           }
           else {
             dateObj = new Date(dateToUse);
           }
-          
+
           if (!isNaN(dateObj.getTime())) {
             const day = String(dateObj.getDate()).padStart(2, '0');
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -124,9 +228,9 @@ const buildPrintHtml = (customer, cartItems, totals, storage, createdOn, orderDa
             return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
-    
+
     // Fallback to current time
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -251,7 +355,7 @@ const mobilePrint = (customer, cartItems, totals, storage, createdOn, orderDate)
   const html = buildPrintHtml(customer, cartItems, totals, storage, createdOn, orderDate);
   const printWindow = window.open("", "_blank", "width=400,height=600");
   if (!printWindow) {
-    
+
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -321,15 +425,15 @@ const CategoryCard = ({ category, isSelected, onClick, isMobile, isReduced }) =>
 };
 
 
-const LoginPopup = ({ isOpen, onClose, onLoginSuccess,initialUsername = "" }) => {
+const LoginPopup = ({ isOpen, onClose, onLoginSuccess, initialUsername = "" }) => {
   const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
- 
+
   useEffect(() => {
-    if (isOpen) {  setStep(initialUsername ? 2 : 1); ; setUsername(initialUsername); setPassword(""); }
-  }, [isOpen,initialUsername]);
+    if (isOpen) { setStep(initialUsername ? 2 : 1);; setUsername(initialUsername); setPassword(""); }
+  }, [isOpen, initialUsername]);
 
   const handleUsernameSubmit = async (e) => {
     e.preventDefault();
@@ -348,18 +452,18 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess,initialUsername = "" }) =>
         const customer = data.customer || {};
         const usename = customer.A1;
         // localStorage.setItem("user", JSON.stringify({ ...customer, Name: usename }));
-          localStorage.setItem("user", JSON.stringify({ 
-    ...customer, 
-    Name: usename,
-    Ret_Id: customer.Ret_Id,  
-    UserId: customer.Ret_Id 
-  }));
-        localStorage.setItem("session", JSON.stringify({ 
-    username: username.trim(), 
-    ...data,
-    retId: customer.Ret_Id,  
-    userId: customer.Ret_Id   
-  }));
+        localStorage.setItem("user", JSON.stringify({
+          ...customer,
+          Name: usename,
+          Ret_Id: customer.Ret_Id,
+          UserId: customer.Ret_Id
+        }));
+        localStorage.setItem("session", JSON.stringify({
+          username: username.trim(),
+          ...data,
+          retId: customer.Ret_Id,
+          userId: customer.Ret_Id
+        }));
         localStorage.setItem("loginAt", new Date().toString());
         localStorage.setItem("username", username);
         localStorage.setItem("userType", "customer");
@@ -394,7 +498,7 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess,initialUsername = "" }) =>
         localStorage.setItem("session", JSON.stringify(sessionInfo));
         localStorage.setItem("loginAt", new Date().toString());
         localStorage.setItem("userType", "employee");
-         localStorage.setItem("username", username.trim());
+        localStorage.setItem("username", username.trim());
         localStorage.removeItem("retId");
         toast.success("Login successful!");
         setUsername(""); setPassword(""); setStep(1);
@@ -485,8 +589,8 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess,initialUsername = "" }) =>
               >
                 {isLoading
                   ? <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                      <CircularProgress size={20} style={{ color: "#fff" }} /><span>Checking...</span>
-                    </div>
+                    <CircularProgress size={20} style={{ color: "#fff" }} /><span>Checking...</span>
+                  </div>
                   : "Continue"}
               </button>
             </form>
@@ -531,8 +635,8 @@ const LoginPopup = ({ isOpen, onClose, onLoginSuccess,initialUsername = "" }) =>
               >
                 {isLoading
                   ? <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                      <CircularProgress size={20} style={{ color: "#fff" }} /><span>Signing In...</span>
-                    </div>
+                    <CircularProgress size={20} style={{ color: "#fff" }} /><span>Signing In...</span>
+                  </div>
                   : "Sign In"}
               </button>
             </form>
@@ -583,12 +687,12 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
   const handleQuantityBlur = () => {
     setIsEditing(false);
     let newQty = localQuantity;
-    
+
     // If empty or invalid, set to 0
     if (newQty === '' || isNaN(newQty) || newQty < 0) {
       newQty = 0;
     }
-    
+
     // Only update if different from current
     if (newQty !== quantity) {
       // Calculate delta and apply
@@ -613,7 +717,7 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
 
   const handleQuantityClick = () => {
     setIsEditing(true);
-   
+
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
@@ -648,84 +752,88 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
             {/* {outOfStock ? (
               <span style={{ fontSize: "11px", color: "#fff", background: "#b0a0a0", borderRadius: "10px", padding: "3px 8px" }}>Out of Stock</span>
             ) : ( */}
-              <div style={{ display: "flex", alignItems: "center", background: "#6b5454", borderRadius: "20px", padding: "3px 8px", gap: "4px" }}>
-                <button
-                  onClick={handleDecrease}
-                  disabled={quantity === 0}
+            <div style={{ display: "flex", alignItems: "center", background: "#6b5454", borderRadius: "20px", padding: "3px 8px", gap: "4px" }}>
+              <button
+                onClick={handleDecrease}
+                disabled={quantity === 0}
+                style={{
+                  background: "transparent", border: "none", color: "#fff", fontWeight: "bold",
+                  fontSize: "16px", cursor: quantity === 0 ? "not-allowed" : "pointer",
+                  width: "24px", height: "24px", display: "flex", alignItems: "center",
+                  justifyContent: "center", borderRadius: "50%", opacity: quantity === 0 ? 0.4 : 1,
+                  lineHeight: 1, padding: 0, flexShrink: 0,
+                }}
+              >−</button>
+
+              {/* Editable quantity input */}
+              {isEditing ? (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={localQuantity}
+                  onChange={handleQuantityChange}
+                  onBlur={handleQuantityBlur}
+                  onKeyDown={handleQuantityKeyDown}
                   style={{
-                    background: "transparent", border: "none", color: "#fff", fontWeight: "bold",
-                    fontSize: "16px", cursor: quantity === 0 ? "not-allowed" : "pointer",
-                    width: "24px", height: "24px", display: "flex", alignItems: "center",
-                    justifyContent: "center", borderRadius: "50%", opacity: quantity === 0 ? 0.4 : 1,
-                    lineHeight: 1, padding: 0, flexShrink: 0,
+                    width: "30px",
+                    background: "rgba(255,255,255,0.2)",
+                    border: "none",
+                    borderRadius: "4px",
+                    color: "#fff",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    textAlign: "center",
+                    padding: "2px 0",
+                    outline: "2px solid #fff",
+                    minWidth: "20px",
                   }}
-                >−</button>
-                
-                {/* Editable quantity input */}
-                {isEditing ? (
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={localQuantity}
-                    onChange={handleQuantityChange}
-                    onBlur={handleQuantityBlur}
-                    onKeyDown={handleQuantityKeyDown}
-                    style={{
-                      width: "30px",
-                      background: "rgba(255,255,255,0.2)",
-                      border: "none",
-                      borderRadius: "4px",
-                      color: "#fff",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      textAlign: "center",
-                      padding: "2px 0",
-                      outline: "2px solid #fff",
-                      minWidth: "20px",
-                    }}
-                    autoFocus
-                  />
-                ) : (
-                  <span 
-                    onClick={handleQuantityClick}
-                    style={{ 
-                      color: "#fff", 
-                      fontSize: "14px", 
-                      fontWeight: "600", 
-                      minWidth: "20px", 
-                      textAlign: "center",
-                      cursor: "pointer",
-                      padding: "2px 4px",
-                      borderRadius: "4px",
-                    }}
-                    onMouseEnter={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
-                    onMouseLeave={(e) => e.target.style.background = "transparent"}
-                    title="Click to edit quantity"
-                  >
-                    {quantity}
-                  </span>
-                )}
-                
-                <button
-                  onClick={handleIncrease}
+                  autoFocus
+                />
+              ) : (
+                <span
+                  onClick={handleQuantityClick}
                   style={{
-                    background: "transparent", border: "none", color: "#fff", fontWeight: "bold",
-                    fontSize: "16px", cursor: "pointer", width: "24px", height: "24px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    borderRadius: "50%", lineHeight: 1, padding: 0, flexShrink: 0,
+                    color: "#fff",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    minWidth: "20px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    padding: "2px 4px",
+                    borderRadius: "4px",
                   }}
-                >+</button>
-              </div>
+                  onMouseEnter={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
+                  onMouseLeave={(e) => e.target.style.background = "transparent"}
+                  title="Click to edit quantity"
+                >
+                  {quantity}
+                </span>
+              )}
+
+              <button
+                onClick={handleIncrease}
+                style={{
+                  background: "transparent", border: "none", color: "#fff", fontWeight: "bold",
+                  fontSize: "16px", cursor: "pointer", width: "24px", height: "24px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: "50%", lineHeight: 1, padding: 0, flexShrink: 0,
+                }}
+              >+</button>
+            </div>
             {/* )} */}
           </div>
         </div>
         <div style={{ width: "110px", minWidth: "110px", overflow: "hidden", background: "#f5f0eb" }}>
-          <img
-            alt={product.name}
-            src={product.image || "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=110&h=110&fit=crop"}
-            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=110&h=110&fit=crop"; }}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
+          {product.image ? (
+            <img
+              alt={product.name}
+              src={product.image}
+              onError={(e) => { e.target.style.display = 'none'; }}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <div style={{ width: "100%", height: "100%", background: "#f5f0eb" }}></div>
+          )}
         </div>
       </div>
     );
@@ -747,64 +855,64 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
                 <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-white m-0">Out of Stock</p>
               </div>
             ) : ( */}
-              <div className="bg-[#6b5454] h-[30px] flex items-center justify-between px-3 gap-1 rounded">
-                <button 
-                  onClick={handleDecrease} 
-                  className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center" 
-                  disabled={quantity === 0}
-                  style={{ opacity: quantity === 0 ? 0.4 : 1, cursor: quantity === 0 ? 'not-allowed' : 'pointer' }}
-                >−</button>
-                
-                {/* Editable quantity input - Desktop */}
-                {isEditing ? (
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={localQuantity}
-                    onChange={handleQuantityChange}
-                    onBlur={handleQuantityBlur}
-                    onKeyDown={handleQuantityKeyDown}
-                    style={{
-                      width: "30px",
-                      background: "rgba(255,255,255,0.2)",
-                      border: "none",
-                      borderRadius: "4px",
-                      color: "#fff",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      textAlign: "center",
-                      padding: "2px 0",
-                      outline: "2px solid #fff",
-                      minWidth: "20px",
-                    }}
-                    autoFocus
-                  />
-                ) : (
-                  <span 
-                    onClick={handleQuantityClick}
-                    style={{ 
-                      color: "#fff", 
-                      fontSize: "14px", 
-                      fontWeight: "600", 
-                      minWidth: "16px", 
-                      textAlign: "center",
-                      cursor: "pointer",
-                      padding: "2px 4px",
-                      borderRadius: "4px",
-                    }}
-                    onMouseEnter={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
-                    onMouseLeave={(e) => e.target.style.background = "transparent"}
-                    title="Click to edit quantity"
-                  >
-                    {quantity}
-                  </span>
-                )}
-                
-                <button 
-                  onClick={handleIncrease} 
-                  className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center"
-                >+</button>
-              </div>
+            <div className="bg-[#6b5454] h-[30px] flex items-center justify-between px-3 gap-1 rounded">
+              <button
+                onClick={handleDecrease}
+                className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center"
+                disabled={quantity === 0}
+                style={{ opacity: quantity === 0 ? 0.4 : 1, cursor: quantity === 0 ? 'not-allowed' : 'pointer' }}
+              >−</button>
+
+              {/* Editable quantity input - Desktop */}
+              {isEditing ? (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={localQuantity}
+                  onChange={handleQuantityChange}
+                  onBlur={handleQuantityBlur}
+                  onKeyDown={handleQuantityKeyDown}
+                  style={{
+                    width: "30px",
+                    background: "rgba(255,255,255,0.2)",
+                    border: "none",
+                    borderRadius: "4px",
+                    color: "#fff",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    textAlign: "center",
+                    padding: "2px 0",
+                    outline: "2px solid #fff",
+                    minWidth: "20px",
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <span
+                  onClick={handleQuantityClick}
+                  style={{
+                    color: "#fff",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    minWidth: "16px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    padding: "2px 4px",
+                    borderRadius: "4px",
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = "rgba(255,255,255,0.15)"}
+                  onMouseLeave={(e) => e.target.style.background = "transparent"}
+                  title="Click to edit quantity"
+                >
+                  {quantity}
+                </span>
+              )}
+
+              <button
+                onClick={handleIncrease}
+                className="text-white font-bold text-base hover:bg-[#7b6464] w-5 h-5 rounded-full flex items-center justify-center"
+              >+</button>
+            </div>
             {/* )} */}
           </div>
           <p className={`font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic text-[12px] whitespace-nowrap m-0 ${outOfStock ? "text-red-500" : "text-[#403f3d]"}`}>
@@ -815,12 +923,16 @@ function ProductCard({ product, quantity, onUpdateQty, isMobile }) {
           </p>
         </div>
         <div style={{ width: "130px", height: "100%", position: "relative", overflow: "hidden", borderTopRightRadius: "15px", borderBottomRightRadius: "15px" }}>
-          <img
-            alt={product.name}
-            className="w-full h-full object-cover"
-            src={product.image || "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=130&h=170&fit=crop"}
-            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31e?w=130&h=170&fit=crop"; }}
-          />
+          {product.image ? (
+            <img
+              alt={product.name}
+              className="w-full h-full object-cover"
+              src={product.image}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          ) : (
+            <div className="w-full h-full bg-[#f5f0eb]"></div>
+          )}
           <div style={{ position: "absolute", top: "8px", right: "8px", zIndex: 10 }}>
             <div className="bg-white border border-[#6b5454] border-solid rounded-[50px] size-[24px] cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center">
               <ShoppingCartIcon style={{ fontSize: "12px", color: "#6b5454" }} />
@@ -846,19 +958,19 @@ function MobileOrderSummary({ selectedCount, totalAmount, onGoToCart, footerOffs
   if (selectedCount === 0) return null;
   return (
     <div className="cart-summary" style={{
-  // position: "sticky",  
-  // bottom: 0,         
-  // right: 0, 
-  // left: 0,
-  // backgroundColor: "white", 
-  // boxShadow: "0 -4px 12px rgba(0,0,0,0.1)",
-  padding: "12px 16px", 
-  zIndex: 1000,
-  borderTopLeftRadius: "16px", 
-  borderTopRightRadius: "16px",
-  // borderTop: `2px solid ${BROWN_DARK}`,
-  marginTop: "auto",   // Push to bottom of flex container
-}}>
+      // position: "sticky",  
+      // bottom: 0,         
+      // right: 0, 
+      // left: 0,
+      // backgroundColor: "white", 
+      // boxShadow: "0 -4px 12px rgba(0,0,0,0.1)",
+      padding: "12px 16px",
+      zIndex: 1000,
+      borderTopLeftRadius: "16px",
+      borderTopRightRadius: "16px",
+      // borderTop: `2px solid ${BROWN_DARK}`,
+      marginTop: "auto",   // Push to bottom of flex container
+    }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div />
         <button
@@ -941,7 +1053,7 @@ function MobileTabBar({ activeTab, onHome, onDashboard, onCart, cartCount }) {
   );
 }
 
-function ThreeDotMenu({ isLoggedIn, userName, onLogout, onLoginClick, onSaleOrders,onDashboard }) {
+function ThreeDotMenu({ isLoggedIn, userName, onLogout, onLoginClick, onSaleOrders, onDashboard }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const menuRef = useRef(null);
@@ -977,123 +1089,123 @@ function ThreeDotMenu({ isLoggedIn, userName, onLogout, onLoginClick, onSaleOrde
         <MoreVertIcon style={{ fontSize: isMobile ? "22px" : "24px" }} />
       </button>
 
-     {isOpen && (
-  <div style={{
-    position: "absolute", top: "100%", right: 0, marginTop: "8px",
-    backgroundColor: "#fff", borderRadius: isMobile ? "16px" : "20px",
-    boxShadow: "0 10px 40px rgba(0,0,0,0.2)", minWidth: "300px",
-    zIndex: 1000, overflow: "hidden",
-  }}>
-    {isLoggedIn ? (
-      <>
+      {isOpen && (
         <div style={{
-          padding: isMobile ? "20px 16px" : "24px 20px",
-          background: "linear-gradient(135deg, #4a2c1a 0%, #3a1f0e 100%)",
-          borderBottom: `1px solid ${ACCENT}`,
+          position: "absolute", top: "100%", right: 0, marginTop: "8px",
+          backgroundColor: "#fff", borderRadius: isMobile ? "16px" : "20px",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.2)", minWidth: "300px",
+          zIndex: 1000, overflow: "hidden",
         }}>
-          <div style={{
-            width: isMobile ? "48px" : "60px", height: isMobile ? "48px" : "60px",
-            borderRadius: "50%", background: "#c8a96e",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            marginBottom: isMobile ? "12px" : "16px",
-          }}>
-            <span style={{ color: "#4a2c1a", fontSize: isMobile ? "20px" : "28px", fontWeight: "bold" }}>
-              {userName?.charAt(0) || ""}
-            </span>
-          </div>
-          <div style={{ fontSize: isMobile ? "18px" : "20px", color: "#fff" }}>{userName || ""}</div>
-        </div>
-        <div style={{ padding: isMobile ? "8px" : "12px" }}>
-          {/* Sale Orders - Show for both employee and customer */}
-          {(localStorage.getItem("userType") === "employee" || localStorage.getItem("userType") === "customer") && (
-            <button
-              onClick={() => { onSaleOrders(); setIsOpen(false); }}
-              style={{
-                width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
-                background: "transparent", border: "none", textAlign: "left",
-                fontSize: isMobile ? "15px" : "16px", color: BROWN,
-                cursor: "pointer", display: "flex", alignItems: "center",
-                gap: "12px", borderRadius: isMobile ? "8px" : "12px",
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "#f5f0eb"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{ fontSize: isMobile ? "18px" : "20px" }}>📋</span>
-              <span>Sale Orders</span>
-            </button>
-          )}
+          {isLoggedIn ? (
+            <>
+              <div style={{
+                padding: isMobile ? "20px 16px" : "24px 20px",
+                background: "linear-gradient(135deg, #4a2c1a 0%, #3a1f0e 100%)",
+                borderBottom: `1px solid ${ACCENT}`,
+              }}>
+                <div style={{
+                  width: isMobile ? "48px" : "60px", height: isMobile ? "48px" : "60px",
+                  borderRadius: "50%", background: "#c8a96e",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  marginBottom: isMobile ? "12px" : "16px",
+                }}>
+                  <span style={{ color: "#4a2c1a", fontSize: isMobile ? "20px" : "28px", fontWeight: "bold" }}>
+                    {userName?.charAt(0) || ""}
+                  </span>
+                </div>
+                <div style={{ fontSize: isMobile ? "18px" : "20px", color: "#fff" }}>{userName || ""}</div>
+              </div>
+              <div style={{ padding: isMobile ? "8px" : "12px" }}>
+                {/* Sale Orders - Show for both employee and customer */}
+                {(localStorage.getItem("userType") === "employee" || localStorage.getItem("userType") === "customer") && (
+                  <button
+                    onClick={() => { onSaleOrders(); setIsOpen(false); }}
+                    style={{
+                      width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
+                      background: "transparent", border: "none", textAlign: "left",
+                      fontSize: isMobile ? "15px" : "16px", color: BROWN,
+                      cursor: "pointer", display: "flex", alignItems: "center",
+                      gap: "12px", borderRadius: isMobile ? "8px" : "12px",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#f5f0eb"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  >
+                    <span style={{ fontSize: isMobile ? "18px" : "20px" }}>📋</span>
+                    <span>Sale Orders</span>
+                  </button>
+                )}
 
-          {/* Dashboard - Show if onDashboard prop exists and user is logged in */}
-          {onDashboard && (
-            <button
-              onClick={() => { onDashboard(); setIsOpen(false); }}
-              style={{
-                width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
-                background: "transparent", border: "none", textAlign: "left",
-                fontSize: isMobile ? "15px" : "16px", color: BROWN,
-                cursor: "pointer", display: "flex", alignItems: "center",
-                gap: "12px", borderRadius: isMobile ? "8px" : "12px",
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = "#f5f0eb"}
-              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{ fontSize: isMobile ? "18px" : "20px" }}>📊</span>
-              <span>Dashboard</span>
-            </button>
-          )}
+                {/* Dashboard - Show if onDashboard prop exists and user is logged in */}
+                {onDashboard && (
+                  <button
+                    onClick={() => { onDashboard(); setIsOpen(false); }}
+                    style={{
+                      width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
+                      background: "transparent", border: "none", textAlign: "left",
+                      fontSize: isMobile ? "15px" : "16px", color: BROWN,
+                      cursor: "pointer", display: "flex", alignItems: "center",
+                      gap: "12px", borderRadius: isMobile ? "8px" : "12px",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#f5f0eb"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  >
+                    <span style={{ fontSize: isMobile ? "18px" : "20px" }}>📊</span>
+                    <span>Dashboard</span>
+                  </button>
+                )}
 
-          {/* Logout - Show for all logged-in users */}
-          <button
-            onClick={() => { onLogout(); setIsOpen(false); }}
-            style={{
-              width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
-              background: "transparent", border: "none", textAlign: "left",
-              fontSize: isMobile ? "15px" : "16px", color: "#d32f2f",
-              cursor: "pointer", display: "flex", alignItems: "center",
-              gap: "12px", borderRadius: isMobile ? "8px" : "12px", marginTop: "4px",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = "#fff5f5"}
-            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-          >
-            <span style={{ fontSize: isMobile ? "18px" : "20px" }}>🚪</span>
-            <span>Logout</span>
-          </button>
+                {/* Logout - Show for all logged-in users */}
+                <button
+                  onClick={() => { onLogout(); setIsOpen(false); }}
+                  style={{
+                    width: "100%", padding: isMobile ? "14px 16px" : "16px 20px",
+                    background: "transparent", border: "none", textAlign: "left",
+                    fontSize: isMobile ? "15px" : "16px", color: "#d32f2f",
+                    cursor: "pointer", display: "flex", alignItems: "center",
+                    gap: "12px", borderRadius: isMobile ? "8px" : "12px", marginTop: "4px",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#fff5f5"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                >
+                  <span style={{ fontSize: isMobile ? "18px" : "20px" }}>🚪</span>
+                  <span>Logout</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ padding: isMobile ? "20px 16px" : "24px 20px", background: "#f9f4ef", textAlign: "center" }}>
+                <div style={{
+                  width: isMobile ? "48px" : "60px", height: isMobile ? "48px" : "60px",
+                  borderRadius: "50%", background: "#e0d5cc",
+                  display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px",
+                }}>
+                  <span style={{ color: BROWN, fontSize: isMobile ? "20px" : "28px", fontWeight: "bold" }}>?</span>
+                </div>
+                <div style={{ fontSize: isMobile ? "16px" : "20px", fontWeight: "600", color: BROWN, marginBottom: "4px" }}>Not Signed In</div>
+                <div style={{ fontSize: isMobile ? "13px" : "15px", color: "#666" }}>Sign in to place orders</div>
+              </div>
+              <div style={{ padding: isMobile ? "12px" : "20px" }}>
+                <button
+                  onClick={() => { onLoginClick(); setIsOpen(false); }}
+                  style={{
+                    width: "100%", padding: isMobile ? "14px 16px" : "16px 24px",
+                    background: BROWN, border: "none", borderRadius: isMobile ? "8px" : "12px",
+                    fontSize: isMobile ? "15px" : "18px", fontWeight: "600", color: "#fff",
+                    cursor: "pointer", display: "flex", alignItems: "center",
+                    justifyContent: "center", gap: "12px",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = BROWN_DARK}
+                  onMouseLeave={(e) => e.currentTarget.style.background = BROWN}
+                >
+                  <span style={{ fontSize: isMobile ? "18px" : "22px" }}>🔑</span>
+                  <span>Sign In</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      </>
-    ) : (
-      <>
-        <div style={{ padding: isMobile ? "20px 16px" : "24px 20px", background: "#f9f4ef", textAlign: "center" }}>
-          <div style={{
-            width: isMobile ? "48px" : "60px", height: isMobile ? "48px" : "60px",
-            borderRadius: "50%", background: "#e0d5cc",
-            display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px",
-          }}>
-            <span style={{ color: BROWN, fontSize: isMobile ? "20px" : "28px", fontWeight: "bold" }}>?</span>
-          </div>
-          <div style={{ fontSize: isMobile ? "16px" : "20px", fontWeight: "600", color: BROWN, marginBottom: "4px" }}>Not Signed In</div>
-          <div style={{ fontSize: isMobile ? "13px" : "15px", color: "#666" }}>Sign in to place orders</div>
-        </div>
-        <div style={{ padding: isMobile ? "12px" : "20px" }}>
-          <button
-            onClick={() => { onLoginClick(); setIsOpen(false); }}
-            style={{
-              width: "100%", padding: isMobile ? "14px 16px" : "16px 24px",
-              background: BROWN, border: "none", borderRadius: isMobile ? "8px" : "12px",
-              fontSize: isMobile ? "15px" : "18px", fontWeight: "600", color: "#fff",
-              cursor: "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", gap: "12px",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = BROWN_DARK}
-            onMouseLeave={(e) => e.currentTarget.style.background = BROWN}
-          >
-            <span style={{ fontSize: isMobile ? "18px" : "22px" }}>🔑</span>
-            <span>Sign In</span>
-          </button>
-        </div>
-      </>
-    )}
-  </div>
-)}
+      )}
     </div>
   );
 }
@@ -1110,7 +1222,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
   const [allFilteredResults, setAllFilteredResults] = useState([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  
+
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -1118,7 +1230,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
   const listContainerRef = useRef(null);
   const searchTimeoutRef = useRef(null);
   const openTimeoutRef = useRef(null);
-  
+
   const INITIAL_LOAD = 15;
   const LOAD_MORE_COUNT = 20;
   const BATCH_SIZE = 30;
@@ -1131,10 +1243,10 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
   // Pre-compute normalized strings for faster search
   const customerSearchCache = useMemo(() => {
     if (!customers || customers.length === 0) return new Map();
-    
+
     const cacheLimit = Math.min(customers.length, 300);
     const map = new Map();
-    
+
     for (let i = 0; i < cacheLimit; i++) {
       const c = customers[i];
       const fields = [];
@@ -1146,11 +1258,11 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
       if (c.address) fields.push(String(c.address));
       if (c.brokerName) fields.push(String(c.brokerName));
       if (c.transporterName) fields.push(String(c.transporterName));
-      
-      const normalized = fields.map(f => 
+
+      const normalized = fields.map(f =>
         f.toString().toLowerCase().replace(/[^a-z0-9]/g, '')
       );
-      
+
       map.set(c.id, { customer: c, normalized });
     }
     return map;
@@ -1158,11 +1270,11 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
 
 
 
-  
+
   const getCustomerData = useCallback((customer) => {
     const cached = customerSearchCache.get(customer.id);
     if (cached) return cached;
-    
+
     const fields = [];
     if (customer.name) fields.push(String(customer.name));
     if (customer.billName) fields.push(String(customer.billName));
@@ -1172,11 +1284,11 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
     if (customer.address) fields.push(String(customer.address));
     if (customer.brokerName) fields.push(String(customer.brokerName));
     if (customer.transporterName) fields.push(String(customer.transporterName));
-    
-    const normalized = fields.map(f => 
+
+    const normalized = fields.map(f =>
       f.toString().toLowerCase().replace(/[^a-z0-9]/g, '')
     );
-    
+
     return { customer, normalized };
   }, [customerSearchCache]);
 
@@ -1184,7 +1296,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     searchTimeoutRef.current = setTimeout(() => {
       if (!searchTerm.trim()) {
         setDisplayedCustomers(initialCustomers);
@@ -1193,7 +1305,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
         setDisplayCount(INITIAL_LOAD);
         return;
       }
-      
+
       const normalizedSearch = searchTerm.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       if (!normalizedSearch || normalizedSearch.length < 2) {
         setDisplayedCustomers(initialCustomers);
@@ -1202,35 +1314,35 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
         setDisplayCount(INITIAL_LOAD);
         return;
       }
-      
+
       const searchInChunks = () => {
         const results = [];
         const totalCustomers = customers.length;
         const chunkSize = BATCH_SIZE;
         let currentIndex = 0;
-        
+
         const processChunk = () => {
           const endIndex = Math.min(currentIndex + chunkSize, totalCustomers);
-          
+
           for (let i = currentIndex; i < endIndex; i++) {
             const customer = customers[i];
             const data = getCustomerData(customer);
             let matched = false;
-            
+
             for (let j = 0; j < data.normalized.length; j++) {
               if (data.normalized[j].includes(normalizedSearch)) {
                 matched = true;
                 break;
               }
             }
-            
+
             if (matched) {
               results.push(customer);
             }
           }
-          
+
           currentIndex = endIndex;
-          
+
           if (currentIndex < totalCustomers) {
             if (window.requestIdleCallback) {
               requestIdleCallback(processChunk, { timeout: 100 });
@@ -1245,38 +1357,38 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
             setDisplayedCustomers(initialResults);
           }
         };
-        
+
         if (window.requestIdleCallback) {
           requestIdleCallback(processChunk, { timeout: 50 });
         } else {
           setTimeout(processChunk, 50);
         }
       };
-      
+
       searchInChunks();
     }, 300);
   }, [customers, getCustomerData, initialCustomers, INITIAL_LOAD]);
 
   const handleListScroll = useCallback((e) => {
     if (isLoadingMore) return;
-    
+
     const container = e.currentTarget;
     const threshold = isMobile ? 200 : 150;
-    const isNearBottom = 
+    const isNearBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
-    
+
     if (isNearBottom) {
       const totalResults = hasSearched ? allFilteredResults.length : customers.length;
       if (displayedCustomers.length < totalResults) {
         setIsLoadingMore(true);
-        
+
         requestAnimationFrame(() => {
           const nextCount = Math.min(displayCount + LOAD_MORE_COUNT, totalResults);
           setDisplayCount(nextCount);
-          
+
           const source = hasSearched ? allFilteredResults : customers;
           setDisplayedCustomers(source.slice(0, nextCount));
-          
+
           setIsLoadingMore(false);
         });
       }
@@ -1301,7 +1413,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
 
   useEffect(() => {
     if (!isOpen || !isMobile) return;
-    
+
     let scrollTimer;
     const handleScroll = () => {
       clearTimeout(scrollTimer);
@@ -1311,7 +1423,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
         }
       }, 300);
     };
-    
+
     window.addEventListener("scroll", handleScroll, true);
     return () => {
       window.removeEventListener("scroll", handleScroll, true);
@@ -1334,7 +1446,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
   const handleToggle = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!isOpen) {
       // Set initial customers IMMEDIATELY before opening
       setDisplayedCustomers(initialCustomers);
@@ -1343,7 +1455,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
       setDisplayCount(INITIAL_LOAD);
       setHasSearched(false);
       setIsInitializing(false);
-      
+
       // Open the dropdown
       setIsOpen(true);
     } else {
@@ -1373,8 +1485,8 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
     isSelectingRef.current = true;
     if (onSelectCustomer) onSelectCustomer(customer);
     handleClose();
-    setTimeout(() => { 
-      isSelectingRef.current = false; 
+    setTimeout(() => {
+      isSelectingRef.current = false;
     }, 200);
   };
 
@@ -1414,24 +1526,24 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
   const dropdownStyle = isMobile ? mobileDropdownStyle : desktopDropdownStyle;
 
   return (
-    <div style={{ 
-      position: "relative", 
+    <div style={{
+      position: "relative",
       width: isMobile ? "100%" : "auto",
       maxWidth: isMobile ? "100%" : "320px",
     }} ref={dropdownRef}>
       {/* Dropdown Button */}
       <div
-        ref={buttonRef} 
+        ref={buttonRef}
         onClick={handleToggle}
         style={{
-          display: "flex", 
-          alignItems: "center", 
+          display: "flex",
+          alignItems: "center",
           gap: "8px",
           padding: isMobile ? "8px 12px" : "8px 14px",
-          background: "#f5ede3", 
+          background: "#f5ede3",
           border: `1.5px solid ${isOpen ? BROWN : ACCENT}`,
-          borderRadius: "25px", 
-          cursor: "pointer", 
+          borderRadius: "25px",
+          cursor: "pointer",
           transition: "all 0.2s",
           width: "100%",
           boxSizing: "border-box",
@@ -1441,12 +1553,12 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
       >
         <span style={{ fontSize: isMobile ? "14px" : "16px", flexShrink: 0 }}>🏪</span>
         <span style={{
-          fontSize: isMobile ? "12px" : "14px", 
+          fontSize: isMobile ? "12px" : "14px",
           fontWeight: "500",
           color: selectedCustomer ? BROWN_DARK : "#666",
-          overflow: "hidden", 
-          textOverflow: "ellipsis", 
-          whiteSpace: "nowrap", 
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
           flex: 1,
           minWidth: 0,
         }}>
@@ -1458,10 +1570,10 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
           </span>
         )}
         <span style={{
-          fontSize: "10px", 
-          color: BROWN_LIGHT, 
+          fontSize: "10px",
+          color: BROWN_LIGHT,
           flexShrink: 0,
-          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", 
+          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
           transition: "transform 0.2s",
         }}>▼</span>
       </div>
@@ -1618,7 +1730,7 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
               <>
                 {displayedCustomers.map((customer) => {
                   const isSelected = selectedCustomer?.id === customer.id;
-                  
+
                   return (
                     <div
                       key={customer.id}
@@ -1717,45 +1829,45 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
 
                 {/* Load More */}
                 {!loading && !isInitializing && displayedCustomers.length > 0 &&
-                 displayedCustomers.length < (hasSearched ? allFilteredResults.length : customers.length) && (
-                  <div style={{
-                    padding: "12px 16px",
-                    textAlign: "center",
-                    borderTop: "1px solid #f0f0f0",
-                    background: "#f9f9f9",
-                    width: "100%",
-                    boxSizing: "border-box",
-                  }}>
-                    {isLoadingMore ? (
-                      <CircularProgress size={16} style={{ color: BROWN }} />
-                    ) : (
-                      <button
-                        onClick={() => {
-                          const totalResults = hasSearched ? allFilteredResults.length : customers.length;
-                          const nextCount = Math.min(displayCount + LOAD_MORE_COUNT, totalResults);
-                          setDisplayCount(nextCount);
-                          const source = hasSearched ? allFilteredResults : customers;
-                          setDisplayedCustomers(source.slice(0, nextCount));
-                        }}
-                        style={{
-                          background: "transparent",
-                          border: `1px solid ${BROWN_LIGHT}`,
-                          borderRadius: "8px",
-                          padding: "8px 16px",
-                          color: BROWN_DARK,
-                          fontSize: "12px",
-                          cursor: "pointer",
-                          fontWeight: "500",
-                          width: "100%",
-                          maxWidth: "100%",
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        Load More ({displayedCustomers.length} / {hasSearched ? allFilteredResults.length : customers.length})
-                      </button>
-                    )}
-                  </div>
-                )}
+                  displayedCustomers.length < (hasSearched ? allFilteredResults.length : customers.length) && (
+                    <div style={{
+                      padding: "12px 16px",
+                      textAlign: "center",
+                      borderTop: "1px solid #f0f0f0",
+                      background: "#f9f9f9",
+                      width: "100%",
+                      boxSizing: "border-box",
+                    }}>
+                      {isLoadingMore ? (
+                        <CircularProgress size={16} style={{ color: BROWN }} />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const totalResults = hasSearched ? allFilteredResults.length : customers.length;
+                            const nextCount = Math.min(displayCount + LOAD_MORE_COUNT, totalResults);
+                            setDisplayCount(nextCount);
+                            const source = hasSearched ? allFilteredResults : customers;
+                            setDisplayedCustomers(source.slice(0, nextCount));
+                          }}
+                          style={{
+                            background: "transparent",
+                            border: `1px solid ${BROWN_LIGHT}`,
+                            borderRadius: "8px",
+                            padding: "8px 16px",
+                            color: BROWN_DARK,
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            fontWeight: "500",
+                            width: "100%",
+                            maxWidth: "100%",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          Load More ({displayedCustomers.length} / {hasSearched ? allFilteredResults.length : customers.length})
+                        </button>
+                      )}
+                    </div>
+                  )}
               </>
             )}
           </div>
@@ -1766,8 +1878,8 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
 }
 
 
-const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,createdOn, orderDate,expenses }, ref) => {
-  
+const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, createdOn, orderDate, expenses }, ref) => {
+
   const safeNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
   const rupee = (n) =>
     safeNum(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1776,54 +1888,54 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
     ? cartItems.reduce((sum, item) => sum + safeNum(item.kgs), 0) : 0;
 
 
-       const expenseRows = (Array.isArray(expenses) ? expenses : []).filter(
-      (e) => e && (e.Account_Name || e.Expence_Name) && Number(e.Expence_Value) !== 0
-    );
+  const expenseRows = (Array.isArray(expenses) ? expenses : []).filter(
+    (e) => e && (e.Account_Name || e.Expence_Name) && Number(e.Expence_Value) !== 0
+  );
 
 
 
   const totalBags = cartItems?.length
     ? cartItems.reduce((sum, item) => {
-        const displayName = item.shortName || item.Print_Name || "";
-        const packWeight = parseFloat(displayName?.match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]) || 0;
-        return sum + (packWeight ? safeNum(item.kgs) / packWeight : 0);
-      }, 0) : 0;
+      const displayName = item.shortName || item.Print_Name || "";
+      const packWeight = parseFloat(displayName?.match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]) || 0;
+      return sum + (packWeight ? safeNum(item.kgs) / packWeight : 0);
+    }, 0) : 0;
 
 
-       const formatCreatedDate = () => {
-  
+  const formatCreatedDate = () => {
+
     let dateToUse = createdOn || orderDate;
-    
+
     if (dateToUse) {
       try {
         let dateObj;
-        
+
 
         if (typeof dateToUse === 'string') {
-          
+
           if (dateToUse.includes(' ') && dateToUse.includes('-')) {
             const [datePart, timePart] = dateToUse.split(' ');
             const [year, month, day] = datePart.split('-');
-            
+
             if (timePart) {
               const [hours, minutes] = timePart.split(':');
-              
+
               dateObj = new Date(year, parseInt(month) - 1, day, parseInt(hours), parseInt(minutes));
             } else {
               dateObj = new Date(year, parseInt(month) - 1, day);
             }
-          } 
-     
+          }
+
           else if (dateToUse.includes('T')) {
             dateObj = new Date(dateToUse);
           }
-     
+
           else {
             dateObj = new Date(dateToUse);
           }
-      
+
           if (!isNaN(dateObj.getTime())) {
-          
+
             const day = String(dateObj.getDate()).padStart(2, '0');
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
             const year = dateObj.getFullYear();
@@ -1831,7 +1943,7 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
             const minutes = String(dateObj.getMinutes()).padStart(2, '0');
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12 || 12;
-            
+
             return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
           }
         }
@@ -1844,14 +1956,14 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
           const minutes = String(dateToUse.getMinutes()).padStart(2, '0');
           const ampm = hours >= 12 ? 'PM' : 'AM';
           hours = hours % 12 || 12;
-          
+
           return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
         }
       } catch (e) {
         console.warn("Error parsing date:", e);
       }
     }
-    
+
     // Fallback to current IST time
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
@@ -1863,10 +1975,10 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
     const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12 || 12;
-    
+
     return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
   };
-  
+
   // Also format the order date separately if needed
   const formatOrderDate = () => {
     if (orderDate) {
@@ -1878,12 +1990,12 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
           const year = dateObj.getFullYear();
           return `${day}/${month}/${year}`;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
-    return formatCreatedDate().split(' ')[0]; 
+    return formatCreatedDate().split(' ')[0];
   };
 
-  
+
   return (
     <>
       <style>{`
@@ -1910,25 +2022,25 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
         }}
       >
         <div style={{ marginBottom: "2mm", fontSize: "14px", fontWeight: 1000 }}>
-        {formatCreatedDate()}
+          {formatCreatedDate()}
           {"  TAKEN: "}{storage?.Created_BY_Name || storage?.Name || "—"}
         </div>
 
 
-<div style={{ borderTop: "1px solid #000", borderBottom: "1px solid #000", padding: "1mm 0", marginBottom: "2mm" }}>
-  {[
-    ["PARTY NAME", customer?.Billl_Name || customer?.Party_Mailing_Name || "—"],
-    ["LOCATION", customer?.Party_Location || customer?.Party_Mailing_Address || customer?.City || "—"],
-    ["PH.NO", customer?.Mobile_No || customer?.Land_Line || "—"],
-    ["TRANSPORT", customer?.Transporter || "—"],
-    ["BROKER", customer?.Broker || "—"],
-  ].map(([label, value], i) => (
-    <div key={i} style={{ fontWeight: 800, marginBottom: i < 4 ? "2px" : 0, display: "flex", alignItems: "flex-start" }}>
-      <span style={{ minWidth: "13ch", whiteSpace: "pre" }}>{label.padEnd(10)} : </span>
-      <span style={{ flex: 1, wordBreak: "break-word" }}>{value}</span>
-    </div>
-  ))}
-</div>
+        <div style={{ borderTop: "1px solid #000", borderBottom: "1px solid #000", padding: "1mm 0", marginBottom: "2mm" }}>
+          {[
+            ["PARTY NAME", customer?.Billl_Name || customer?.Party_Mailing_Name || "—"],
+            ["LOCATION", customer?.Party_Location || customer?.Party_Mailing_Address || customer?.City || "—"],
+            ["PH.NO", customer?.Mobile_No || customer?.Land_Line || "—"],
+            ["TRANSPORT", customer?.Transporter || "—"],
+            ["BROKER", customer?.Broker || "—"],
+          ].map(([label, value], i) => (
+            <div key={i} style={{ fontWeight: 800, marginBottom: i < 4 ? "2px" : 0, display: "flex", alignItems: "flex-start" }}>
+              <span style={{ minWidth: "13ch", whiteSpace: "pre" }}>{label.padEnd(10)} : </span>
+              <span style={{ flex: 1, wordBreak: "break-word" }}>{value}</span>
+            </div>
+          ))}
+        </div>
 
         <div style={{ border: "0.5px solid #000" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1974,40 +2086,40 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage,create
             </tbody>
           </table>
           {expenseRows.length > 0 && (
-  <div style={{  padding: "1mm" }}>
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-      <tbody>
-        {expenseRows.map((exp, i) => {
-          const val = safeNum(exp.Expence_Value);
-          return (
-            <tr key={i}>
-              <td
-                style={{
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                  padding: "0 4px 1px 0",
-                  width: "1%", 
-                }}
-              >
-                {val < 0 ? "-" : ""}₹{rupee(Math.abs(val))}
-              </td>
-              <td
-                style={{
-                  fontWeight: 700,
-                  textAlign: "center",
-                  
-                  padding: "0 0 1px 0",
-                }}
-              >
-                {(exp.Account_Name || exp.Expence_Name || "")}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  </div>
-)}
+            <div style={{ padding: "1mm" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <tbody>
+                  {expenseRows.map((exp, i) => {
+                    const val = safeNum(exp.Expence_Value);
+                    return (
+                      <tr key={i}>
+                        <td
+                          style={{
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            padding: "0 4px 1px 0",
+                            width: "1%",
+                          }}
+                        >
+                          {val < 0 ? "-" : ""}₹{rupee(Math.abs(val))}
+                        </td>
+                        <td
+                          style={{
+                            fontWeight: 700,
+                            textAlign: "center",
+
+                            padding: "0 0 1px 0",
+                          }}
+                        >
+                          {(exp.Account_Name || exp.Expence_Name || "")}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
 
           <div style={{
@@ -2029,7 +2141,7 @@ QuotationPrint.displayName = "QuotationPrint";
 
 
 
-const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrintAndSave, storage, isReprint = false,createdOn, orderDate ,expenses}) => {
+const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrintAndSave, storage, isReprint = false, createdOn, orderDate, expenses }) => {
   const printRef = useRef();
   const [isPrinting, setIsPrinting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -2042,22 +2154,22 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
   const triggerDirectPrint = (htmlContent) => {
     // Create a new window
     const printWindow = window.open('', '_blank', 'width=600,height=800');
-    
+
     if (!printWindow) {
       toast.error('Please allow popups to print');
       return false;
     }
-    
+
     // Write the HTML content
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-    
+
     // Wait for content to load then print
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.focus();
         printWindow.print();
-        
+
         // Optional: close after print (but give user time to see)
         printWindow.onafterprint = () => {
           setTimeout(() => {
@@ -2068,7 +2180,7 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
         };
       }, 500);
     };
-    
+
     return true;
   };
 
@@ -2108,7 +2220,7 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
       .join("");
 
 
- const expenseRowsHtml = (Array.isArray(expenses) ? expenses : [])
+    const expenseRowsHtml = (Array.isArray(expenses) ? expenses : [])
       .filter(exp => exp && exp.Account_Name && Number(exp.Expence_Value) !== 0)
       .map(exp => {
         const val = safeNum(exp.Expence_Value);
@@ -2119,7 +2231,7 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
           </div>`;
       })
       .join("");
-      
+
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-GB");
     const timeStr = now.toLocaleTimeString("en-IN", {
@@ -2129,7 +2241,7 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
     });
     const takenBy = storage?.Created_BY_Name || storage?.Name || "—";
 
-return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
@@ -2352,7 +2464,7 @@ return `<!DOCTYPE html>
 
   const handlePrint = async () => {
     setIsPrinting(true);
-    
+
     try {
 
       if (!isReprint && onPrintAndSave) {
@@ -2363,15 +2475,15 @@ return `<!DOCTYPE html>
         }
       }
 
-     
+
       onClose();
-      
+
       setTimeout(() => {
         const html = buildCompletePrintHtml();
         triggerDirectPrint(html);
         setIsPrinting(false);
       }, 300);
-      
+
     } catch (error) {
       console.error("Print error:", error);
       toast.error("Print failed: " + (error.message || "Unknown error"));
@@ -2407,9 +2519,9 @@ return `<!DOCTYPE html>
             customer={customer}
             cartItems={cartItems}
             totals={totals}
-            expenses={expenses} 
+            expenses={expenses}
             storage={storage}
-              createdOn={createdOn} // Pass this
+            createdOn={createdOn} // Pass this
             orderDate={orderDate} // Pass this
           />
         </div>
@@ -2469,17 +2581,17 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
 
   const filteredTransporters = searchTerm.trim()
     ? availableTransporters.filter(t => {
-        const search = searchTerm.toLowerCase().trim();
-        const nameMatch = (t.name || "").toLowerCase().includes(search);
-        const aliasMatch = (t.alias_name || "").toLowerCase().includes(search);
-        const codeMatch = (t.code || "").toLowerCase().includes(search);
-        const mobileMatch = (t.mobile || "").toLowerCase().includes(search);
-        
-        return nameMatch || aliasMatch || codeMatch || mobileMatch;
-      })
+      const search = searchTerm.toLowerCase().trim();
+      const nameMatch = (t.name || "").toLowerCase().includes(search);
+      const aliasMatch = (t.alias_name || "").toLowerCase().includes(search);
+      const codeMatch = (t.code || "").toLowerCase().includes(search);
+      const mobileMatch = (t.mobile || "").toLowerCase().includes(search);
+
+      return nameMatch || aliasMatch || codeMatch || mobileMatch;
+    })
     : availableTransporters;
 
-  
+
 
   return (
     <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
@@ -2493,9 +2605,9 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
           transition: "border-color 0.2s",
         }}
       >
-        <span style={{ 
+        <span style={{
           color: selectedTransporter.name ? BROWN : "#999", fontSize: "14px",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1
         }}>
           {selectedTransporter.name || "Select Transporter"}
         </span>
@@ -2536,8 +2648,10 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
             {searchTerm && (
               <button
                 onClick={(e) => { e.stopPropagation(); setSearchTerm(""); }}
-                style={{ background: "transparent", border: "none", cursor: "pointer",
-                  color: "#aaa", fontSize: "16px", lineHeight: 1, padding: "0 2px", flexShrink: 0 }}
+                style={{
+                  background: "transparent", border: "none", cursor: "pointer",
+                  color: "#aaa", fontSize: "16px", lineHeight: 1, padding: "0 2px", flexShrink: 0
+                }}
               >×</button>
             )}
           </div>
@@ -2678,13 +2792,13 @@ const MobileCartDrawer = ({
   });
 
   useEffect(() => {
-  if (!isOpen) {
-    setTimeout(() => setStep(1), 300);
-    setCustomerSearch("");
-    restoredExpensesRef.current = false;
-    setManualExpenseEdits({}); // NEW
-  }
-}, [isOpen]);
+    if (!isOpen) {
+      setTimeout(() => setStep(1), 300);
+      setCustomerSearch("");
+      restoredExpensesRef.current = false;
+      setManualExpenseEdits({}); // NEW
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) { fetchBrokers(); fetchTransporters(); fetchExpenseMaster(); }
@@ -2730,7 +2844,6 @@ const MobileCartDrawer = ({
       }
     } catch (error) {
       console.error("Failed to load transporters:", error);
-      toast.error("Failed to load transporters");
     } finally {
       setLoadingTransporters(false);
     }
@@ -2747,7 +2860,6 @@ const MobileCartDrawer = ({
       }
     } catch (error) {
       console.error("Failed to load expense master:", error);
-      toast.error("Failed to load expense options");
     } finally {
       setLoadingExpenseMaster(false);
     }
@@ -2805,7 +2917,7 @@ const MobileCartDrawer = ({
             shipAddress = editData.originalAddress || selectedCustomer.address || "";
             deliverAddress = editData.originalAddress || selectedCustomer.address || "";
             customerCity = editData.originalCity || selectedCustomer.city || "";
-          } catch(e) {}
+          } catch (e) { }
         }
       }
 
@@ -2852,48 +2964,56 @@ const MobileCartDrawer = ({
     return p?.packGet || parseFloat(p?.PackGet) || 1;
   };
 
-const enhancedCartItems = Object.entries(cartItems)
-  .filter(([_, qty]) => qty > 0)
-  .map(([productId, qty]) => {
-    const product = products.find(p => p.id === productId) || {};
-    
-    // Check if this is an edit mode and get original quantity
-    const isEditing = localStorage.getItem('isEditingOrder') === 'true';
-    let originalQty = 0;
-    let originalCoolieRate = 0;
-    
-    if (isEditing) {
-      const editDataStr = localStorage.getItem('editOrderData');
-      if (editDataStr) {
-        try {
-          const editData = JSON.parse(editDataStr);
-          const originalProduct = (editData.productsList || []).find(p => String(p.id) === String(productId));
-          if (originalProduct) {
-            originalQty = parseInt(originalProduct.quantity) || 0;
-            originalCoolieRate = parseFloat(originalProduct.coolieRate) || 0;
-          }
-        } catch(e) {}
+  const enhancedCartItems = Object.entries(cartItems)
+    .filter(([_, qty]) => qty > 0)
+    .map(([productId, qty]) => {
+      const sid = String(productId);
+      const product =
+        products.find(p => String(p.id) === sid || String(p.Product_Id) === sid) ||
+        allProducts.find(p => String(p.id) === sid || String(p.Product_Id) === sid) ||
+        {};
+
+      // Check if this is an edit mode and get original quantity
+      const isEditing = localStorage.getItem('isEditingOrder') === 'true';
+      let originalQty = 0;
+      let originalCoolieRate = 0;
+
+      if (isEditing) {
+        const editDataStr = localStorage.getItem('editOrderData');
+        if (editDataStr) {
+          try {
+            const editData = JSON.parse(editDataStr);
+            const originalProduct = (editData.productsList || []).find(p => String(p.id) === sid || String(p.Product_Id) === sid);
+            if (originalProduct) {
+              originalQty = parseInt(originalProduct.quantity) || 0;
+              originalCoolieRate = parseFloat(originalProduct.coolieRate ?? originalProduct.coolie) || 0;
+            }
+          } catch (e) { }
+        }
       }
-    }
-    
-    const packGet = getProductPackGet(productId);
-    const kgs = qty * packGet;
-    const price = customPrices[productId] !== undefined ? customPrices[productId] : (product.price || 0);
-    const amount = price * qty * packGet;
-    
-    return { 
-      ...product, 
-      id: productId, 
-      quantity: qty, 
-      originalQuantity: originalQty,
-      originalCoolieRate: originalCoolieRate,
-      packGet, 
-      kgs, 
-      amount, 
-      price,
-      coolie: product.coolie || 0 
-    };
-  });
+
+      const packGet = getProductPackGet(productId);
+      const kgs = qty * packGet;
+      const price = customPrices[productId] !== undefined ? customPrices[productId] : (product.price || 0);
+      const amount = price * qty * packGet;
+      const coolieRate = parseFloat(
+        product.coolie ?? product.coolieRate ?? product.Coolie_Rate ?? product.Coolie ?? product.coolie_rate ?? originalCoolieRate ?? 0
+      ) || 0;
+
+      return {
+        ...product,
+        id: productId,
+        quantity: qty,
+        originalQuantity: originalQty,
+        originalCoolieRate: originalCoolieRate,
+        packGet,
+        kgs,
+        amount,
+        price,
+        coolie: coolieRate,
+        coolieRate: coolieRate,
+      };
+    });
 
   const totalItems = enhancedCartItems.reduce((s, i) => s + i.quantity, 0);
   const totalKgs = enhancedCartItems.reduce((s, i) => s + i.kgs, 0);
@@ -2901,162 +3021,123 @@ const enhancedCartItems = Object.entries(cartItems)
 
   const coolieExp = useMemo(() => {
     return enhancedCartItems.reduce((sum, item) => {
-      const coolieRate = parseFloat(item.coolie) || 0;
+      const coolieRate = parseFloat(item.coolieRate ?? item.coolie) || 0;
       return Addition(sum, Multiplication(coolieRate, item.quantity));
     }, 0);
   }, [enhancedCartItems]);
 
-useEffect(() => {
-  if (!isOpen) return;
-  if (restoredExpensesRef.current) return;
-  if (expenseMaster.length === 0) return;
+  useEffect(() => {
+    if (!isOpen) return;
+    if (restoredExpensesRef.current) return;
+    if (expenseMaster.length === 0) return;
 
-  const isEditing = localStorage.getItem('isEditingOrder') === 'true';
-  if (!isEditing) return;
+    const isEditing = localStorage.getItem('isEditingOrder') === 'true';
+    if (!isEditing) return;
 
-  const editDataStr = localStorage.getItem('editOrderData');
-  if (!editDataStr) return;
+    const editDataStr = localStorage.getItem('editOrderData');
+    if (!editDataStr) return;
 
-  try {
-    const editData = JSON.parse(editDataStr);
-    const rawExpenses = editData.Expence_Array || editData.Expense_Array || [];
-    
-    // Store the base coolie value from the original order
-    let baseCoolieValue = 0;
-    const existingCoolie = (Array.isArray(rawExpenses) ? rawExpenses : []).find(
-      e => (e.Account_Name || e.Expence_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-    );
-    if (existingCoolie) {
-      baseCoolieValue = existingCoolie.Expence_Value !== undefined && existingCoolie.Expence_Value !== null && existingCoolie.Expence_Value !== ''
-        ? parseFloat(existingCoolie.Expence_Value)
-        : (parseFloat(existingCoolie.Expence_Value_DR) || 0) - (parseFloat(existingCoolie.Expence_Value_CR) || 0);
-    }
+    try {
+      const editData = JSON.parse(editDataStr);
+      const rawExpenses = editData.Expence_Array || editData.Expense_Array || [];
 
-    const normalized = rawExpenses.map((exp) => {
-      const accountName = exp.Account_Name || exp.Expence_Name || '';
-      const master = expenseMaster.find(
-        (m) => String(m.Acc_Id) === String(exp.Expense_Id) ||
-               (m.Account_Name || '').trim().toUpperCase() === accountName.trim().toUpperCase()
+      // Store the base coolie value from the original order
+      let baseCoolieValue = 0;
+      const existingCoolie = (Array.isArray(rawExpenses) ? rawExpenses : []).find(
+        e => (e.Account_Name || e.Expence_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
       );
+      if (existingCoolie) {
+        baseCoolieValue = existingCoolie.Expence_Value !== undefined && existingCoolie.Expence_Value !== null && existingCoolie.Expence_Value !== ''
+          ? parseFloat(existingCoolie.Expence_Value)
+          : (parseFloat(existingCoolie.Expence_Value_DR) || 0) - (parseFloat(existingCoolie.Expence_Value_CR) || 0);
+      }
 
-      const isCoolie = accountName.trim().toUpperCase() === "COOLIE EXPENSES";
-      
-      if (isCoolie) {
+      const normalized = rawExpenses.map((exp) => {
+        const accountName = exp.Account_Name || exp.Expence_Name || '';
+        const master = expenseMaster.find(
+          (m) => String(m.Acc_Id) === String(exp.Expense_Id) ||
+            (m.Account_Name || '').trim().toUpperCase() === accountName.trim().toUpperCase()
+        );
+
+        const isCoolie = accountName.trim().toUpperCase() === "COOLIE EXPENSES";
+
+        if (isCoolie) {
+          return {
+            Expense_Id: master?.Acc_Id ?? exp.Expense_Id ?? '',
+            Account_Name: master?.Account_Name ?? accountName,
+            Group_Name: master?.Group_Name ?? exp.Group_Name ?? '',
+            percentageValue: 0,
+            Expence_Value: RoundNumber(baseCoolieValue),
+            isManualCoolie: true,
+            baseCoolieValue: RoundNumber(baseCoolieValue),
+          };
+        }
+
+        const pct = master ? (Number(master.percentageValue) || 0) : 0;
+        let value;
+        if (pct !== 0) {
+          value = RoundNumber(getPercentage(subtotalAmount, pct));
+        } else {
+          let saved = exp.Expence_Value;
+          if (saved === undefined || saved === null || saved === '') {
+            const dr = parseFloat(exp.Expence_Value_DR) || 0;
+            const cr = parseFloat(exp.Expence_Value_CR) || 0;
+            saved = dr - cr;
+          }
+          value = RoundNumber(saved);
+        }
+
         return {
           Expense_Id: master?.Acc_Id ?? exp.Expense_Id ?? '',
           Account_Name: master?.Account_Name ?? accountName,
           Group_Name: master?.Group_Name ?? exp.Group_Name ?? '',
-          percentageValue: 0,
-          Expence_Value: RoundNumber(baseCoolieValue),
-          isManualCoolie: true,
-          baseCoolieValue: RoundNumber(baseCoolieValue),
+          percentageValue: pct,
+          Expence_Value: value,
         };
-      }
+      });
 
-      const pct = master ? (Number(master.percentageValue) || 0) : 0;
-      let value;
-      if (pct !== 0) {
-        value = RoundNumber(getPercentage(subtotalAmount, pct));
-      } else {
-        let saved = exp.Expence_Value;
-        if (saved === undefined || saved === null || saved === '') {
-          const dr = parseFloat(exp.Expence_Value_DR) || 0;
-          const cr = parseFloat(exp.Expence_Value_CR) || 0;
-          saved = dr - cr;
-        }
-        value = RoundNumber(saved);
-      }
-
-      return {
-        Expense_Id: master?.Acc_Id ?? exp.Expense_Id ?? '',
-        Account_Name: master?.Account_Name ?? accountName,
-        Group_Name: master?.Group_Name ?? exp.Group_Name ?? '',
-        percentageValue: pct,
-        Expence_Value: value,
-      };
-    });
-
-    setInvoiceExpenses(normalized);
-    
-    const protectedMap = {};
-    normalized.forEach((r) => {
-      if (r.Expense_Id) protectedMap[r.Expense_Id] = true;
-    });
-    const coolieRow = normalized.find(
-      r => (r.Account_Name || '').trim().toUpperCase() === "COOLIE EXPENSES"
-    );
-    if (coolieRow && coolieRow.Expense_Id) {
-      protectedMap[coolieRow.Expense_Id] = true;
+      setInvoiceExpenses(normalized);
+      setManualExpenseEdits({});
+      restoredExpensesRef.current = true;
+    } catch (e) {
+      console.error("Error restoring expenses for edit:", e);
     }
-    setManualExpenseEdits(protectedMap);
-    restoredExpensesRef.current = true;
-  } catch (e) {
-    console.error("Error restoring expenses for edit:", e);
-  }
-}, [isOpen, expenseMaster, subtotalAmount]);
+  }, [isOpen, expenseMaster, subtotalAmount]);
 
 
-useEffect(() => {
-  const isEditing = localStorage.getItem('isEditingOrder') === 'true';
-  
-  // In edit mode, skip auto-recalculation - it's handled by the cart change useEffect
-  if (isEditing) {
-    return;
-  }
+  useEffect(() => {
+    if (subtotalAmount <= 0 && coolieExp <= 0) return;
 
-  if (subtotalAmount <= 0 && coolieExp <= 0) return;
+    setInvoiceExpenses((prev) => {
+      let changed = false;
 
-  setInvoiceExpenses((prev) => {
-    let changed = false;
+      let next = prev.map((row) => {
+        if (!row.Expense_Id) return row;
 
-    const hasCoolieRow = prev.some(
-      (row) => (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-    );
+        const accNameUpper = (row.Account_Name || "").trim().toUpperCase();
+        const groupNameUpper = (row.Group_Name || "").trim().toUpperCase();
+        const isCoolie = accNameUpper === "COOLIE EXPENSES";
 
-    let next = prev.map((row) => {
-      if (!row.Expense_Id) return row;
-      if (manualExpenseEdits[row.Expense_Id]) return row;
+        if (isCoolie) {
+          const value = RoundNumber(coolieExp);
+          if (Number(row.Expence_Value) === value) return row;
+          changed = true;
+          return { ...row, Expence_Value: value };
+        }
 
-      const isCoolie = (row.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES";
-
-      if (isCoolie) {
-        if (row.isManualCoolie) return row;
-        const value = RoundNumber(coolieExp);
+        const isDiscount = accNameUpper.includes("DISCOUNT") || groupNameUpper.includes("DISCOUNT");
+        const pct = Number(row.percentageValue) || 0;
+        if (pct === 0) return row;
+        const calcVal = RoundNumber(getPercentage(subtotalAmount, Math.abs(pct)));
+        const value = isDiscount || pct < 0 ? -calcVal : calcVal;
         if (Number(row.Expence_Value) === value) return row;
         changed = true;
         return { ...row, Expence_Value: value };
-      }
+      });
 
-      const pct = Number(row.percentageValue) || 0;
-      if (pct === 0) return row;
-      const value = RoundNumber(getPercentage(subtotalAmount, pct));
-      if (Number(row.Expence_Value) === value) return row;
-      changed = true;
-      return { ...row, Expence_Value: value };
+      return changed ? next : prev;
     });
-
-    if (!hasCoolieRow && coolieExp > 0 && !isEditing) {
-      const coolieMaster = expenseMaster.find(
-        (m) => (m.Account_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
-      );
-      if (coolieMaster) {
-        next = [
-          ...next,
-          {
-            Expense_Id: coolieMaster.Acc_Id,
-            Account_Name: coolieMaster.Account_Name,
-            Group_Name: coolieMaster.Group_Name,
-            percentageValue: coolieMaster.percentageValue,
-            Expence_Value: RoundNumber(coolieExp),
-          },
-        ];
-        changed = true;
-      }
-    }
-
-    return changed ? next : prev;
-  });
-}, [subtotalAmount, coolieExp, expenseMaster, manualExpenseEdits]);
+  }, [subtotalAmount, coolieExp, expenseMaster, manualExpenseEdits]);
 
 
   const Total_Invoice_value = useMemo(() => {
@@ -3179,61 +3260,74 @@ useEffect(() => {
   const filteredBrokers = brokerSearch.trim()
     ? availableBrokers.filter(b => matchName(b.name, brokerSearch)) : availableBrokers;
 
-const handleSelectExpense = (index, expenseId) => {
- 
-  const prevExpId = invoiceExpenses[index]?.Expense_Id;
-  if (prevExpId) {
-    setManualExpenseEdits(prev => {
-      if (!(prevExpId in prev)) return prev;
-      const next = { ...prev };
-      delete next[prevExpId];
-      return next;
-    });
-  }
+  const handleSelectExpense = (index, expenseId) => {
 
-  if (!expenseId) {
-    setInvoiceExpenses(prev => prev.map((item, i) =>
-      i === index ? { Expense_Id: '', Account_Name: '', Group_Name: '', percentageValue: 0, Expence_Value: '' } : item
-    ));
-    return;
-  }
-
-  const selected = expenseMaster.find(exp => String(exp.Acc_Id) === String(expenseId));
-  if (!selected) return;
-
-  const isCoolie = (selected.Account_Name || '').trim().toUpperCase() === 'COOLIE EXPENSES';
-  const percentValue = Number(selected.percentageValue) || 0;
-
-  setInvoiceExpenses(prev => prev.map((item, i) => {
-    if (i !== index) return item;
-
-    let value = '';
-    if (isCoolie) {
-      value = RoundNumber(coolieExp);
-    } else if (percentValue !== 0) {
-      value = RoundNumber(getPercentage(subtotalAmount, percentValue));
+    const prevExpId = invoiceExpenses[index]?.Expense_Id;
+    if (prevExpId) {
+      setManualExpenseEdits(prev => {
+        if (!(prevExpId in prev)) return prev;
+        const next = { ...prev };
+        delete next[prevExpId];
+        return next;
+      });
     }
 
-    return {
-      ...item,
-      Expense_Id: selected.Acc_Id,
-      Account_Name: selected.Account_Name,
-      Group_Name: selected.Group_Name,
-      percentageValue: selected.percentageValue,
-      Expence_Value: value,
-    };
-  }));
-};
+    if (!expenseId) {
+      setInvoiceExpenses(prev => prev.map((item, i) =>
+        i === index ? { Expense_Id: '', Account_Name: '', Group_Name: '', percentageValue: 0, Expence_Value: '' } : item
+      ));
+      return;
+    }
 
-const handleExpenseValueChange = (index, value) => {
-  if (value !== '' && !/^-?\d*\.?\d*$/.test(value)) return;
-  setInvoiceExpenses(prev => prev.map((item, i) =>
-    i === index ? { ...item, Expence_Value: value } : item
-  ));
-  // NEW — a manual edit locks this row from now on
-  const expId = invoiceExpenses[index]?.Expense_Id;
-  if (expId) setManualExpenseEdits(prev => ({ ...prev, [expId]: true }));
-};
+    const selected = expenseMaster.find(exp => String(exp.Acc_Id) === String(expenseId));
+    if (!selected) return;
+
+    const accNameUpper = (selected.Account_Name || '').trim().toUpperCase();
+    const groupNameUpper = (selected.Group_Name || '').trim().toUpperCase();
+    const isCoolie = accNameUpper === 'COOLIE EXPENSES';
+    const isDiscount = accNameUpper.includes('DISCOUNT') || groupNameUpper.includes('DISCOUNT');
+
+    const percentValue = Number(
+      selected.percentageValue ??
+      selected.percentage ??
+      selected.Percentage ??
+      selected.Percentage_Value ??
+      selected.percentValue ??
+      selected.Discount_Percentage ??
+      0
+    );
+
+    setInvoiceExpenses(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+
+      let value = '';
+      if (isCoolie) {
+        value = RoundNumber(coolieExp);
+      } else if (percentValue !== 0) {
+        const calcVal = RoundNumber(getPercentage(subtotalAmount, Math.abs(percentValue)));
+        value = isDiscount || percentValue < 0 ? -calcVal : calcVal;
+      }
+
+      return {
+        ...item,
+        Expense_Id: selected.Acc_Id,
+        Account_Name: selected.Account_Name,
+        Group_Name: selected.Group_Name,
+        percentageValue: percentValue,
+        Expence_Value: value,
+      };
+    }));
+  };
+
+  const handleExpenseValueChange = (index, value) => {
+    if (value !== '' && !/^-?\d*\.?\d*$/.test(value)) return;
+    setInvoiceExpenses(prev => prev.map((item, i) =>
+      i === index ? { ...item, Expence_Value: value } : item
+    ));
+    // NEW — a manual edit locks this row from now on
+    const expId = invoiceExpenses[index]?.Expense_Id;
+    if (expId) setManualExpenseEdits(prev => ({ ...prev, [expId]: true }));
+  };
 
   const addExpenseRow = () => {
     setInvoiceExpenses(prev => [
@@ -3460,12 +3554,16 @@ const handleExpenseValueChange = (index, value) => {
           flex: 1,
           minWidth: "60%",
         }}>
-          <img
-            src={item.image || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=40&h=40&fit=crop"}
-            alt={item.name}
-            style={{ width: "40px", height: "40px", borderRadius: "6px", objectFit: "cover" }}
-            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=40&h=40&fit=crop"; }}
-          />
+          {item.image ? (
+            <img
+              src={item.image}
+              alt={item.name}
+              style={{ width: "40px", height: "40px", borderRadius: "6px", objectFit: "cover" }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          ) : (
+            <div style={{ width: "40px", height: "40px", borderRadius: "6px", background: "#f5f0eb" }}></div>
+          )}
           <div style={{ flex: 1, minWidth: "0" }}>
             <h3 style={{
               fontSize: "12px",
@@ -4249,7 +4347,7 @@ const handleExpenseValueChange = (index, value) => {
       <LoginPopup
         isOpen={isLoginPopupOpen}
         onClose={() => setIsLoginPopupOpen(false)}
-        onLoginSuccess={()=>{setIsLoginPopupOpen(false); window.location.reload();}}
+        onLoginSuccess={() => { setIsLoginPopupOpen(false); window.location.reload(); }}
         initialUsername={getContactNumberFromURL() || ""}
       />
 
@@ -4331,678 +4429,6 @@ const getContactNumberFromURL = () => {
 
 
 
-// export default function SMTraders() {
-//   const navigate = useNavigate();
-
-//   const [quantities, setQuantities] = useState({});
-//   const [search, setSearch] = useState("");
-//   const [allProducts, setAllProducts] = useState([]);
-//   const [stockGroups, setStockGroups] = useState([]);
-//   const [posGroups, setPosGroups] = useState([]);
-//   const [displayProducts, setDisplayProducts] = useState([]);
-//   const [selectedStockGroup, setSelectedStockGroup] = useState("All");
-//   const [selectedPOSGroup, setSelectedPOSGroup] = useState(null);
-//   const [showPOSGroups, setShowPOSGroups] = useState(false);
-//   const [loadingProducts, setLoadingProducts] = useState(true);
-//   const [initialLoadDone, setInitialLoadDone] = useState(false);
-//   const [viewMode, setViewMode] = useState('categories');
-
-//   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-//   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-//   const [isMobileCartDrawerOpen, setIsMobileCartDrawerOpen] = useState(false);
-
-//   const [isLoggedIn, setIsLoggedIn] = useState(false);
-//   const [userName, setUserName] = useState("");
-//   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
-//   const [userType, setUserType] = useState("");
-
-//   const [customers, setCustomers] = useState([]);
-//   const [loadingCustomers, setLoadingCustomers] = useState(false);
-//   const [selectedCustomer, setSelectedCustomer] = useState(null);
-//   // const [showSaleOrders, setShowSaleOrders] = useState(false);
-
-
-//   const handleSaleOrdersClick = () => setShowSaleOrders(true);
-//   const handleDashboard = () => setShowDashboard(true);
-//   const [showSaleOrders, setShowSaleOrders] = useState(false);
-//    const [showDashboard, setShowDashboard] = useState(() => window.innerWidth <= 768);
-
-   
-
-//   useEffect(() => {
-//     const isEditing = localStorage.getItem('isEditingOrder');
-//     const editData = localStorage.getItem('editOrderData');
-//     const savedCustomer = localStorage.getItem('selectedCustomer');
-//     if (isEditing === 'true' && editData) {
-//       try {
-//         const parsed = JSON.parse(editData);
-//         if (parsed.cartItems && Object.keys(parsed.cartItems).length > 0) setQuantities(parsed.cartItems);
-//         if (parsed.customerDetails) {
-//           setSelectedCustomer(parsed.customerDetails);
-//           localStorage.setItem('selectedCustomer', JSON.stringify(parsed.customerDetails));
-//           localStorage.setItem('selectedCustomerId', parsed.customerDetails.id);
-//         }
-//         toast.info("Edit mode active - make your changes and click Update");
-//       } catch (e) { console.error("Error restoring edit state:", e); }
-//     } else if (savedCustomer && !selectedCustomer) {
-//       try { setSelectedCustomer(JSON.parse(savedCustomer)); } catch (e) { console.error(e); }
-//     }
-//   }, []);
-
-//   const handleBackFromSaleOrders = () => {
-//     setShowSaleOrders(false);
-//     const isEditing = localStorage.getItem('isEditingOrder');
-//     const editData = localStorage.getItem('editOrderData');
-//     if (isEditing === 'true' && editData) {
-//       const savedCustomer = localStorage.getItem("selectedCustomer");
-//       if (savedCustomer && !selectedCustomer) {
-//         try { setSelectedCustomer(JSON.parse(savedCustomer)); } catch (e) { console.error(e); }
-//       }
-//       const savedCart = localStorage.getItem('cartItems');
-//       if (savedCart && Object.keys(quantities).length === 0) {
-//         try { setQuantities(JSON.parse(savedCart)); } catch (e) { console.error(e); }
-//       }
-//       toast.info("Edit mode active - make your changes and click Update");
-//     }
-//     checkLoginStatus();
-//   };
-
-//   useEffect(() => {
-//     const savedCustomer = localStorage.getItem("selectedCustomer");
-//     if (savedCustomer && !selectedCustomer) {
-//       try { setSelectedCustomer(JSON.parse(savedCustomer)); } catch (e) { console.error(e); }
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     if (selectedCustomer) {
-//       localStorage.setItem("selectedCustomer", JSON.stringify(selectedCustomer));
-//       localStorage.setItem("selectedCustomerId", selectedCustomer.id);
-//     }
-//   }, [selectedCustomer]);
-
-//   const fetchCompleteCustomerDetails = async (customerId) => {
-//     try {
-//       const response = await fetchLink({ address: `pos/retailerMasterOpt?limit=10000000&page=1` });
-//       if (response?.success && Array.isArray(response.data)) {
-//         const customer = response.data.find(c => String(c.Customer_Id) === String(customerId));
-//         if (customer) {
-//           return {
-//             brokerId: customer.Broker_Id ? String(customer.Broker_Id).trim() : "",
-//             brokerName: customer.Broker_Name || customer.Broker || "",
-//             transporterId: customer.Transporter_Id ? String(customer.Transporter_Id).trim() : "",
-//             transporterName: customer.Transporter_Name || customer.Transporter || "",
-//           };
-//         }
-//       }
-//     } catch (error) { console.error("Error fetching customer details:", error); }
-//     return null;
-//   };
-
-//   const checkLoginStatus = () => {
-//     try {
-//       const user = localStorage.getItem("user");
-//       const session = localStorage.getItem("session");
-//       const loginAt = localStorage.getItem("loginAt");
-//       const storedUserType = localStorage.getItem("userType") || "employee";
-
-//       if (user && session && loginAt) {
-//         setIsLoggedIn(true); setUserType(storedUserType);
-//         let userData;
-//         try { userData = JSON.parse(user); } catch (e) { userData = user; }
-//         const sessionData = JSON.parse(session);
-
-//         let customerList = [];
-//         if (sessionData?.customer && Array.isArray(sessionData.customer)) {
-//           customerList = sessionData.customer.map(c => ({
-//             id: c.Ret_Id,
-//             name: c.Ledger_Name || c.Party_Mailing_Name || c.A1,
-//             billName: c.Party_Name || c.Ledger_Name,
-//             mobile: c.A1 || "",
-//             city: c.Party_Location || "",
-//             address: c.Party_Mailing_Address || "",
-//             brokerId: c.Broker_Id || c.Ref_Brokers || "",
-//             brokerName: c.Broker_Name || "",
-//             transporterId: c.Transporter_Id || "",
-//             transporterName: c.Transporter_Name || "",
-//             ledgerName: c.Ledger_Name,
-//             partyMailingAddress: c.Party_Mailing_Address,
-//             partyMailingName: c.Party_Mailing_Name,
-//             ledgerTallyId: c.Ledger_Tally_Id,
-//           }));
-//         }
-//         if (customerList.length > 0) setCustomers(customerList);
-
-//         if (storedUserType === "customer" || storedUserType === "employee") {
-//           const savedCustomerId = localStorage.getItem("selectedCustomerId");
-//           let defaultCustomer = null;
-//           if (savedCustomerId && customerList.length > 0) defaultCustomer = customerList.find(c => c.id === savedCustomerId);
-//           if (!defaultCustomer && customerList.length > 0) defaultCustomer = customerList[0];
-//           if (defaultCustomer) {
-//             (async () => {
-//               const details = await fetchCompleteCustomerDetails(defaultCustomer.id);
-//               const finalCustomer = details
-//                 ? { ...defaultCustomer, brokerId: details.brokerId || defaultCustomer.brokerId, brokerName: details.brokerName || defaultCustomer.brokerName, transporterId: details.transporterId || defaultCustomer.transporterId, transporterName: details.transporterName || defaultCustomer.transporterName }
-//                 : { ...defaultCustomer };
-//               setSelectedCustomer(finalCustomer);
-//               localStorage.setItem("selectedCustomerId", finalCustomer.id);
-//               localStorage.setItem("selectedCustomer", JSON.stringify(finalCustomer));
-//             })();
-//           }
-//           const name = sessionData.username || userData?.Name || userData?.User_Name || "User";
-//           setUserName(name);
-//         }
-//       } else {
-//         setIsLoggedIn(false); setUserName(""); setUserType(""); setSelectedCustomer(null); setCustomers([]);
-//       }
-//     } catch (error) {
-//       console.error("Error checking login status:", error);
-//       setIsLoggedIn(false); setUserName(""); setUserType(""); setSelectedCustomer(null); setCustomers([]);
-//     }
-//   };
-
-// const handleLoginSuccess = () => {
-//   checkLoginStatus();
-//   if (showSaleOrders) {
-//     window.location.reload();
-//   }
-// };
-
-//   const handleLogout = () => {
-//     ["user", "session", "loginAt", "userType", "retId", "selectedCustomerId", "selectedCustomer","username"].forEach(k => localStorage.removeItem(k));
-//     setIsLoggedIn(false); setUserName(""); setUserType(""); setSelectedCustomer(null); setCustomers([]);
-//     toast.success("Logged out successfully");
-//   };
-
-//   const fetchCustomers = async () => {
-//     setLoadingCustomers(true);
-//     try {
-//       const response = await fetchLink({ address: `pos/retailerMasterOpt?limit=100000&page=1` });
-//       if (response?.success && Array.isArray(response.data)) {
-//         setCustomers(response.data.map((c) => ({
-//           id: c.Customer_Id || c.Ret_Id,
-//           name: (c.Short_Name || c.Billl_Name || "").replace(/\u0004/g, "").trim(),
-//           billName: (c.Billl_Name || "").trim(),
-//           mobile: (c.Mobile_No || "").trim(),
-//           city: (c.City || "").trim(),
-//           address: (c.Address || "").trim(),
-//           brokerId: c.Broker_Id || "",
-//           brokerName: (c.Broker_Name || c.Broker || "").trim(),
-//           transporterId: c.Transporter_Id || "",
-//           transporterName: (c.Transporter_Name || c.Transporter || "").trim(),
-//           partyMailingName: c.Party_Mailing_Name || c.Billl_Name || "",
-//           partyMailingAddress: c.Party_Mailing_Address || c.Address || "",
-//         })));
-//       }
-//     } catch (error) { console.error("Error fetching customers:", error); toast.error("Failed to load customers"); }
-//     finally { setLoadingCustomers(false); }
-//   };
-
-//   const formatProduct = (product) => {
-//     const uniqueId = String(product.Product_Id);
-//     const balQty = parseFloat(product.Bal_Qty) || 0;
-//     const packGet = parseFloat(product.PackGet) || 1;
-//     const stockInBags = packGet > 0 ? balQty / packGet : 0;
-//     const price = parseFloat(product.Price) || parseFloat(product.Product_Rate) || 0;
-//     return {
-//       id: uniqueId, name: product.Product_Name || product.Stock_Item || "Unknown",
-//       fullName: product.Product_Name || "Unknown", shortName: product.Short_Name,
-//       weight: product.PackGet ? `${product.PackGet}kg` : "N/A",
-//       stockGroup: product.Stock_Group || "General", posGroup: product.POS_Group || "General",
-//       price, stock: stockInBags, unit: product.Units || "Bags",
-//       image: product.productImageUrl || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=140&h=116&fit=crop",
-//       coolie: product.Coolie, brokerage: product.NagalBrokerage || product.Brokerage,
-//       packGet: product.PackGet, hsnCode: product.HSN_Code, balQty,
-//       originalProduct: product, isInStock: stockInBags > 0,
-//     };
-//   };
-
-//   const deduplicateProducts = (products) => {
-//     const map = new Map();
-//     products.forEach((p) => { if (!map.has(p.Product_Id)) map.set(p.Product_Id, p); });
-//     return Array.from(map.values());
-//   };
-
-//   const mergeProductData = (productList, stockResponse) => {
-//     if (!productList?.length) return [];
-//     let stockData = [];
-//     if (stockResponse?.success && stockResponse.data?.Pos_Product) {
-//       const pp = stockResponse.data.Pos_Product;
-//       stockData = Array.isArray(pp) ? pp[0]?.Product_Entry || [] : pp.Product_Entry || [];
-//     }
-//     const stockMap = new Map();
-//     stockData.forEach((item) => stockMap.set(String(item.Product_Id).trim(), item));
-//     return productList.map((product) => {
-//       const si = stockMap.get(String(product.Product_Id).trim());
-//       return si
-//         ? { ...product, Bal_Qty: si.Bal_Qty || 0, Price: si.Price || product.Product_Rate || 0, _hasStock: true }
-//         : { ...product, Bal_Qty: 0, Price: product.Product_Rate || 0, _hasStock: false };
-//     });
-//   };
-
-//   const fetchAllData = async () => {
-//     setLoadingProducts(true);
-//     try {
-//       const [posResponse, stockResponse] = await Promise.all([
-//         fetchLink({ address: `pos/posProductList` }),
-//         fetchLink({ address: `pos/productMaster` }),
-//       ]);
-//       let productList = [];
-//       if (posResponse?.success && posResponse.data) productList = posResponse.data;
-//       const merged = mergeProductData(productList, stockResponse);
-     
-//       const unique = deduplicateProducts(merged);
-    
-//       const active = unique.filter((p) => p.Active_Deactive === 1 || p.Active_Deactive === 1 || p.Active_Deactive === 1);
-//       const inStock = active.filter((p) => {
-//         const bq = parseFloat(p.Bal_Qty) || 0;
-//         const pg = parseFloat(p.PackGet) || 1;
-//         return pg > 0 ? bq / pg > 0 : false;
-//       });
-//       setAllProducts(inStock); setDisplayProducts(inStock);
-//       localStorage.setItem("products", JSON.stringify(inStock.map(formatProduct)));
-//       setInitialLoadDone(true);
-//     } catch (error) { toast.error("Failed to load products"); }
-//     finally { setLoadingProducts(false); }
-//   };
-
-//   useEffect(() => { checkLoginStatus(); }, []);
-//   useEffect(() => { if (isLoggedIn && userType === "employee") fetchCustomers(); }, [isLoggedIn, userType]);
-//   useEffect(() => {
-//     const handleResize = () => setIsMobile(window.innerWidth <= 768);
-//     window.addEventListener("resize", handleResize);
-//     return () => window.removeEventListener("resize", handleResize);
-//   }, []);
-
-//   useEffect(() => {
-//     const load = () => {
-//       try {
-//         const saved = localStorage.getItem("cartItems");
-//         if (saved) setQuantities(JSON.parse(saved));
-//       } catch (e) { console.error(e); }
-//     };
-//     load();
-//     const onVisible = () => { if (document.visibilityState === "visible") load(); };
-//     const onFocus = () => load();
-//     const onStorage = (e) => { if (e.key === "cartItems") load(); };
-//     document.addEventListener("visibilitychange", onVisible);
-//     window.addEventListener("focus", onFocus);
-//     window.addEventListener("storage", onStorage);
-//     return () => {
-//       document.removeEventListener("visibilitychange", onVisible);
-//       window.removeEventListener("focus", onFocus);
-//       window.removeEventListener("storage", onStorage);
-//     };
-//   }, []);
-
-//   useEffect(() => { if (initialLoadDone) localStorage.setItem("cartItems", JSON.stringify(quantities)); }, [quantities, initialLoadDone]);
-//   useEffect(() => { fetchAllData(); }, []);
-
-//   useEffect(() => {
-//     if (allProducts.length > 0) {
-//       const groups = [...new Set(allProducts.map((p) => p.Stock_Group))]
-//         .filter((g) => g && g.trim() && g !== "NOT FOUND" && g !== "NULL").sort()
-//         .map((g) => ({ id: g, name: g }));
-//       setStockGroups([{ id: "All", name: "All" }, ...groups]);
-//     }
-//   }, [allProducts]);
-
-//   const extractPOSGroups = (list) =>
-//     [...new Set(list.map((p) => (p.POS_Group || "").trim()))]
-//       .filter((g) => g && g !== "NULL")
-//       .map((g) => ({ posGroup: g, itemCount: list.filter((p) => (p.POS_Group || "").trim() === g).length }))
-//       .sort((a, b) => a.posGroup.localeCompare(b.posGroup));
-
-//   const handleStockGroupClick = (group) => {
-//     setSelectedPOSGroup(null); setSelectedStockGroup(group.id); setViewMode('products');
-//     if (group.id === "All") {
-//       setDisplayProducts(allProducts); setShowPOSGroups(false); setPosGroups([]);
-//     } else {
-//       const filtered = allProducts.filter((p) => (p.Stock_Group || "").trim() === group.id.trim());
-//       setDisplayProducts(filtered);
-//       const pgl = extractPOSGroups(filtered);
-//       setPosGroups(pgl); setShowPOSGroups(true);
-//       if (isMobile && pgl.length > 0) setIsDrawerOpen(true);
-//     }
-//   };
-
-//   const handleBackToCategories = () => { setSelectedStockGroup("All"); setSearch(""); setViewMode('categories'); };
-//   const handlePOSGroupClick = (posGroup) => {
-//     setSelectedPOSGroup(posGroup);
-//     setDisplayProducts(allProducts.filter((p) =>
-//       (p.Stock_Group || "").trim() === selectedStockGroup.trim() &&
-//       (p.POS_Group || "").trim() === posGroup.trim()
-//     ));
-//     if (isMobile) setIsDrawerOpen(false);
-//   };
-//   const handleAllPOSGroupsClick = () => {
-//     setSelectedPOSGroup(null);
-//     setDisplayProducts(allProducts.filter((p) => (p.Stock_Group || "").trim() === selectedStockGroup.trim()));
-//     if (isMobile) setIsDrawerOpen(false);
-//   };
-
-//   const updateQty = (id, delta) => {
-//     setQuantities((prev) => {
-//       const next = Math.max(0, (prev[id] || 0) + delta);
-//       if (next === 0) { const { [id]: _, ...rest } = prev; return rest; }
-//       return { ...prev, [id]: next };
-//     });
-//   };
-
-//   const handleRemoveItem = (id) => {
-//     setQuantities(prev => {
-//       const { [id]: _, ...rest } = prev;
-//       localStorage.setItem("cartItems", JSON.stringify(rest));
-//       return rest;
-//     });
-//   };
-
-//   const selectedCount = Object.values(quantities).reduce((s, q) => s + q, 0);
-//   const totalAmount = Object.entries(quantities).reduce((s, [id, qty]) => {
-//     const p = allProducts.find((p) => String(p.Product_Id) === id);
-//     return p ? s + (parseFloat(p.Price) || parseFloat(p.Product_Rate) || 0) * qty : s;
-//   }, 0);
-
-//   const filtered = displayProducts.filter((p) => {
-//     const bq = parseFloat(p.Bal_Qty) || 0;
-//     const pg = parseFloat(p.PackGet) || 1;
-//     if (pg > 0 ? bq / pg <= 0 : true) return false;
-//     if (!search) return true;
-//     const normalize = (str) => (str || "").toLowerCase().replace(/[.\-_\s]+/g, "");
-//     const sl = normalize(search);
-//     return (
-//       normalize(p.Product_Name).includes(sl) || normalize(p.Short_Name).includes(sl) ||
-//       normalize(p.POS_Group).includes(sl) || normalize(p.Stock_Group).includes(sl) ||
-//       (p.Product_Name && p.Product_Name.toLowerCase().includes(search.toLowerCase())) ||
-//       (p.Short_Name && p.Short_Name.toLowerCase().includes(search.toLowerCase()))
-//     );
-//   });
-
-//   const formattedProducts = allProducts.map(formatProduct);
-
-//   const handleCartClick = async () => {
-//     localStorage.setItem('cartItems', JSON.stringify(quantities));
-//     localStorage.setItem('products', JSON.stringify(formattedProducts));
-//     if (isMobile) {
-//       setIsMobileCartDrawerOpen(true);
-//     } else {
-//       const navigationState = {};
-//       if (selectedCustomer) {
-//         let customerData = { ...selectedCustomer };
-//         if ((!customerData.brokerName || !customerData.transporterName) && userType === "customer") {
-//           const details = await fetchCompleteCustomerDetails(customerData.id);
-//           if (details) {
-//             customerData = { ...customerData, brokerId: details.brokerId || customerData.brokerId, brokerName: details.brokerName || customerData.brokerName, transporterId: details.transporterId || customerData.transporterId, transporterName: details.transporterName || customerData.transporterName };
-//             setSelectedCustomer(customerData);
-//             localStorage.setItem("selectedCustomer", JSON.stringify(customerData));
-//           }
-//         }
-//         navigationState.selectedCustomer = {
-//           id: customerData.id, name: customerData.name, billName: customerData.billName,
-//           mobile: customerData.mobile, city: customerData.city, address: customerData.address,
-//           brokerId: customerData.brokerId, brokerName: customerData.brokerName,
-//           transporterId: customerData.transporterId, transporterName: customerData.transporterName,
-//         };
-//       }
-//       if (selectedCustomer) localStorage.setItem('selectedCustomerData', JSON.stringify(navigationState.selectedCustomer));
-//       navigate('/cart', { state: navigationState });
-//     }
-//   };
-
-//   const handleSelectCustomer = async (customer) => {
-//     if (!customer || !customer.id) return;
-//     let updatedCustomer = { ...customer };
-//     try {
-//       const response = await fetchLink({
-//         address: `pos/retailerMasterOptRetailerId?Customer_Id=${customer.id}&limit=10000000&page=1`,
-//       });
-//       if (response?.success && Array.isArray(response.data)) {
-//         const found = response.data.find(c => String(c.Customer_Id) === String(customer.id));
-//         if (found) {
-//           updatedCustomer = {
-//             ...customer,
-//             brokerId: found.Broker_Id ? String(found.Broker_Id).trim() : customer.brokerId || "",
-//             brokerName: found.Broker_Name || found.Broker || customer.brokerName || "",
-//             transporterId: found.Transporter_Id ? String(found.Transporter_Id).trim() : customer.transporterId || "",
-//             transporterName: found.Transporter_Name || found.Transporter || customer.transporterName || "",
-//             partyMailingName: found.Party_Mailing_Name || found.Billl_Name || customer.name || "",
-//             partyMailingAddress: found.Party_Mailing_Address || found.Address || customer.address || "",
-//             billName: found.Billl_Name || customer.name || "",
-//           };
-//         }
-//       }
-//     } catch (error) { console.error("Error fetching complete customer details:", error); }
-//     setSelectedCustomer(updatedCustomer);
-//     localStorage.setItem("selectedCustomerId", String(updatedCustomer.id));
-//     localStorage.setItem("selectedCustomer", JSON.stringify(updatedCustomer));
-//     localStorage.setItem("cartPageSelectedCustomer", JSON.stringify(updatedCustomer));
-//     localStorage.setItem("cartPageSelectedCustomerId", String(updatedCustomer.id));
-//   };
-
-//   const MobileDrawer = () => (
-//     <>
-//       {isDrawerOpen && <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999 }} onClick={() => setIsDrawerOpen(false)} />}
-//       <div style={{
-//         position: "fixed", top: 0, left: 0, bottom: 0, width: "85%", maxWidth: "320px",
-//         backgroundColor: "#fff", zIndex: 1000,
-//         transform: isDrawerOpen ? "translateX(0)" : "translateX(-100%)",
-//         transition: "transform 0.1s ease-in-out", overflowY: "auto",
-//         boxShadow: "2px 0 10px rgba(0,0,0,0.1)",
-//       }}>
-//         <div style={{
-//           padding: "20px 16px", backgroundColor: BROWN_DARK, color: "#fff",
-//           display: "flex", justifyContent: "space-between", alignItems: "center",
-//           position: "sticky", top: 0, zIndex: 10,
-//         }}>
-//           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-//             <FilterListIcon style={{ fontSize: "20px" }} />
-//             <span style={{ fontWeight: "bold", fontSize: "16px" }}>{selectedStockGroup} - POS Groups</span>
-//           </div>
-//           <CloseIcon style={{ cursor: "pointer", fontSize: "20px" }} onClick={() => setIsDrawerOpen(false)} />
-//         </div>
-//         <div style={{ padding: "16px" }}>
-//           {showPOSGroups && posGroups.length > 0 ? (
-//             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-//               <button
-//                 onClick={handleAllPOSGroupsClick}
-//                 style={{
-//                   padding: "12px 16px", borderRadius: "8px", border: "none",
-//                   backgroundColor: selectedPOSGroup === null ? BROWN_DARK : "#f5f0eb",
-//                   color: selectedPOSGroup === null ? "#fff" : BROWN_DARK,
-//                   fontSize: "14px", cursor: "pointer",
-//                   fontWeight: selectedPOSGroup === null ? "bold" : "normal",
-//                   textAlign: "left", width: "100%",
-//                 }}
-//               >All POS Groups ({displayProducts.length})</button>
-//               {posGroups.map((group, i) => (
-//                 <button
-//                   key={i} onClick={() => handlePOSGroupClick(group.posGroup)}
-//                   style={{
-//                     padding: "12px 16px", borderRadius: "8px", border: "none",
-//                     backgroundColor: selectedPOSGroup === group.posGroup ? BROWN_DARK : "#f5f0eb",
-//                     color: selectedPOSGroup === group.posGroup ? "#fff" : BROWN_DARK,
-//                     fontSize: "14px", cursor: "pointer",
-//                     fontWeight: selectedPOSGroup === group.posGroup ? "bold" : "normal",
-//                     textAlign: "left", width: "100%",
-//                   }}
-//                 >{group.posGroup} ({group.itemCount})</button>
-//               ))}
-//             </div>
-//           ) : (
-//             <div style={{ textAlign: "center", padding: "40px 20px", color: "#999", fontSize: "14px" }}>
-//               No POS groups available for this category
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </>
-//   );
-
-//   const mediaQueryStyles = `
-//     @media screen and (max-width: 768px) { .products-grid { grid-template-columns: 1fr !important; gap: 12px !important; padding: 12px !important; } .product-card { width: 100% !important; height: auto !important; min-height: 140px !important; } .category-filters { padding: 8px 12px !important; } }
-//     @media screen and (max-width: 480px) { .mobile-drawer { width: 85% !important; max-width: 280px !important; } .cart-summary { padding: 10px 16px !important; } }
-//     @media screen and (min-width: 1600px) { .products-grid { max-width: 1800px !important; margin: 0 auto !important; grid-template-columns: repeat(4, 1fr) !important; } }
-//   `;
-
-//   const isCategoryReduced = selectedStockGroup !== "All";
-
-//   return (
-//     <>
-//       <LoginPopup isOpen={isLoginPopupOpen} onClose={() => setIsLoginPopupOpen(false)} onLoginSuccess={handleLoginSuccess} />
-//   {showDashboard ? (
-//         <Dashboard
-//           isMobile={isMobile}
-//           isLoggedIn={isLoggedIn}
-//           userName={userName}
-//           customers={customers}
-//           allProducts={allProducts}
-//           onLoginClick={() => setIsLoginPopupOpen(true)}
-//           onLogout={handleLogout}
-//           onHome={() => { setShowDashboard(false); setShowSaleOrders(false); }}
-//           onSaleOrders={() => { setShowDashboard(false); setShowSaleOrders(true); }}
-//           activeTab="dashboard"
-//         />
-//       ) : showSaleOrders ? (
-//         <SaleOrders onBack={handleBackFromSaleOrders} />
-//       ) : (
-//        <div style={{ fontFamily: "'Georgia', serif", background: "#f5f0eb", minHeight: "100vh", paddingBottom: isMobile ? (selectedCount > 0 ? "100px" : "80px") : "0"}}>
-//           <style>{mediaQueryStyles}</style>
-
-//           <CommonHeader
-//             title="SM Traders" logo="SMT" showSearch={false} showCart={true}
-//             showBackButton={false} showTitle={true} cartItemCount={selectedCount}
-//             selectedCount={selectedCount} onCartClick={handleCartClick}
-//             handleCartClick={handleCartClick} isMobile={isMobile}
-//             backgroundColor={BROWN_DARK} isLoggedIn={isLoggedIn} userName={userName}
-//             showCustomerSelector={isLoggedIn && customers.length > 0}
-//             customers={customers} selectedCustomer={selectedCustomer}
-//             onCustomerSelect={handleSelectCustomer} loadingCustomers={loadingCustomers}
-//             userType={userType}
-//             customActions={
-//               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, marginLeft: "auto" }}>
-//                 <ThreeDotMenu
-//                   isLoggedIn={isLoggedIn} userName={userName}
-//                   onLogout={handleLogout} onLoginClick={() => setIsLoginPopupOpen(true)}
-//                   onSaleOrders={handleSaleOrdersClick}
-//                   onDashboard={handleDashboard}
-//                 />
-//               </div>
-//             }
-//           />
-
-//           {isMobile && viewMode === 'categories' && (
-//             <div style={{ padding: "16px", background: "#f5f0eb", minHeight: "calc(100vh - 120px)" }}>
-//               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
-//                 {stockGroups.filter((g) => g.id !== "All").map((group) => (
-//                   <div
-//                     key={group.id} onClick={() => handleStockGroupClick(group)}
-//                     style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s", height: "180px" }}
-//                   >
-//                     <div style={{ height: "130px", position: "relative", overflow: "hidden" }}>
-//                       <img src={getCategoryImage(group.name)} alt={group.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-//                       <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%)" }} />
-//                     </div>
-//                     <div style={{ padding: "12px", background: BROWN_DARK, color: "#fff", textAlign: "center", fontSize: "14px", fontWeight: "600" }}>{group.name}</div>
-//                   </div>
-//                 ))}
-//               </div>
-//             </div>
-//           )}
-
-//           {(viewMode === 'products' || !isMobile) && (
-//             <>
-//               {isMobile && (
-//                 <div style={{ padding: "12px 16px", background: "#f5f0eb", borderBottom: "1px solid #ddd" }}>
-//                   <button
-//                     onClick={handleBackToCategories}
-//                     style={{ background: "transparent", border: `1px solid ${BROWN_DARK}`, borderRadius: "20px", padding: "8px 16px", color: BROWN_DARK, fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
-//                   ><span>←</span> Back to Categories</button>
-//                 </div>
-//               )}
-
-//               {!isMobile && (
-//                 <div className="category-filters" style={{ background: "#f5f0eb", padding: "24px", borderBottom: "1px solid #ddd", position: "sticky", top: 68, zIndex: 90, boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
-//                   {loadingProducts ? (
-//                     <div style={{ textAlign: "center", padding: "20px", width: "100%", color: "#999" }}>Loading categories...</div>
-//                   ) : (
-//                     <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", overflowY: "hidden", gap: "12px", margin: 0, padding: "0 0 12px 0", scrollbarWidth: "thin", WebkitOverflowScrolling: "touch", maxWidth: "100%" }}>
-//                       {stockGroups.filter((g) => g.id !== "All").map((group) => (
-//                         <CategoryCard key={group.id} category={{ name: group.name }} isSelected={selectedStockGroup === group.id} onClick={() => handleStockGroupClick(group)} isMobile={isMobile} isReduced={isCategoryReduced} />
-//                       ))}
-//                     </div>
-//                   )}
-//                 </div>
-//               )}
-
-//               {!isMobile && showPOSGroups && (
-//                 <div className="pos-groups-container" style={{ background: "#f9f4ef", padding: "15px 24px", borderBottom: "1px solid #e8ddd4" }}>
-//                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-//                     <button
-//                       onClick={handleAllPOSGroupsClick}
-//                       style={{ padding: "8px 16px", borderRadius: "20px", border: `2px solid ${selectedPOSGroup === null ? BROWN_DARK : ACCENT}`, background: selectedPOSGroup === null ? BROWN_DARK : "#fff", color: selectedPOSGroup === null ? "#fff" : BROWN_DARK, fontSize: 13, cursor: "pointer", fontWeight: selectedPOSGroup === null ? "bold" : "normal" }}
-//                     >All POS Groups ({displayProducts.length})</button>
-//                     {posGroups.length > 0 ? posGroups.map((group, i) => (
-//                       <button
-//                         key={i} onClick={() => handlePOSGroupClick(group.posGroup)}
-//                         style={{ padding: "8px 16px", borderRadius: "20px", border: `2px solid ${selectedPOSGroup === group.posGroup ? BROWN_DARK : ACCENT}`, background: selectedPOSGroup === group.posGroup ? BROWN_DARK : "#fff", color: selectedPOSGroup === group.posGroup ? "#fff" : BROWN_DARK, fontSize: 13, cursor: "pointer", fontWeight: selectedPOSGroup === group.posGroup ? "bold" : "normal" }}
-//                       >{group.posGroup} ({group.itemCount})</button>
-//                     )) : <div style={{ color: "#666", fontStyle: "italic", padding: "8px" }}>No POS groups available</div>}
-//                   </div>
-//                 </div>
-//               )}
-
-//               <div className="products-grid" style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(420px, 1fr))", gap: isMobile ? 16 : 24, padding: isMobile ? "16px" : "24px 24px 40px", maxWidth: 1800, margin: "0 auto", justifyContent: "center" }}>
-//                 {loadingProducts ? (
-//                   <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "60px 0", color: "#999" }}>Loading products...</div>
-//                 ) : filtered.length > 0 ? (
-//                   filtered.map((product) => {
-//                     const formatted = formatProduct(product);
-//                     return (
-//                       <div key={formatted.id} style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-//                         <ProductCard product={formatted} quantity={quantities[formatted.id] || 0} onUpdateQty={updateQty} isMobile={isMobile} />
-//                       </div>
-//                     );
-//                   })
-//                 ) : (
-//                   <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "60px 0", color: "#999", fontSize: 16 }}>No products found</div>
-//                 )}
-//               </div>
-//             </>
-//           )}
-
-//           {isMobile && !showDashboard && <MobileDrawer />}
-//           {isMobile && !showDashboard && (
-//             <MobileOrderSummary
-//               selectedCount={selectedCount}
-//               totalAmount={totalAmount}
-//               onGoToCart={handleCartClick}
-//               footerOffset={isMobile ? 64 : 0}
-//             />
-//           )}
-//           <MobileCartDrawer
-//             isOpen={isMobileCartDrawerOpen} onClose={() => setIsMobileCartDrawerOpen(false)}
-//             cartItems={quantities} products={formattedProducts} allProducts={allProducts}
-//             onUpdateQty={updateQty} onRemoveItem={handleRemoveItem}
-//             isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginPopupOpen(true)}
-//             selectedCustomer={selectedCustomer} userType={userType}
-//             externalCustomers={customers} onCustomerChange={handleSelectCustomer}
-//             footerOffset={isMobile ? 64 : 0}
-//           />
-//           {isMobile && (
-//             <MobileTabBar
-//               activeTab={showDashboard ? "dashboard" : "home"}
-//               onHome={() => { setShowDashboard(false); setShowSaleOrders(false); }}
-//               onDashboard={() => { setShowDashboard(true); setShowSaleOrders(false); }}
-//               onCart={handleCartClick}
-//               cartCount={selectedCount}
-//             />
-//           )}
-//         </div>
-//       )}
-//     </>
-//   );
-// }
-
 export default function SMTraders() {
   const navigate = useNavigate();
 
@@ -5034,8 +4460,8 @@ export default function SMTraders() {
   const [showSaleOrders, setShowSaleOrders] = useState(false);
   const [showDashboard, setShowDashboard] = useState(() => window.innerWidth <= 768);
 
-//  const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
-const [pendingUsername, setPendingUsername] = useState(""); 
+  //  const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
+  const [pendingUsername, setPendingUsername] = useState("");
 
   // const getContactNumberFromURL = useCallback(() => {
   //   try {
@@ -5056,87 +4482,87 @@ const [pendingUsername, setPendingUsername] = useState("");
 
 
 
-  
-  const getContactNumberFromURL = useCallback(() => {
-  try {
-    const path = window.location.pathname;
-    const match = path.match(/\/(\d{10,15})\/?$/);
-    if (match && match[1]) {
-      let number = match[1];
-      if (number.length > 10 && number.startsWith('91')) {
-        number = number.slice(2);
-      }
-      return number;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error extracting contact number from URL:", error);
-    return null;
-  }
-},[]);
 
-  
+  const getContactNumberFromURL = useCallback(() => {
+    try {
+      const path = window.location.pathname;
+      const match = path.match(/\/(\d{10,15})\/?$/);
+      if (match && match[1]) {
+        let number = match[1];
+        if (number.length > 10 && number.startsWith('91')) {
+          number = number.slice(2);
+        }
+        return number;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error extracting contact number from URL:", error);
+      return null;
+    }
+  }, []);
+
+
 
   const isProfileRoute = useCallback(() => {
-  try {
-    return window.location.pathname.includes('/profile/');
-  } catch (error) {
-    return false;
-  }
-}, []);
+    try {
+      return window.location.pathname.includes('/profile/');
+    } catch (error) {
+      return false;
+    }
+  }, []);
 
-//   const handleAutoLoginWithContact = useCallback(async (contactNumber) => {
-//   try {
-//     console.log("contactnumber", contactNumber);
-//     const data = await fetchLink({
-//       address: `authorization/getUserTypeAuth`,
-//       method: "POST",
-//       bodyData: { username: contactNumber },
-//     });
+  //   const handleAutoLoginWithContact = useCallback(async (contactNumber) => {
+  //   try {
+  //     console.log("contactnumber", contactNumber);
+  //     const data = await fetchLink({
+  //       address: `authorization/getUserTypeAuth`,
+  //       method: "POST",
+  //       bodyData: { username: contactNumber },
+  //     });
 
-//     if (!data.success) {
-//       toast.error("User not found with this contact number");
-//       return false;
-//     }
+  //     if (!data.success) {
+  //       toast.error("User not found with this contact number");
+  //       return false;
+  //     }
 
-//     if (data.requirePassword) {
-//       // Don't attempt login with a blank password — it will always fail.
-//       // Instead, open the login popup directly on the password step.
-//       setPendingUsername(contactNumber);   // NEW state, see below
-//       setIsLoginPopupOpen(true);
-//       return false;
-//     } else {
-//       const customer = data.customer || {};
-//       const username = customer.A1 || contactNumber;
+  //     if (data.requirePassword) {
+  //       // Don't attempt login with a blank password — it will always fail.
+  //       // Instead, open the login popup directly on the password step.
+  //       setPendingUsername(contactNumber);   // NEW state, see below
+  //       setIsLoginPopupOpen(true);
+  //       return false;
+  //     } else {
+  //       const customer = data.customer || {};
+  //       const username = customer.A1 || contactNumber;
 
-//       localStorage.setItem("user", JSON.stringify({
-//         ...customer,
-//         Name: username,
-//         Ret_Id: customer.Ret_Id,
-//         UserId: customer.Ret_Id
-//       }));
+  //       localStorage.setItem("user", JSON.stringify({
+  //         ...customer,
+  //         Name: username,
+  //         Ret_Id: customer.Ret_Id,
+  //         UserId: customer.Ret_Id
+  //       }));
 
-//       localStorage.setItem("session", JSON.stringify({
-//         username: contactNumber,
-//         ...data,
-//         retId: customer.Ret_Id,
-//         userId: customer.Ret_Id
-//       }));
+  //       localStorage.setItem("session", JSON.stringify({
+  //         username: contactNumber,
+  //         ...data,
+  //         retId: customer.Ret_Id,
+  //         userId: customer.Ret_Id
+  //       }));
 
-//       localStorage.setItem("loginAt", new Date().toString());
-//       localStorage.setItem("username", contactNumber);
-//       localStorage.setItem("userType", "customer");
-//       localStorage.setItem("retId", customer.Ret_Id || "");
+  //       localStorage.setItem("loginAt", new Date().toString());
+  //       localStorage.setItem("username", contactNumber);
+  //       localStorage.setItem("userType", "customer");
+  //       localStorage.setItem("retId", customer.Ret_Id || "");
 
-//       toast.success("Auto-login successful!");
-//       return true;
-//     }
-//   } catch (error) {
-//     console.error("Auto-login error:", error);
-//     toast.error("Auto-login failed. Please try manually.");
-//     return false;
-//   }
-// }, []);
+  //       toast.success("Auto-login successful!");
+  //       return true;
+  //     }
+  //   } catch (error) {
+  //     console.error("Auto-login error:", error);
+  //     toast.error("Auto-login failed. Please try manually.");
+  //     return false;
+  //   }
+  // }, []);
 
   // const handleAutoLoginWithContact = useCallback(async (contactNumber) => {
   //   try {
@@ -5171,11 +4597,11 @@ const [pendingUsername, setPendingUsername] = useState("");
   //         localStorage.setItem("loginAt", new Date().toString());
   //         localStorage.setItem("userType", "customer");
   //         localStorage.setItem("username", contactNumber);
-          
+
   //         if (user.Ret_Id) {
   //           localStorage.setItem("retId", user.Ret_Id);
   //         }
-          
+
   //         toast.success("Auto-login successful!");
   //         return true;
   //       } else {
@@ -5185,26 +4611,26 @@ const [pendingUsername, setPendingUsername] = useState("");
   //     } else {
   //       const customer = data.customer || {};
   //       const username = customer.A1 || contactNumber;
-        
+
   //       localStorage.setItem("user", JSON.stringify({ 
   //         ...customer, 
   //         Name: username,
   //         Ret_Id: customer.Ret_Id,
   //         UserId: customer.Ret_Id 
   //       }));
-        
+
   //       localStorage.setItem("session", JSON.stringify({ 
   //         username: contactNumber, 
   //         ...data,
   //         retId: customer.Ret_Id,
   //         userId: customer.Ret_Id 
   //       }));
-        
+
   //       localStorage.setItem("loginAt", new Date().toString());
   //       localStorage.setItem("username", contactNumber);
   //       localStorage.setItem("userType", "customer");
   //       localStorage.setItem("retId", customer.Ret_Id || "");
-        
+
   //       toast.success("Auto-login successful!");
   //       return true;
   //     }
@@ -5216,71 +4642,71 @@ const [pendingUsername, setPendingUsername] = useState("");
   // }, []);
 
 
-const handleAutoLoginWithContact = useCallback(async (contactNumber) => {
-  try {
-    const data = await fetchLink({
-      address: `authorization/getUserTypeAuth`,
-      method: "POST",
-      bodyData: { username: contactNumber },
-    });
+  const handleAutoLoginWithContact = useCallback(async (contactNumber) => {
+    try {
+      const data = await fetchLink({
+        address: `authorization/getUserTypeAuth`,
+        method: "POST",
+        bodyData: { username: contactNumber },
+      });
 
-    if (!data.success) {
-      toast.error("User not found with this contact number");
+      if (!data.success) {
+        toast.error("User not found with this contact number");
+        return false;
+      }
+
+      if (data.requirePassword) {
+        // This account needs a real password — don't attempt a blank-password login.
+        // Just open the login popup, prefilled with the number.
+        return "requirePassword";
+      }
+
+      // No password required — safe to auto-login directly
+      const customer = data.customer || {};
+      const username = customer.A1 || contactNumber;
+
+      localStorage.setItem("user", JSON.stringify({
+        ...customer,
+        Name: username,
+        Ret_Id: customer.Ret_Id,
+        UserId: customer.Ret_Id
+      }));
+
+      localStorage.setItem("session", JSON.stringify({
+        username: contactNumber,
+        ...data,
+        retId: customer.Ret_Id,
+        userId: customer.Ret_Id
+      }));
+
+      localStorage.setItem("loginAt", new Date().toString());
+      localStorage.setItem("username", contactNumber);
+      localStorage.setItem("userType", "customer");
+      localStorage.setItem("retId", customer.Ret_Id || "");
+
+      toast.success("Auto-login successful!");
+      return true;
+    } catch (error) {
+      console.error("Auto-login error:", error);
+      toast.error("Auto-login failed. Please try manually.");
       return false;
     }
-
-    if (data.requirePassword) {
-      // This account needs a real password — don't attempt a blank-password login.
-      // Just open the login popup, prefilled with the number.
-      return "requirePassword";
-    }
-
-    // No password required — safe to auto-login directly
-    const customer = data.customer || {};
-    const username = customer.A1 || contactNumber;
-
-    localStorage.setItem("user", JSON.stringify({
-      ...customer,
-      Name: username,
-      Ret_Id: customer.Ret_Id,
-      UserId: customer.Ret_Id
-    }));
-
-    localStorage.setItem("session", JSON.stringify({
-      username: contactNumber,
-      ...data,
-      retId: customer.Ret_Id,
-      userId: customer.Ret_Id
-    }));
-
-    localStorage.setItem("loginAt", new Date().toString());
-    localStorage.setItem("username", contactNumber);
-    localStorage.setItem("userType", "customer");
-    localStorage.setItem("retId", customer.Ret_Id || "");
-
-    toast.success("Auto-login successful!");
-    return true;
-  } catch (error) {
-    console.error("Auto-login error:", error);
-    toast.error("Auto-login failed. Please try manually.");
-    return false;
-  }
-}, []);
+  }, []);
 
 
   const proceedWithLogin = useCallback((userData, sessionData, userTypeParam) => {
     setIsLoggedIn(true);
     setUserType(userTypeParam);
-    
+
     let user;
     try {
       user = typeof userData === 'string' ? JSON.parse(userData) : userData;
     } catch (e) {
       user = userData;
     }
-    
+
     const session = typeof sessionData === 'string' ? JSON.parse(sessionData) : sessionData;
-    
+
     let customerList = [];
     if (session?.customer && Array.isArray(session.customer)) {
       customerList = session.customer.map(c => ({
@@ -5300,147 +4726,148 @@ const handleAutoLoginWithContact = useCallback(async (contactNumber) => {
         ledgerTallyId: c.Ledger_Tally_Id,
       }));
     }
-    
+
     if (customerList.length > 0) setCustomers(customerList);
-    
+
     if (userTypeParam === "customer" || userTypeParam === "employee") {
       const savedCustomerId = localStorage.getItem("selectedCustomerId");
       let defaultCustomer = null;
-      
+
       if (savedCustomerId && customerList.length > 0) {
         defaultCustomer = customerList.find(c => c.id === savedCustomerId);
       }
-      
+
       if (!defaultCustomer && customerList.length > 0) {
         defaultCustomer = customerList[0];
       }
-      
+
       if (defaultCustomer) {
         (async () => {
           const details = await fetchCompleteCustomerDetails(defaultCustomer.id);
           const finalCustomer = details
-            ? { ...defaultCustomer, 
-                brokerId: details.brokerId || defaultCustomer.brokerId, 
-                brokerName: details.brokerName || defaultCustomer.brokerName, 
-                transporterId: details.transporterId || defaultCustomer.transporterId, 
-                transporterName: details.transporterName || defaultCustomer.transporterName 
-              }
+            ? {
+              ...defaultCustomer,
+              brokerId: details.brokerId || defaultCustomer.brokerId,
+              brokerName: details.brokerName || defaultCustomer.brokerName,
+              transporterId: details.transporterId || defaultCustomer.transporterId,
+              transporterName: details.transporterName || defaultCustomer.transporterName
+            }
             : { ...defaultCustomer };
           setSelectedCustomer(finalCustomer);
           localStorage.setItem("selectedCustomerId", finalCustomer.id);
           localStorage.setItem("selectedCustomer", JSON.stringify(finalCustomer));
         })();
       }
-      
+
       const name = session.username || user?.Name || user?.User_Name || "User";
       setUserName(name);
     }
   }, []);
 
-// const checkLoginStatus = useCallback(async () => {
-//   try {
-//     const user = localStorage.getItem("user");
-//     const session = localStorage.getItem("session");
-//     const loginAt = localStorage.getItem("loginAt");
-//     const storedUserType = localStorage.getItem("userType") || "employee";
+  // const checkLoginStatus = useCallback(async () => {
+  //   try {
+  //     const user = localStorage.getItem("user");
+  //     const session = localStorage.getItem("session");
+  //     const loginAt = localStorage.getItem("loginAt");
+  //     const storedUserType = localStorage.getItem("userType") || "employee";
 
-//     if (!user || !session || !loginAt) {
-//       const contactNumber = getContactNumberFromURL();
-//       if (contactNumber) {
-//         ["user", "session", "loginAt", "userType", "retId", "selectedCustomerId", "selectedCustomer", "username"].forEach(k => localStorage.removeItem(k));
+  //     if (!user || !session || !loginAt) {
+  //       const contactNumber = getContactNumberFromURL();
+  //       if (contactNumber) {
+  //         ["user", "session", "loginAt", "userType", "retId", "selectedCustomerId", "selectedCustomer", "username"].forEach(k => localStorage.removeItem(k));
 
-//         const result = await handleAutoLoginWithContact(contactNumber);
+  //         const result = await handleAutoLoginWithContact(contactNumber);
 
-//         if (result === true) {
-//           const newUser = localStorage.getItem("user");
-//           const newSession = localStorage.getItem("session");
-//           if (newUser && newSession) {
-//             proceedWithLogin(newUser, newSession, "customer");
-//             return;
-//           }
-//         } else if (result === "requirePassword") {
-//           setPendingUsername(contactNumber);
-//           setIsLoginPopupOpen(true);
-//         } else {
-//           setIsLoginPopupOpen(true);
-//         }
-//       }
-//     }
+  //         if (result === true) {
+  //           const newUser = localStorage.getItem("user");
+  //           const newSession = localStorage.getItem("session");
+  //           if (newUser && newSession) {
+  //             proceedWithLogin(newUser, newSession, "customer");
+  //             return;
+  //           }
+  //         } else if (result === "requirePassword") {
+  //           setPendingUsername(contactNumber);
+  //           setIsLoginPopupOpen(true);
+  //         } else {
+  //           setIsLoginPopupOpen(true);
+  //         }
+  //       }
+  //     }
 
-//     if (user && session && loginAt) {
-//       proceedWithLogin(user, session, storedUserType);
-//     } else {
-//       setIsLoggedIn(false);
-//       setUserName("");
-//       setUserType("");
-//       setSelectedCustomer(null);
-//       setCustomers([]);
-//     }
-//   } catch (error) {
-//     console.error("Error checking login status:", error);
-//     setIsLoggedIn(false);
-//     setUserName("");
-//     setUserType("");
-//     setSelectedCustomer(null);
-//     setCustomers([]);
-//   }
-// }, [getContactNumberFromURL, handleAutoLoginWithContact, proceedWithLogin]);
+  //     if (user && session && loginAt) {
+  //       proceedWithLogin(user, session, storedUserType);
+  //     } else {
+  //       setIsLoggedIn(false);
+  //       setUserName("");
+  //       setUserType("");
+  //       setSelectedCustomer(null);
+  //       setCustomers([]);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error checking login status:", error);
+  //     setIsLoggedIn(false);
+  //     setUserName("");
+  //     setUserType("");
+  //     setSelectedCustomer(null);
+  //     setCustomers([]);
+  //   }
+  // }, [getContactNumberFromURL, handleAutoLoginWithContact, proceedWithLogin]);
 
-  
 
-const checkLoginStatus = useCallback(async () => {
-  try {
-    const user = localStorage.getItem("user");
-    const session = localStorage.getItem("session");
-    const loginAt = localStorage.getItem("loginAt");
-    const storedUserType = localStorage.getItem("userType") || "employee";
 
-    if (!user || !session || !loginAt) {
-      const contactNumber = getContactNumberFromURL();
-      if (contactNumber) {
-        ["user", "session", "loginAt", "userType", "retId", "selectedCustomerId", "selectedCustomer", "username"].forEach(k => localStorage.removeItem(k));
+  const checkLoginStatus = useCallback(async () => {
+    try {
+      const user = localStorage.getItem("user");
+      const session = localStorage.getItem("session");
+      const loginAt = localStorage.getItem("loginAt");
+      const storedUserType = localStorage.getItem("userType") || "employee";
 
-        const result = await handleAutoLoginWithContact(contactNumber);
+      if (!user || !session || !loginAt) {
+        const contactNumber = getContactNumberFromURL();
+        if (contactNumber) {
+          ["user", "session", "loginAt", "userType", "retId", "selectedCustomerId", "selectedCustomer", "username"].forEach(k => localStorage.removeItem(k));
 
-        if (result === true) {
-          const newUser = localStorage.getItem("user");
-          const newSession = localStorage.getItem("session");
-          if (newUser && newSession) {
-            proceedWithLogin(newUser, newSession, "customer");
-            if (isProfileRoute()) setShowDashboard(true);   
-            return;
+          const result = await handleAutoLoginWithContact(contactNumber);
+
+          if (result === true) {
+            const newUser = localStorage.getItem("user");
+            const newSession = localStorage.getItem("session");
+            if (newUser && newSession) {
+              proceedWithLogin(newUser, newSession, "customer");
+              if (isProfileRoute()) setShowDashboard(true);
+              return;
+            }
+          } else if (result === "requirePassword") {
+            setPendingUsername(contactNumber);
+            setIsLoginPopupOpen(true);
+          } else {
+            setIsLoginPopupOpen(true);
           }
-        } else if (result === "requirePassword") {
-          setPendingUsername(contactNumber);
-          setIsLoginPopupOpen(true);
-        } else {
-          setIsLoginPopupOpen(true);
         }
       }
-    }
 
-    if (user && session && loginAt) {
-      proceedWithLogin(user, session, storedUserType);
-      if (isProfileRoute()) setShowDashboard(true);   
-    } else {
+      if (user && session && loginAt) {
+        proceedWithLogin(user, session, storedUserType);
+        if (isProfileRoute()) setShowDashboard(true);
+      } else {
+        setIsLoggedIn(false);
+        setUserName("");
+        setUserType("");
+        setSelectedCustomer(null);
+        setCustomers([]);
+      }
+    } catch (error) {
+      console.error("Error checking login status:", error);
       setIsLoggedIn(false);
       setUserName("");
       setUserType("");
       setSelectedCustomer(null);
       setCustomers([]);
     }
-  } catch (error) {
-    console.error("Error checking login status:", error);
-    setIsLoggedIn(false);
-    setUserName("");
-    setUserType("");
-    setSelectedCustomer(null);
-    setCustomers([]);
-  }
-}, [getContactNumberFromURL, handleAutoLoginWithContact, proceedWithLogin, isProfileRoute]);
+  }, [getContactNumberFromURL, handleAutoLoginWithContact, proceedWithLogin, isProfileRoute]);
 
 
-const fetchCompleteCustomerDetails = async (customerId) => {
+  const fetchCompleteCustomerDetails = async (customerId) => {
     try {
       const response = await fetchLink({ address: `pos/retailerMasterOpt?limit=10000000&page=1` });
       if (response?.success && Array.isArray(response.data)) {
@@ -5492,7 +4919,7 @@ const fetchCompleteCustomerDetails = async (customerId) => {
   }, [getContactNumberFromURL, checkLoginStatus, showSaleOrders]);
 
   const handleLogout = () => {
-    ["user", "session", "loginAt", "userType", "retId", "selectedCustomerId", "selectedCustomer","username"].forEach(k => localStorage.removeItem(k));
+    ["user", "session", "loginAt", "userType", "retId", "selectedCustomerId", "selectedCustomer", "username"].forEach(k => localStorage.removeItem(k));
     setIsLoggedIn(false); setUserName(""); setUserType(""); setSelectedCustomer(null); setCustomers([]);
     toast.success("Logged out successfully");
   };
@@ -5533,7 +4960,7 @@ const fetchCompleteCustomerDetails = async (customerId) => {
       weight: product.PackGet ? `${product.PackGet}kg` : "N/A",
       stockGroup: product.Stock_Group || "General", posGroup: product.POS_Group || "General",
       price, stock: stockInBags, unit: product.Units || "Bags",
-      image: product.productImageUrl || "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=140&h=116&fit=crop",
+      image: product.productImageUrl || getCategoryImage(product.Stock_Group || product.Product_Name),
       coolie: product.Coolie, brokerage: product.NagalBrokerage || product.Brokerage,
       packGet: product.PackGet, hsnCode: product.HSN_Code, balQty,
       originalProduct: product, isInStock: stockInBags > 0,
@@ -5573,11 +5000,11 @@ const fetchCompleteCustomerDetails = async (customerId) => {
       let productList = [];
       if (posResponse?.success && posResponse.data) productList = posResponse.data;
       const merged = mergeProductData(productList, stockResponse);
-     
+
       const unique = deduplicateProducts(merged);
-    
+
       // const active = unique.filter((p) => p.Active_Deactive === 1 || p.Active_Deactive === 1 || p.Active_Deactive === 1);
-      const active=unique.filter((p)=>p.IsActive===1)
+      const active = unique.filter((p) => p.IsActive === 1)
       const inStock = active.filter((p) => {
         const bq = parseFloat(p.Bal_Qty) || 0;
         const pg = parseFloat(p.PackGet) || 1;
@@ -5587,8 +5014,11 @@ const fetchCompleteCustomerDetails = async (customerId) => {
       setAllProducts(active); setDisplayProducts(active);
       localStorage.setItem("products", JSON.stringify(inStock.map(formatProduct)));
       setInitialLoadDone(true);
-    } catch (error) { toast.error("Failed to load products"); }
-    finally { setLoadingProducts(false); }
+    } catch (error) {
+      console.error("Failed to load products:", error);
+    } finally {
+      setLoadingProducts(false);
+    }
   };
 
   const updateQty = (id, delta) => {
@@ -5618,7 +5048,7 @@ const fetchCompleteCustomerDetails = async (customerId) => {
     // const pg = parseFloat(p.PackGet) || 1;
     // if (pg > 0 ? bq / pg <= 0 : true) return false;
     if (!search) return true;
-    const normalize = (str) => (str || "").toLowerCase().replace(/[.\-_\s]+/g, "");
+    const normalize = (str) => String(str ?? "").toLowerCase().replace(/[.\-_\s]+/g, "");
     const sl = normalize(search);
     return (
       normalize(p.Product_Name).includes(sl) || normalize(p.Short_Name).includes(sl) ||
@@ -5689,39 +5119,58 @@ const fetchCompleteCustomerDetails = async (customerId) => {
     localStorage.setItem("cartPageSelectedCustomerId", String(updatedCustomer.id));
   };
 
+  const toStrTrim = (val) => String(val ?? "").trim();
+
   const extractPOSGroups = (list) =>
-    [...new Set(list.map((p) => (p.POS_Group || "").trim()))]
+    [...new Set((list || []).map((p) => toStrTrim(p.POS_Group)))]
       .filter((g) => g && g !== "NULL")
-      .map((g) => ({ posGroup: g, itemCount: list.filter((p) => (p.POS_Group || "").trim() === g).length }))
+      .map((g) => ({ posGroup: g, itemCount: list.filter((p) => toStrTrim(p.POS_Group) === g).length }))
       .sort((a, b) => a.posGroup.localeCompare(b.posGroup));
 
   const handleStockGroupClick = (group) => {
-    setSelectedPOSGroup(null); setSelectedStockGroup(group.id); setViewMode('products');
-    if (group.id === "All") {
-      setDisplayProducts(allProducts); setShowPOSGroups(false); setPosGroups([]);
+    setSelectedPOSGroup(null);
+    const targetGroupId = toStrTrim(group?.id);
+    setSelectedStockGroup(targetGroupId);
+    setViewMode('products');
+    if (targetGroupId === "All") {
+      setDisplayProducts(allProducts);
+      const pgl = extractPOSGroups(allProducts);
+      setPosGroups(pgl);
+      setShowPOSGroups(true);
     } else {
-      const filtered = allProducts.filter((p) => (p.Stock_Group || "").trim() === group.id.trim());
+      const filtered = allProducts.filter((p) => toStrTrim(p.Stock_Group) === targetGroupId);
       setDisplayProducts(filtered);
       const pgl = extractPOSGroups(filtered);
-      setPosGroups(pgl); setShowPOSGroups(true);
-      if (isMobile && pgl.length > 0) setIsDrawerOpen(true);
+      setPosGroups(pgl);
+      setShowPOSGroups(true);
     }
   };
 
   const handleBackToCategories = () => { setSelectedStockGroup("All"); setSearch(""); setViewMode('categories'); };
-  
+
   const handlePOSGroupClick = (posGroup) => {
-    setSelectedPOSGroup(posGroup);
-    setDisplayProducts(allProducts.filter((p) =>
-      (p.Stock_Group || "").trim() === selectedStockGroup.trim() &&
-      (p.POS_Group || "").trim() === posGroup.trim()
-    ));
+    const targetPosGroup = toStrTrim(posGroup);
+    setSelectedPOSGroup(targetPosGroup);
+    const curStockGroup = toStrTrim(selectedStockGroup);
+    if (curStockGroup === "All") {
+      setDisplayProducts(allProducts.filter((p) => toStrTrim(p.POS_Group) === targetPosGroup));
+    } else {
+      setDisplayProducts(allProducts.filter((p) =>
+        toStrTrim(p.Stock_Group) === curStockGroup &&
+        toStrTrim(p.POS_Group) === targetPosGroup
+      ));
+    }
     if (isMobile) setIsDrawerOpen(false);
   };
-  
+
   const handleAllPOSGroupsClick = () => {
     setSelectedPOSGroup(null);
-    setDisplayProducts(allProducts.filter((p) => (p.Stock_Group || "").trim() === selectedStockGroup.trim()));
+    const curStockGroup = toStrTrim(selectedStockGroup);
+    if (curStockGroup === "All") {
+      setDisplayProducts(allProducts);
+    } else {
+      setDisplayProducts(allProducts.filter((p) => toStrTrim(p.Stock_Group) === curStockGroup));
+    }
     if (isMobile) setIsDrawerOpen(false);
   };
 
@@ -5860,10 +5309,14 @@ const fetchCompleteCustomerDetails = async (customerId) => {
 
   useEffect(() => {
     if (allProducts.length > 0) {
-      const groups = [...new Set(allProducts.map((p) => p.Stock_Group))]
-        .filter((g) => g && g.trim() && g !== "NOT FOUND" && g !== "NULL").sort()
+      const groups = [...new Set(allProducts.map((p) => String(p.Stock_Group ?? "").trim()))]
+        .filter((g) => g && g !== "NOT FOUND" && g !== "NULL")
+        .sort()
         .map((g) => ({ id: g, name: g }));
       setStockGroups([{ id: "All", name: "All" }, ...groups]);
+      const pgl = extractPOSGroups(allProducts);
+      setPosGroups(pgl);
+      setShowPOSGroups(true);
     }
   }, [allProducts]);
 
@@ -5894,7 +5347,7 @@ const fetchCompleteCustomerDetails = async (customerId) => {
       ) : showSaleOrders ? (
         <SaleOrders onBack={handleBackFromSaleOrders} />
       ) : (
-        <div style={{ fontFamily: "'Georgia', serif", background: "#f5f0eb", minHeight: "100vh", paddingBottom: isMobile ? (selectedCount > 0 ? "100px" : "80px") : "0"}}>
+        <div style={{ fontFamily: "'Georgia', serif", background: "#f5f0eb", minHeight: "100vh", paddingBottom: isMobile ? (selectedCount > 0 ? "100px" : "80px") : "0" }}>
           <style>{mediaQueryStyles}</style>
 
           <CommonHeader
@@ -5922,7 +5375,7 @@ const fetchCompleteCustomerDetails = async (customerId) => {
           {isMobile && viewMode === 'categories' && (
             <div style={{ padding: "16px", background: "#f5f0eb", minHeight: "calc(100vh - 120px)" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
-                {stockGroups.filter((g) => g.id !== "All").map((group) => (
+                {stockGroups.map((group) => (
                   <div
                     key={group.id} onClick={() => handleStockGroupClick(group)}
                     style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s", height: "180px" }}
@@ -5931,7 +5384,7 @@ const fetchCompleteCustomerDetails = async (customerId) => {
                       <img src={getCategoryImage(group.name)} alt={group.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, background: "linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%)" }} />
                     </div>
-                    <div style={{ padding: "12px", background: BROWN_DARK, color: "#fff", textAlign: "center", fontSize: "14px", fontWeight: "600" }}>{group.name}</div>
+                    <div style={{ padding: "12px", background: BROWN_DARK, color: "#fff", textAlign: "center", fontSize: "14px", fontWeight: "600" }}>{group.name === "All" ? "All Categories" : group.name}</div>
                   </div>
                 ))}
               </div>
@@ -5950,32 +5403,52 @@ const fetchCompleteCustomerDetails = async (customerId) => {
               )}
 
               {!isMobile && (
-                <div className="category-filters" style={{ background: "#f5f0eb", padding: "24px", borderBottom: "1px solid #ddd", position: "sticky", top: 68, zIndex: 90, boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+                <div className="category-filters" style={{ background: "#f5f0eb", padding: "20px 24px 12px 24px", borderBottom: "1px solid #ddd", position: "sticky", top: 68, zIndex: 90, boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
                   {loadingProducts ? (
                     <div style={{ textAlign: "center", padding: "20px", width: "100%", color: "#999" }}>Loading categories...</div>
                   ) : (
                     <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", overflowY: "hidden", gap: "12px", margin: 0, padding: "0 0 12px 0", scrollbarWidth: "thin", WebkitOverflowScrolling: "touch", maxWidth: "100%" }}>
-                      {stockGroups.filter((g) => g.id !== "All").map((group) => (
-                        <CategoryCard key={group.id} category={{ name: group.name }} isSelected={selectedStockGroup === group.id} onClick={() => handleStockGroupClick(group)} isMobile={isMobile} isReduced={isCategoryReduced} />
+                      {stockGroups.map((group) => (
+                        <CategoryCard key={group.id} category={{ name: group.name === "All" ? "All Categories" : group.name }} isSelected={selectedStockGroup === group.id} onClick={() => handleStockGroupClick(group)} isMobile={isMobile} isReduced={isCategoryReduced} />
                       ))}
                     </div>
                   )}
                 </div>
               )}
 
-              {!isMobile && showPOSGroups && (
-                <div className="pos-groups-container" style={{ background: "#f9f4ef", padding: "15px 24px", borderBottom: "1px solid #e8ddd4" }}>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {showPOSGroups && (
+                <div className="pos-groups-container" style={{ background: "#f9f4ef", padding: "12px 24px", borderBottom: "1px solid #e8ddd4" }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", overflowX: "auto" }}>
                     <button
                       onClick={handleAllPOSGroupsClick}
-                      style={{ padding: "8px 16px", borderRadius: "20px", border: `2px solid ${selectedPOSGroup === null ? BROWN_DARK : ACCENT}`, background: selectedPOSGroup === null ? BROWN_DARK : "#fff", color: selectedPOSGroup === null ? "#fff" : BROWN_DARK, fontSize: 13, cursor: "pointer", fontWeight: selectedPOSGroup === null ? "bold" : "normal" }}
-                    >All POS Groups ({displayProducts.length})</button>
+                      style={{
+                        padding: "8px 18px", borderRadius: "20px",
+                        border: `2px solid ${selectedPOSGroup === null ? BROWN_DARK : ACCENT}`,
+                        background: selectedPOSGroup === null ? BROWN_DARK : "#fff",
+                        color: selectedPOSGroup === null ? "#fff" : BROWN_DARK,
+                        fontSize: 13, cursor: "pointer",
+                        fontWeight: selectedPOSGroup === null ? "bold" : "600",
+                        boxShadow: selectedPOSGroup === null ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      All ({selectedStockGroup === "All" ? allProducts.length : (allProducts.filter((p) => toStrTrim(p.Stock_Group) === toStrTrim(selectedStockGroup)).length)})
+                    </button>
                     {posGroups.length > 0 ? posGroups.map((group, i) => (
                       <button
                         key={i} onClick={() => handlePOSGroupClick(group.posGroup)}
-                        style={{ padding: "8px 16px", borderRadius: "20px", border: `2px solid ${selectedPOSGroup === group.posGroup ? BROWN_DARK : ACCENT}`, background: selectedPOSGroup === group.posGroup ? BROWN_DARK : "#fff", color: selectedPOSGroup === group.posGroup ? "#fff" : BROWN_DARK, fontSize: 13, cursor: "pointer", fontWeight: selectedPOSGroup === group.posGroup ? "bold" : "normal" }}
+                        style={{
+                          padding: "8px 18px", borderRadius: "20px",
+                          border: `2px solid ${selectedPOSGroup === group.posGroup ? BROWN_DARK : ACCENT}`,
+                          background: selectedPOSGroup === group.posGroup ? BROWN_DARK : "#fff",
+                          color: selectedPOSGroup === group.posGroup ? "#fff" : BROWN_DARK,
+                          fontSize: 13, cursor: "pointer",
+                          fontWeight: selectedPOSGroup === group.posGroup ? "bold" : "500",
+                          boxShadow: selectedPOSGroup === group.posGroup ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                          transition: "all 0.2s ease"
+                        }}
                       >{group.posGroup} ({group.itemCount})</button>
-                    )) : <div style={{ color: "#666", fontStyle: "italic", padding: "8px" }}>No POS groups available</div>}
+                    )) : <div style={{ color: "#777", fontStyle: "italic", fontSize: 13, padding: "4px" }}>No sub-groups available</div>}
                   </div>
                 </div>
               )}
@@ -6057,7 +5530,7 @@ function SaleOrders({ onBack }) {
   const getBrokerName = (order) => {
     if (!order.Staff_Involved_List || !Array.isArray(order.Staff_Involved_List)) return "";
     const broker = order.Staff_Involved_List.find(s => s.Cost_Center_Type_Id === 3 || s.EmpType === "Broker");
-    return broker?.EmpName || "";
+    return String(broker?.EmpName ?? "");
   };
 
   const getTransporterName = (order) => {
@@ -6094,66 +5567,66 @@ function SaleOrders({ onBack }) {
   useEffect(() => { fetchSaleOrders(); }, [fromDate, toDate]);
 
 
- 
-const fetchSaleOrders = async () => {
-  setLoading(true);
-  try {
-    // Get user data from localStorage
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    const sessionData = JSON.parse(localStorage.getItem('session') || '{}');
-    const userType = localStorage.getItem('userType');
-    
-    let userId = null;
-    
-    // For employee login
-    if (userType === 'employee') {
-      userId = userData.UserId || userData.user_id || userData.User_Id || sessionData?.userId || '';
-    } 
-    // For customer login
-    else if (userType === 'customer') {
-      userId = userData.Ret_Id || userData.Customer_Id || userData.id || sessionData?.retId || '';
-    }
-    
-    if (!userId) {
-      userId = sessionData?.userId || sessionData?.Ret_Id || '';
-    }
 
-    const formattedFromDate = fromDate.toISOString().split('T')[0];
-    const formattedToDate = toDate.toISOString().split('T')[0];
+  const fetchSaleOrders = async () => {
+    setLoading(true);
+    try {
+      // Get user data from localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const sessionData = JSON.parse(localStorage.getItem('session') || '{}');
+      const userType = localStorage.getItem('userType');
 
-    // FIX: 'username' is stored as a plain string, so no JSON.parse needed
-    const mobileno = localStorage.getItem('username') || '';
+      let userId = null;
 
-    // FIX: reuse the already-parsed userData object instead of a raw string
-    const usertypeid =
-      userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || '';
+      // For employee login
+      if (userType === 'employee') {
+        userId = userData.UserId || userData.user_id || userData.User_Id || sessionData?.userId || '';
+      }
+      // For customer login
+      else if (userType === 'customer') {
+        userId = userData.Ret_Id || userData.Customer_Id || userData.id || sessionData?.retId || '';
+      }
 
-    let url = `sales/salesOrder/list?Created_by=${encodeURIComponent(
-      userId
-    )}&Mobile_No=${encodeURIComponent(mobileno)}&FromDate=${formattedFromDate}&ToDate=${formattedToDate}&UserTypeId=${encodeURIComponent(
-      usertypeid
-    )}`;
+      if (!userId) {
+        userId = sessionData?.userId || sessionData?.Ret_Id || '';
+      }
 
-    const response = await fetchLink({
-      address: url,
-      method: 'GET',
-    });
-    
-    if (response?.success) {
-      const orderData = response.data || response.Data || [];
-      setOrders(Array.isArray(orderData) ? orderData : []);
-    } else {
-      toast.error(response?.message || "Failed to fetch orders");
+      const formattedFromDate = fromDate.toISOString().split('T')[0];
+      const formattedToDate = toDate.toISOString().split('T')[0];
+
+      // FIX: 'username' is stored as a plain string, so no JSON.parse needed
+      const mobileno = localStorage.getItem('username') || '';
+
+      // FIX: reuse the already-parsed userData object instead of a raw string
+      const usertypeid =
+        userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || '';
+
+      let url = `sales/salesOrder/list?Created_by=${encodeURIComponent(
+        userId
+      )}&Mobile_No=${encodeURIComponent(mobileno)}&FromDate=${formattedFromDate}&ToDate=${formattedToDate}&UserTypeId=${encodeURIComponent(
+        usertypeid
+      )}`;
+
+      const response = await fetchLink({
+        address: url,
+        method: 'GET',
+      });
+
+      if (response?.success) {
+        const orderData = response.data || response.Data || [];
+        setOrders(Array.isArray(orderData) ? orderData : []);
+      } else {
+        toast.error(response?.message || "Failed to fetch orders");
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error("Error fetching sale orders:", error);
+      toast.error("Failed to load sale orders");
       setOrders([]);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error fetching sale orders:", error);
-    toast.error("Failed to load sale orders");
-    setOrders([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -6234,403 +5707,403 @@ const fetchSaleOrders = async () => {
     return 1;
   };
 
-const handlePrintOrder = async (e, order) => {
-  e.stopPropagation();
-  try {
-    const productsList = order.Products_List || [];
-    const createdOnDate = order.Created_on || order.Created_On || order.created_on;
-    const orderDateValue = order.So_Date;
+  const handlePrintOrder = async (e, order) => {
+    e.stopPropagation();
+    try {
+      const productsList = order.Products_List || [];
+      const createdOnDate = order.Created_on || order.Created_On || order.created_on;
+      const orderDateValue = order.So_Date;
 
-    const originalCustomerName = order.Retailers_Name || order.Customer_Name || order.Party_Name || order.Billl_Name || "";
-    const originalCity = order.City || "";
-    const originalAddress = order.Shipp_Address || order.Shipping_Address || order.Address || "";
-    const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
-    const originalBrokerName = getBrokerName(order);
-    const originalTransporterName = getTransporterName(order);
+      const originalCustomerName = order.Retailers_Name || order.Customer_Name || order.Party_Name || order.Billl_Name || "";
+      const originalCity = order.City || "";
+      const originalAddress = order.Shipp_Address || order.Shipping_Address || order.Address || "";
+      const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
+      const originalBrokerName = getBrokerName(order);
+      const originalTransporterName = getTransporterName(order);
 
-    const printCartItems = productsList.map(p => ({
-      Print_Name: p.Product_Short_Name || p.Product_Name || "",
-      shortName: p.Short_Name || p.Product_Short_Name || p.Product_Name || "",
-      kgs: parseFloat(p.Bill_Qty) || 0,
-      price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
-    }));
+      const printCartItems = productsList.map(p => ({
+        Print_Name: p.Product_Short_Name || p.Product_Name || "",
+        shortName: p.Short_Name || p.Product_Short_Name || p.Product_Name || "",
+        kgs: parseFloat(p.Bill_Qty) || 0,
+        price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
+      }));
 
-    let customerData = {
-      Billl_Name: originalCustomerName,
-      Party_Mailing_Name: originalCustomerName,
-      Party_Location: originalCity,
-      Party_Mailing_Address: originalAddress,
-      City: originalCity,
-      Mobile_No: originalMobile,
-      Land_Line: originalMobile,
-      Transporter: originalTransporterName,
-      Broker: originalBrokerName,
-    };
+      let customerData = {
+        Billl_Name: originalCustomerName,
+        Party_Mailing_Name: originalCustomerName,
+        Party_Location: originalCity,
+        Party_Mailing_Address: originalAddress,
+        City: originalCity,
+        Mobile_No: originalMobile,
+        Land_Line: originalMobile,
+        Transporter: originalTransporterName,
+        Broker: originalBrokerName,
+      };
 
-    const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
-    if (retailerId) {
-      const response = await fetchLink({
-        address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1`
-      });
-      if (response?.success && Array.isArray(response.data)) {
-        const found = response.data.find(c => String(c.Customer_Id) === String(retailerId));
-        if (found) {
-          customerData = {
-            Billl_Name: originalCustomerName,
-            Party_Mailing_Name: originalCustomerName,
-            Party_Location: originalCity || found.City || "",
-            Party_Mailing_Address: originalAddress || found.Address || found.Party_Mailing_Address || "",
-            City: originalCity || found.City || "",
-            Mobile_No: originalMobile || found.Mobile_No || "",
-            Land_Line: found.Land_Line || originalMobile || "",
-            Transporter: originalTransporterName || found.Transporter || "",
-            Broker: originalBrokerName || found.Broker || "",
-          };
+      const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
+      if (retailerId) {
+        const response = await fetchLink({
+          address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1`
+        });
+        if (response?.success && Array.isArray(response.data)) {
+          const found = response.data.find(c => String(c.Customer_Id) === String(retailerId));
+          if (found) {
+            customerData = {
+              Billl_Name: originalCustomerName,
+              Party_Mailing_Name: originalCustomerName,
+              Party_Location: originalCity || found.City || "",
+              Party_Mailing_Address: originalAddress || found.Address || found.Party_Mailing_Address || "",
+              City: originalCity || found.City || "",
+              Mobile_No: originalMobile || found.Mobile_No || "",
+              Land_Line: found.Land_Line || originalMobile || "",
+              Transporter: originalTransporterName || found.Transporter || "",
+              Broker: originalBrokerName || found.Broker || "",
+            };
+          }
         }
       }
-    }
 
-    // ── Expense array from the LIST/READ endpoint uses DR/CR columns,
-    //    not the single "Expence_Value" field used when creating an order.
-    const expenseList = order.Expence_Array || order.Expense_Array || [];
-    const normalizedExpenses = expenseList.map(exp => {
-      const dr = parseFloat(exp.Expence_Value_DR) || 0;
-      const cr = parseFloat(exp.Expence_Value_CR) || 0;
-      // Net signed value. Adjust the sign convention here if your
-      // ledger treats DR as an addition rather than a deduction.
-      const netValue = dr - cr;
-      return {
-        Account_Name: exp.Expence_Name || exp.Account_Name || "",
-        Expence_Value: netValue,
-      };
-    });
-
-    const totalExpensesValue = normalizedExpenses.reduce(
-      (acc, exp) => acc + (parseFloat(exp.Expence_Value) || 0), 0
-    );
-
-    // Sum of line items, independent of whatever Total_Invoice_value says
-    const totalBeforeTax = productsList.reduce((sum, p) => {
-      const amt = parseFloat(p.Amount);
-      if (!isNaN(amt) && amt !== 0) return sum + amt;
-      const rate = parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0;
-      const qty = parseFloat(p.Bill_Qty) || 0;
-      return sum + rate * qty;
-    }, 0);
-
-    // Recompute total so the expense is guaranteed to be reflected,
-    // instead of trusting the stored Total_Invoice_value as-is.
-    const totalInvoiceValue = totalBeforeTax + totalExpensesValue;
-
-    const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
-
-    const totals = {
-      subtotal: totalInvoiceValue,
-      totalBeforeTax,
-      totalExpenses: totalExpensesValue,
-      tax: 0,
-      total: totalInvoiceValue,
-      totalItems: productsList.length,
-      totalKgs,
-    };
-
-    const storage = JSON.parse(localStorage.getItem('user') || '{}');
-
-    setPrintData({
-      customer: customerData,
-      cartItems: printCartItems,
-      totals,
-      expenses: normalizedExpenses,
-      storage,
-      createdOn: createdOnDate,
-      orderDate: orderDateValue,
-    });
-    setPrintModalOpen(true);
-  } catch (error) {
-    console.error("Error preparing print data:", error);
-    toast.error("Failed to prepare print data");
-  }
-};
-
-// const handlePrintOrder = async (e, order) => {
-
-//   e.stopPropagation();
-//   try {
-//     const productsList = order.Products_List || [];
-//      const createdOnDate = order.Created_on || order.Created_On || order.created_on;
-//     const orderDateValue = order.So_Date;
-
-//     const originalCustomerName = order.Retailers_Name || order.Customer_Name || order.Party_Name || order.Billl_Name || "";
-//     const originalCity = order.City || "";
-//     const originalAddress = order.Shipp_Address || order.Shipping_Address || order.Address || "";
-//     const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
-//     const originalBrokerName = getBrokerName(order);
-//     const originalTransporterName = getTransporterName(order);
-    
-
-
-
-//     const printCartItems = productsList.map(p => ({
-//       Print_Name: p.Product_Short_Name || p.Product_Name || "",
-//       shortName: p.Short_Name || p.Product_Short_Name || p.Product_Name || "",
-//       kgs: parseFloat(p.Bill_Qty) || 0,
-//       price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
-//     }));
-
-   
-//     let customerData = {
-//       Billl_Name: originalCustomerName, 
-//       Party_Mailing_Name: originalCustomerName,
-//       Party_Location: originalCity,      
-//       Party_Mailing_Address: originalAddress,
-//       City: originalCity,
-//       Mobile_No: originalMobile,
-//       Land_Line: originalMobile,
-//       Transporter: originalTransporterName,
-//       Broker: originalBrokerName,
-//     };
-
-//     const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
-//     if (retailerId) {
-//       const response = await fetchLink({ 
-//         address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1` 
-//       });
-//       if (response?.success && Array.isArray(response.data)) {
-//         const found = response.data.find(c => String(c.Customer_Id) === String(retailerId));
-//         if (found) {
-        
-//           customerData = {
-//             Billl_Name: originalCustomerName,  
-//             Party_Mailing_Name: originalCustomerName,
-//             Party_Location: originalCity || found.City || "", 
-//             Party_Mailing_Address: originalAddress || found.Address || found.Party_Mailing_Address || "",
-//             City: originalCity || found.City || "",
-//             Mobile_No: originalMobile || found.Mobile_No || "",
-//             Land_Line: found.Land_Line || originalMobile || "",
-//             Transporter: originalTransporterName || found.Transporter || "",
-//             Broker: originalBrokerName || found.Broker || "",
-//           };
-//         }
-//       }
-//     }
-
-//     const totalInvoiceValue = parseFloat(order.Total_Invoice_value || 0);
-//     const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
-//     const totals = { 
-//       subtotal: totalInvoiceValue, 
-//       tax: 0, 
-//       total: totalInvoiceValue, 
-//       totalItems: productsList.length, 
-//       totalKgs 
-//     };
-    
-//     const storage = JSON.parse(localStorage.getItem('user') || '{}');
-    
-//     setPrintData({ 
-//       customer: customerData, 
-//       cartItems: printCartItems, 
-//       totals, 
-//       storage,
-//       createdOn: createdOnDate,  
-//       orderDate: orderDateValue,
-//     });
-//     setPrintModalOpen(true);
-//   } catch (error) {
-//     console.error("Error preparing print data:", error);
-//     toast.error("Failed to prepare print data");
-//   }
-// };
-
-
-
-const handleEditOrder = async (e, order) => {
- 
-  e.stopPropagation();
-  try {
-    const orderId = order.So_Id || order.So_No || order.OrderId;
-    localStorage.setItem('editOrderId', orderId);
-    localStorage.setItem("selectedCustomerId", order.Retailer_Id);
-
-   
-    let actualBrokerId = null;
-    let actualBrokerName = "";
-    let actualTransporterId = null;
-    let actualTransporterName = "";
-
-    if (order.Staff_Involved_List && Array.isArray(order.Staff_Involved_List)) {
-   
-      const broker = order.Staff_Involved_List.find(
-        staff => staff.Cost_Center_Type_Id === 3 || staff.EmpType === "Broker"
-      );
-      if (broker) {
-        actualBrokerId = broker.Involved_Emp_Id || broker.Emp_Id;
-        actualBrokerName = broker.EmpName || "";
-      
-      }
-
- 
-      const transporter = order.Staff_Involved_List.find(
-        staff => staff.Cost_Center_Type_Id === 2 || staff.EmpType === "Load Man"
-      );
-      if (transporter) {
-        actualTransporterId = transporter.Involved_Emp_Id || transporter.Emp_Id;
-        actualTransporterName = transporter.EmpName || "";
-     
-      }
-    }
-
-    
-    const originalCustomerName = order.Retailer_Name || order.Customer_Name || order.Party_Name || "";
-    const originalCity = order.City || "";
-    const originalAddress = order.Shipp_Address || order.Shipping_Address || order.Address || "";
-    const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
-    
-   
-    const response = await fetchLink({ 
-      address: `pos/retailerMasterOpt?Customer_Id=${order.Retailer_Id}&limit=10000000&page=1` 
-    });
-    
-    let completeCustomerDetails = null;
-    if (response?.success && Array.isArray(response.data)) {
-      const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
-      completeCustomerDetails = response.data.find(c => String(c.Customer_Id) === String(retailerId));
-    }
-
-    const getProductPackGet = (productName) => {
-      if (productName) {
-        const packMatch = productName.match(/(\d+(?:\.\d+)?)\s*KG/i);
-        if (packMatch) return parseFloat(packMatch[1]);
-      }
-      return 1;
-    };
-
-    const cartItemsObj = {};
-    const productsList = [];
-
-    if (order.Products_List && Array.isArray(order.Products_List)) {
-      order.Products_List.forEach(product => {
-        const productId = String(product.Product_Id || product.Item_Id);
-        
-        const originalProductName = product.Product_Name || product.Item_Name || "";
-        const originalShortName = product.Product_Short_Name || product.Short_Name || originalProductName;
-        
-        let packGet = parseFloat(product.PackGet) || parseFloat(product.Pack_Get) || 1;
-        if (packGet === 1 && originalProductName) packGet = getProductPackGet(originalProductName);
-        
-        const billQty = parseFloat(product.Bill_Qty) || 0;
-        const quantity = packGet > 0 && billQty > 0 ? Math.round(billQty / packGet) : 1;
-        const pricePerKg = parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0;
-        const amount = parseFloat(product.Amount) || (pricePerKg * billQty) || 0;
-        
-        cartItemsObj[productId] = quantity;
-        productsList.push({
-          id: productId,
-          name: originalProductName, 
-          shortName: originalShortName, 
-          quantity: quantity,
-          kgs: billQty,
-          price: pricePerKg,
-          packGet: packGet,
-          amount: amount,
-        });
+      // ── Expense array from the LIST/READ endpoint uses DR/CR columns,
+      //    not the single "Expence_Value" field used when creating an order.
+      const expenseList = order.Expence_Array || order.Expense_Array || [];
+      const normalizedExpenses = expenseList.map(exp => {
+        const dr = parseFloat(exp.Expence_Value_DR) || 0;
+        const cr = parseFloat(exp.Expence_Value_CR) || 0;
+        // Net signed value. Adjust the sign convention here if your
+        // ledger treats DR as an addition rather than a deduction.
+        const netValue = dr - cr;
+        return {
+          Account_Name: exp.Expence_Name || exp.Account_Name || "",
+          Expence_Value: netValue,
+        };
       });
-    }
 
-  
-    const editData = {
-      customerId: order.Retailer_Id || order.Customer_Id || order.Party_Id,
-      customerName: originalCustomerName, 
-      customerMobile: originalMobile || completeCustomerDetails?.Mobile_No || "",
-      customerAddress: originalAddress || completeCustomerDetails?.Address || "", 
-      customerCity: originalCity || completeCustomerDetails?.City || "", 
-      orderId: orderId,
-      orderNumber: order.So_Inv_No || order.So_No || order.OrderNumber,
-      cartItems: cartItemsObj,
-      productsList: productsList,
-      Expence_Array: order.Expence_Array,
-      brokerId: actualBrokerId,
-      brokerName: actualBrokerName,
-      transporterId: actualTransporterId,
-      transporterName: actualTransporterName,
-      shippingAddress: originalAddress || completeCustomerDetails?.Address || order.Shipp_Address || order.Shipping_Address || "",
-      deliveryAddress: originalAddress || completeCustomerDetails?.Address || order.Deliv_Address || order.Delivery_Address || order.Shipp_Address || "",
-      contactNumber: originalMobile || completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
-      description: order.Narration || order.Description || order.Note || "",
-     
-      originalCustomerName: originalCustomerName,
-      originalCity: originalCity,
-      originalAddress: originalAddress,
-      originalMobile: originalMobile,
-      originalBillName: completeCustomerDetails?.Billl_Name || originalCustomerName,
-      originalPartyMailingName: completeCustomerDetails?.Party_Mailing_Name || originalCustomerName,
-      originalPartyMailingAddress: completeCustomerDetails?.Party_Mailing_Address || originalAddress,
-      customerDetails: {
-        id: order.Retailer_Id || order.Customer_Id || order.Party_Id,
-        name: originalCustomerName, // Use original Tamil name
-        mobile: originalMobile || completeCustomerDetails?.Mobile_No || "",
-        address: originalAddress || completeCustomerDetails?.Address || "",
-        city: originalCity || completeCustomerDetails?.City || "",
+      const totalExpensesValue = normalizedExpenses.reduce(
+        (acc, exp) => acc + (parseFloat(exp.Expence_Value) || 0), 0
+      );
+
+      // Sum of line items, independent of whatever Total_Invoice_value says
+      const totalBeforeTax = productsList.reduce((sum, p) => {
+        const amt = parseFloat(p.Amount);
+        if (!isNaN(amt) && amt !== 0) return sum + amt;
+        const rate = parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0;
+        const qty = parseFloat(p.Bill_Qty) || 0;
+        return sum + rate * qty;
+      }, 0);
+
+      // Recompute total so the expense is guaranteed to be reflected,
+      // instead of trusting the stored Total_Invoice_value as-is.
+      const totalInvoiceValue = totalBeforeTax + totalExpensesValue;
+
+      const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
+
+      const totals = {
+        subtotal: totalInvoiceValue,
+        totalBeforeTax,
+        totalExpenses: totalExpensesValue,
+        tax: 0,
+        total: totalInvoiceValue,
+        totalItems: productsList.length,
+        totalKgs,
+      };
+
+      const storage = JSON.parse(localStorage.getItem('user') || '{}');
+
+      setPrintData({
+        customer: customerData,
+        cartItems: printCartItems,
+        totals,
+        expenses: normalizedExpenses,
+        storage,
+        createdOn: createdOnDate,
+        orderDate: orderDateValue,
+      });
+      setPrintModalOpen(true);
+    } catch (error) {
+      console.error("Error preparing print data:", error);
+      toast.error("Failed to prepare print data");
+    }
+  };
+
+  // const handlePrintOrder = async (e, order) => {
+
+  //   e.stopPropagation();
+  //   try {
+  //     const productsList = order.Products_List || [];
+  //      const createdOnDate = order.Created_on || order.Created_On || order.created_on;
+  //     const orderDateValue = order.So_Date;
+
+  //     const originalCustomerName = order.Retailers_Name || order.Customer_Name || order.Party_Name || order.Billl_Name || "";
+  //     const originalCity = order.City || "";
+  //     const originalAddress = order.Shipp_Address || order.Shipping_Address || order.Address || "";
+  //     const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
+  //     const originalBrokerName = getBrokerName(order);
+  //     const originalTransporterName = getTransporterName(order);
+
+
+
+
+  //     const printCartItems = productsList.map(p => ({
+  //       Print_Name: p.Product_Short_Name || p.Product_Name || "",
+  //       shortName: p.Short_Name || p.Product_Short_Name || p.Product_Name || "",
+  //       kgs: parseFloat(p.Bill_Qty) || 0,
+  //       price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
+  //     }));
+
+
+  //     let customerData = {
+  //       Billl_Name: originalCustomerName, 
+  //       Party_Mailing_Name: originalCustomerName,
+  //       Party_Location: originalCity,      
+  //       Party_Mailing_Address: originalAddress,
+  //       City: originalCity,
+  //       Mobile_No: originalMobile,
+  //       Land_Line: originalMobile,
+  //       Transporter: originalTransporterName,
+  //       Broker: originalBrokerName,
+  //     };
+
+  //     const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
+  //     if (retailerId) {
+  //       const response = await fetchLink({ 
+  //         address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1` 
+  //       });
+  //       if (response?.success && Array.isArray(response.data)) {
+  //         const found = response.data.find(c => String(c.Customer_Id) === String(retailerId));
+  //         if (found) {
+
+  //           customerData = {
+  //             Billl_Name: originalCustomerName,  
+  //             Party_Mailing_Name: originalCustomerName,
+  //             Party_Location: originalCity || found.City || "", 
+  //             Party_Mailing_Address: originalAddress || found.Address || found.Party_Mailing_Address || "",
+  //             City: originalCity || found.City || "",
+  //             Mobile_No: originalMobile || found.Mobile_No || "",
+  //             Land_Line: found.Land_Line || originalMobile || "",
+  //             Transporter: originalTransporterName || found.Transporter || "",
+  //             Broker: originalBrokerName || found.Broker || "",
+  //           };
+  //         }
+  //       }
+  //     }
+
+  //     const totalInvoiceValue = parseFloat(order.Total_Invoice_value || 0);
+  //     const totalKgs = productsList.reduce((sum, p) => sum + (parseFloat(p.Bill_Qty) || 0), 0);
+  //     const totals = { 
+  //       subtotal: totalInvoiceValue, 
+  //       tax: 0, 
+  //       total: totalInvoiceValue, 
+  //       totalItems: productsList.length, 
+  //       totalKgs 
+  //     };
+
+  //     const storage = JSON.parse(localStorage.getItem('user') || '{}');
+
+  //     setPrintData({ 
+  //       customer: customerData, 
+  //       cartItems: printCartItems, 
+  //       totals, 
+  //       storage,
+  //       createdOn: createdOnDate,  
+  //       orderDate: orderDateValue,
+  //     });
+  //     setPrintModalOpen(true);
+  //   } catch (error) {
+  //     console.error("Error preparing print data:", error);
+  //     toast.error("Failed to prepare print data");
+  //   }
+  // };
+
+
+
+  const handleEditOrder = async (e, order) => {
+
+    e.stopPropagation();
+    try {
+      const orderId = order.So_Id || order.So_No || order.OrderId;
+      localStorage.setItem('editOrderId', orderId);
+      localStorage.setItem("selectedCustomerId", order.Retailer_Id);
+
+
+      let actualBrokerId = null;
+      let actualBrokerName = "";
+      let actualTransporterId = null;
+      let actualTransporterName = "";
+
+      if (order.Staff_Involved_List && Array.isArray(order.Staff_Involved_List)) {
+
+        const broker = order.Staff_Involved_List.find(
+          staff => staff.Cost_Center_Type_Id === 3 || staff.EmpType === "Broker"
+        );
+        if (broker) {
+          actualBrokerId = broker.Involved_Emp_Id || broker.Emp_Id;
+          actualBrokerName = broker.EmpName || "";
+
+        }
+
+
+        const transporter = order.Staff_Involved_List.find(
+          staff => staff.Cost_Center_Type_Id === 2 || staff.EmpType === "Load Man"
+        );
+        if (transporter) {
+          actualTransporterId = transporter.Involved_Emp_Id || transporter.Emp_Id;
+          actualTransporterName = transporter.EmpName || "";
+
+        }
+      }
+
+
+      const originalCustomerName = order.Retailer_Name || order.Customer_Name || order.Party_Name || "";
+      const originalCity = order.City || "";
+      const originalAddress = order.Shipp_Address || order.Shipping_Address || order.Address || "";
+      const originalMobile = order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "";
+
+
+      const response = await fetchLink({
+        address: `pos/retailerMasterOpt?Customer_Id=${order.Retailer_Id}&limit=10000000&page=1`
+      });
+
+      let completeCustomerDetails = null;
+      if (response?.success && Array.isArray(response.data)) {
+        const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
+        completeCustomerDetails = response.data.find(c => String(c.Customer_Id) === String(retailerId));
+      }
+
+      const getProductPackGet = (productName) => {
+        if (productName) {
+          const packMatch = productName.match(/(\d+(?:\.\d+)?)\s*KG/i);
+          if (packMatch) return parseFloat(packMatch[1]);
+        }
+        return 1;
+      };
+
+      const cartItemsObj = {};
+      const productsList = [];
+
+      if (order.Products_List && Array.isArray(order.Products_List)) {
+        order.Products_List.forEach(product => {
+          const productId = String(product.Product_Id || product.Item_Id);
+
+          const originalProductName = product.Product_Name || product.Item_Name || "";
+          const originalShortName = product.Product_Short_Name || product.Short_Name || originalProductName;
+
+          let packGet = parseFloat(product.PackGet) || parseFloat(product.Pack_Get) || 1;
+          if (packGet === 1 && originalProductName) packGet = getProductPackGet(originalProductName);
+
+          const billQty = parseFloat(product.Bill_Qty) || 0;
+          const quantity = packGet > 0 && billQty > 0 ? Math.round(billQty / packGet) : 1;
+          const pricePerKg = parseFloat(product.Item_Rate) || parseFloat(product.Price) || 0;
+          const amount = parseFloat(product.Amount) || (pricePerKg * billQty) || 0;
+
+          cartItemsObj[productId] = quantity;
+          productsList.push({
+            id: productId,
+            name: originalProductName,
+            shortName: originalShortName,
+            quantity: quantity,
+            kgs: billQty,
+            price: pricePerKg,
+            packGet: packGet,
+            amount: amount,
+          });
+        });
+      }
+
+
+      const editData = {
+        customerId: order.Retailer_Id || order.Customer_Id || order.Party_Id,
+        customerName: originalCustomerName,
+        customerMobile: originalMobile || completeCustomerDetails?.Mobile_No || "",
+        customerAddress: originalAddress || completeCustomerDetails?.Address || "",
+        customerCity: originalCity || completeCustomerDetails?.City || "",
+        orderId: orderId,
+        orderNumber: order.So_Inv_No || order.So_No || order.OrderNumber,
+        cartItems: cartItemsObj,
+        productsList: productsList,
+        Expence_Array: order.Expence_Array,
         brokerId: actualBrokerId,
         brokerName: actualBrokerName,
         transporterId: actualTransporterId,
         transporterName: actualTransporterName,
-        billName: completeCustomerDetails?.Billl_Name || originalCustomerName,
-        partyMailingName: completeCustomerDetails?.Party_Mailing_Name || originalCustomerName,
-        partyMailingAddress: completeCustomerDetails?.Party_Mailing_Address || originalAddress,
-      },
-    };
+        shippingAddress: originalAddress || completeCustomerDetails?.Address || order.Shipp_Address || order.Shipping_Address || "",
+        deliveryAddress: originalAddress || completeCustomerDetails?.Address || order.Deliv_Address || order.Delivery_Address || order.Shipp_Address || "",
+        contactNumber: originalMobile || completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
+        description: order.Narration || order.Description || order.Note || "",
 
-  
-
-    localStorage.setItem('editOrderData', JSON.stringify(editData));
-    localStorage.setItem('isEditingOrder', 'true');
-    
-    // Store the actual IDs separately to ensure they're not overwritten
-    if (actualBrokerId) localStorage.setItem('editBrokerId', actualBrokerId);
-    if (actualBrokerName) localStorage.setItem('editBrokerName', actualBrokerName);
-    if (actualTransporterId) localStorage.setItem('editTransporterId', actualTransporterId);
-    if (actualTransporterName) localStorage.setItem('editTransporterName', actualTransporterName);
-    
-    // Store original customer data for print
-    localStorage.setItem('editCustomerOriginalName', originalCustomerName);
-    localStorage.setItem('editCustomerOriginalCity', originalCity);
-    localStorage.setItem('editCustomerOriginalAddress', originalAddress);
-    localStorage.setItem('editCustomerOriginalMobile', originalMobile);
-    localStorage.setItem('editCustomerBillName', completeCustomerDetails?.Billl_Name || originalCustomerName);
-    localStorage.setItem('editCustomerPartyMailingName', completeCustomerDetails?.Party_Mailing_Name || originalCustomerName);
-    localStorage.setItem('editCustomerPartyMailingAddress', completeCustomerDetails?.Party_Mailing_Address || originalAddress);
-    
-    const currentCart = localStorage.getItem('cartItems');
-    if (currentCart) localStorage.setItem('previousCartItems', currentCart);
-    const productsData = localStorage.getItem('products');
-    if (productsData) localStorage.setItem('productsBackup', productsData);
-
-    navigate('/cart', {
-      state: {
-        editOrderData: editData,
-        isEditingOrder: true,
-        selectedCustomer: {
-          id: editData.customerDetails.id,
+        originalCustomerName: originalCustomerName,
+        originalCity: originalCity,
+        originalAddress: originalAddress,
+        originalMobile: originalMobile,
+        originalBillName: completeCustomerDetails?.Billl_Name || originalCustomerName,
+        originalPartyMailingName: completeCustomerDetails?.Party_Mailing_Name || originalCustomerName,
+        originalPartyMailingAddress: completeCustomerDetails?.Party_Mailing_Address || originalAddress,
+        customerDetails: {
+          id: order.Retailer_Id || order.Customer_Id || order.Party_Id,
           name: originalCustomerName, // Use original Tamil name
-          billName: editData.customerDetails.billName,
-          mobile: originalMobile || editData.customerDetails.mobile || "",
-          city: originalCity || editData.customerDetails.city || "",
-          address: originalAddress || editData.customerDetails.address || "",
+          mobile: originalMobile || completeCustomerDetails?.Mobile_No || "",
+          address: originalAddress || completeCustomerDetails?.Address || "",
+          city: originalCity || completeCustomerDetails?.City || "",
           brokerId: actualBrokerId,
           brokerName: actualBrokerName,
           transporterId: actualTransporterId,
           transporterName: actualTransporterName,
-          partyMailingName: editData.customerDetails.partyMailingName,
-          partyMailingAddress: editData.customerDetails.partyMailingAddress,
+          billName: completeCustomerDetails?.Billl_Name || originalCustomerName,
+          partyMailingName: completeCustomerDetails?.Party_Mailing_Name || originalCustomerName,
+          partyMailingAddress: completeCustomerDetails?.Party_Mailing_Address || originalAddress,
         },
-      },
-    });
-    toast.info(`Loading order #${order.So_Inv_No || order.So_No} for editing...`);
-  } catch (error) {
-    console.error("Error fetching customer details:", error);
-    toast.error("Failed to load order details for editing");
-  }
-};
+      };
+
+
+
+      localStorage.setItem('editOrderData', JSON.stringify(editData));
+      localStorage.setItem('isEditingOrder', 'true');
+
+      // Store the actual IDs separately to ensure they're not overwritten
+      if (actualBrokerId) localStorage.setItem('editBrokerId', actualBrokerId);
+      if (actualBrokerName) localStorage.setItem('editBrokerName', actualBrokerName);
+      if (actualTransporterId) localStorage.setItem('editTransporterId', actualTransporterId);
+      if (actualTransporterName) localStorage.setItem('editTransporterName', actualTransporterName);
+
+      // Store original customer data for print
+      localStorage.setItem('editCustomerOriginalName', originalCustomerName);
+      localStorage.setItem('editCustomerOriginalCity', originalCity);
+      localStorage.setItem('editCustomerOriginalAddress', originalAddress);
+      localStorage.setItem('editCustomerOriginalMobile', originalMobile);
+      localStorage.setItem('editCustomerBillName', completeCustomerDetails?.Billl_Name || originalCustomerName);
+      localStorage.setItem('editCustomerPartyMailingName', completeCustomerDetails?.Party_Mailing_Name || originalCustomerName);
+      localStorage.setItem('editCustomerPartyMailingAddress', completeCustomerDetails?.Party_Mailing_Address || originalAddress);
+
+      const currentCart = localStorage.getItem('cartItems');
+      if (currentCart) localStorage.setItem('previousCartItems', currentCart);
+      const productsData = localStorage.getItem('products');
+      if (productsData) localStorage.setItem('productsBackup', productsData);
+
+      navigate('/cart', {
+        state: {
+          editOrderData: editData,
+          isEditingOrder: true,
+          selectedCustomer: {
+            id: editData.customerDetails.id,
+            name: originalCustomerName, // Use original Tamil name
+            billName: editData.customerDetails.billName,
+            mobile: originalMobile || editData.customerDetails.mobile || "",
+            city: originalCity || editData.customerDetails.city || "",
+            address: originalAddress || editData.customerDetails.address || "",
+            brokerId: actualBrokerId,
+            brokerName: actualBrokerName,
+            transporterId: actualTransporterId,
+            transporterName: actualTransporterName,
+            partyMailingName: editData.customerDetails.partyMailingName,
+            partyMailingAddress: editData.customerDetails.partyMailingAddress,
+          },
+        },
+      });
+      toast.info(`Loading order #${order.So_Inv_No || order.So_No} for editing...`);
+    } catch (error) {
+      console.error("Error fetching customer details:", error);
+      toast.error("Failed to load order details for editing");
+    }
+  };
 
   const productTableHeaderStyle = { padding: "10px 12px", textAlign: "center", color: BROWN, fontSize: "12px", fontWeight: "600" };
   const productTableCellStyle = { padding: "10px 12px", textAlign: "center", fontSize: "12px", color: "#666" };
@@ -6676,7 +6149,7 @@ const handleEditOrder = async (e, order) => {
 
   return (
     <>
-       <div style={{ fontFamily: "'Georgia', serif", background: "#f5f0eb", minHeight: "100vh", paddingBottom: isMobile ? "70px" : "0" }}>
+      <div style={{ fontFamily: "'Georgia', serif", background: "#f5f0eb", minHeight: "100vh", paddingBottom: isMobile ? "70px" : "0" }}>
         {/* Header */}
         <div style={{
           padding: "16px 20px", backgroundColor: BROWN_DARK, color: "#fff",
@@ -6944,12 +6417,12 @@ const handleEditOrder = async (e, order) => {
                                 onMouseEnter={(e) => e.currentTarget.style.background = "#388E3C"}
                                 onMouseLeave={(e) => e.currentTarget.style.background = "#4CAF50"}
                               >🖨️ Print</button>
-                             {order.convertedto == 1 || order.Cancel_status==4  ? '' : <button
+                              {order.convertedto == 1 || order.Cancel_status == 4 ? '' : <button
                                 onClick={(e) => handleEditOrder(e, order)}
                                 style={{ background: BROWN, border: "none", borderRadius: "8px", padding: "8px 12px", cursor: "pointer", color: "#fff", fontSize: "12px", fontWeight: "600", transition: "all 0.2s", display: "flex", alignItems: "center", gap: "6px" }}
                                 onMouseEnter={(e) => e.currentTarget.style.background = BROWN_DARK}
                                 onMouseLeave={(e) => e.currentTarget.style.background = BROWN}
-                              >✏️ Edit</button>} 
+                              >✏️ Edit</button>}
                             </div>
                           </td>
                         </tr>
@@ -6976,12 +6449,12 @@ const handleEditOrder = async (e, order) => {
         onClose={() => setPrintModalOpen(false)}
         customer={printData?.customer}
         cartItems={printData?.cartItems}
-        expenses={printData?.expenses} 
+        expenses={printData?.expenses}
         totals={printData?.totals}
         storage={printData?.storage}
         isReprint={true}
-        createdOn={printData?.createdOn}  
-        orderDate={printData?.orderDate}  
+        createdOn={printData?.createdOn}
+        orderDate={printData?.orderDate}
 
       />
     </>
@@ -7007,14 +6480,14 @@ function Dashboard({
   const [transactions, setTransactions] = useState(0);
   const [viewTickets, setViewTickets] = useState(0);
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
-  const [showPendingBills,setShowPendingBills]=useState(false)
+  const [showPendingBills, setShowPendingBills] = useState(false)
 
 
   const handleTransactionClick = () => {
     setShowTransactionDetails(true);
   };
 
-  const handlePendingBillsClick=()=>{
+  const handlePendingBillsClick = () => {
     setShowPendingBills(true)
   }
 
@@ -7023,80 +6496,80 @@ function Dashboard({
     fetchDashboardStats();
   }, []);
 
- const fetchTodayOrders = async () => {
-  setLoading(true);
-  try {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    const sessionData = JSON.parse(localStorage.getItem('session') || '{}');
-    const userType = localStorage.getItem('userType');
+  const fetchTodayOrders = async () => {
+    setLoading(true);
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const sessionData = JSON.parse(localStorage.getItem('session') || '{}');
+      const userType = localStorage.getItem('userType');
 
-    let userId = null;
+      let userId = null;
 
-    // BUG: was `userTypeId === 'employee'` — userTypeId is undefined here,
-    // so this branch never ran and userId was never set for employees.
-    if (userType === 'employee') {
-      userId = userData.UserId || userData.user_id || userData.User_Id || '';
-    } else if (userType === 'customer') {
-      userId = userData.Ret_Id || userData.Customer_Id || userData.id || sessionData?.retId || '';
-    }
+      // BUG: was `userTypeId === 'employee'` — userTypeId is undefined here,
+      // so this branch never ran and userId was never set for employees.
+      if (userType === 'employee') {
+        userId = userData.UserId || userData.user_id || userData.User_Id || '';
+      } else if (userType === 'customer') {
+        userId = userData.Ret_Id || userData.Customer_Id || userData.id || sessionData?.retId || '';
+      }
 
-    if (!userId) {
-      userId = sessionData?.userId || sessionData?.Ret_Id || '';
-    }
+      if (!userId) {
+        userId = sessionData?.userId || sessionData?.Ret_Id || '';
+      }
 
-    // BUG: username is stored as a plain string, not JSON — JSON.parse on a
-    // non-numeric string throws. Just read it directly.
-    const mobileno = localStorage.getItem('username') || '';
+      // BUG: username is stored as a plain string, not JSON — JSON.parse on a
+      // non-numeric string throws. Just read it directly.
+      const mobileno = localStorage.getItem('username') || '';
 
-    // NEW: pass UserTypeId through so the backend can decide whether to
-    // show all orders (0/1) or just this user's own orders.
-    const usertypeid =
-      userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || '';
+      // NEW: pass UserTypeId through so the backend can decide whether to
+      // show all orders (0/1) or just this user's own orders.
+      const usertypeid =
+        userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || '';
 
-    const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
 
-    const response = await fetchLink({
-      address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
-        userId
-      )}&Mobile_No=${encodeURIComponent(mobileno)}&FromDate=${today}&ToDate=${today}&UserTypeId=${encodeURIComponent(
-        usertypeid
-      )}`,
-      method: 'GET',
-    });
+      const response = await fetchLink({
+        address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
+          userId
+        )}&Mobile_No=${encodeURIComponent(mobileno)}&FromDate=${today}&ToDate=${today}&UserTypeId=${encodeURIComponent(
+          usertypeid
+        )}`,
+        method: 'GET',
+      });
 
-    if (response?.success) {
-      const orderData = response.data || response.Data || [];
-      setOrders(Array.isArray(orderData) ? orderData : []);
-    } else {
+      if (response?.success) {
+        const orderData = response.data || response.Data || [];
+        setOrders(Array.isArray(orderData) ? orderData : []);
+      } else {
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard orders:", error);
       setOrders([]);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error fetching dashboard orders:", error);
-    setOrders([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const fetchDashboardStats = async () => {
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const sessionData = JSON.parse(localStorage.getItem('session') || '{}');
       const userType = localStorage.getItem('userType');
-      
+
       let userId = null;
-      
+
       if (userType === 'employee') {
         userId = userData.UserId || userData.user_id || userData.User_Id || '';
       } else if (userType === 'customer') {
         userId = userData.Ret_Id || userData.Customer_Id || userData.id || sessionData?.retId || '';
       }
-      
+
       if (!userId) {
         userId = sessionData?.userId || sessionData?.Ret_Id || '';
       }
 
-      
+
       const pendingResponse = await fetchLink({
         address: `sales/pendingBills?Created_by=${userId}`,
         method: 'GET',
@@ -7132,7 +6605,7 @@ function Dashboard({
   useEffect(() => {
     if (allProducts && allProducts.length > 0) {
       const groups = new Set(
-        allProducts.map((p) => (p.Stock_Group || "").trim()).filter(Boolean)
+        allProducts.map((p) => String(p.Stock_Group ?? "").trim()).filter(Boolean)
       );
       setStockGroupsCount(groups.size);
     }
@@ -7157,28 +6630,28 @@ function Dashboard({
 
   // Updated stat cards with click handlers
   const statCards = [
-    { 
-      label: "Today's Orders", 
-      value: loading ? "—" : todaysOrders, 
-      icon: "📦", 
+    {
+      label: "Today's Orders",
+      value: loading ? "—" : todaysOrders,
+      icon: "📦",
       iconBg: "#f0e9e2",
       color: BROWN_DARK,
-      onClick: () => onSaleOrders && onSaleOrders() 
+      onClick: () => onSaleOrders && onSaleOrders()
     },
-    { 
-      label: "Pending Bills", 
-       
-      icon: "📋", 
+    {
+      label: "Pending Bills",
+
+      icon: "📋",
       iconBg: "#fef3e2",
       color: "#e67e22",
       onClick: handlePendingBillsClick
     },
-    { 
+    {
       label: "Transactions",
-      icon: "💰", 
+      icon: "💰",
       iconBg: "#e2f0f0",
       color: "#2980b9",
-      onClick: handleTransactionClick 
+      onClick: handleTransactionClick
     },
     // { 
     //   label: "Total Customers", 
@@ -7196,10 +6669,10 @@ function Dashboard({
     //   color: BROWN_DARK,
     //   onClick: () => onSaleOrders && onSaleOrders()
     // },
-    { 
-      label: "View Ticket", 
-      value: loading ? "—" : viewTickets, 
-      icon: "🎫", 
+    {
+      label: "View Ticket",
+      value: loading ? "—" : viewTickets,
+      icon: "🎫",
       iconBg: "#f0e2ec",
       color: "#8e44ad",
       onClick: () => toast.info("Opening tickets...")
@@ -7208,273 +6681,273 @@ function Dashboard({
 
   const footerTabs = [
     { key: "home", label: "Home", icon: "🏠", onClick: onHome },
-    { key: "dashboard", label: "Dashboard", icon: "📊", onClick: () => {} },
+    { key: "dashboard", label: "Dashboard", icon: "📊", onClick: () => { } },
     { key: "saleOrders", label: "Sale Orders", icon: "📋", onClick: onSaleOrders },
   ];
 
- 
+
   if (showTransactionDetails) {
     return <TransactionDetails onBack={() => setShowTransactionDetails(false)} />;
   }
 
-    if (showPendingBills) {
+  if (showPendingBills) {
     return <PendingBillDetails onBack={() => setShowPendingBills(false)} />;
   }
 
 
-return (
-  <>
-    {/* Desktop Modal for TransactionDetails */}
-    {showTransactionDetails && !isMobile && (
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        zIndex: 10000,
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "20px",
-      }}>
+  return (
+    <>
+      {/* Desktop Modal for TransactionDetails */}
+      {showTransactionDetails && !isMobile && (
         <div style={{
-          backgroundColor: "#fff",
-          borderRadius: "16px",
-          width: "100%",
-          maxWidth: "900px",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          position: "relative",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          zIndex: 10000,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "20px",
         }}>
-          {/* Close Button */}
-          <button
-            onClick={() => setShowTransactionDetails(false)}
-            style={{
-              position: "absolute",
-              top: "16px",
-              right: "16px",
-              background: "#f0f0f0",
-              border: "none",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              fontSize: "24px",
-              cursor: "pointer",
-              color: "#999",
-              zIndex: 10001,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = BROWN_DARK;
-              e.currentTarget.style.color = "#fff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#f0f0f0";
-              e.currentTarget.style.color = "#999";
-            }}
-          >
-            ✕
-          </button>
-          
-          {/* TransactionDetails Content */}
-          <div style={{ padding: "24px" }}>
-            <TransactionDetails 
-              onBack={() => setShowTransactionDetails(false)}
-              isMobile={false}
-              isModal={true}
-            />
-          </div>
-        </div>
-      </div>
-    )}
-
-   
-    {showTransactionDetails && isMobile && (
-      <TransactionDetails 
-        onBack={() => setShowTransactionDetails(false)}
-        isMobile={true}
-        isModal={false}
-      />
-    )}
-
-
-    <div style={{
-      fontFamily: "'Georgia', serif",
-      background: "#f5f0eb",
-      minHeight: "100vh",
-      paddingBottom: isMobile ? "76px" : "40px",
-      opacity: showTransactionDetails && !isMobile ? 0.3 : 1,
-      pointerEvents: showTransactionDetails && !isMobile ? "none" : "auto",
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: isMobile ? "16px 20px" : "20px 32px",
-        backgroundColor: BROWN_DARK,
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "12px",
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-      }}>
-        <div>
-          <div style={{ fontSize: isMobile ? "13px" : "14px", opacity: 0.8 }}>
-            Welcome back,
-          </div>
-          <div style={{ fontSize: isMobile ? "18px" : "20px", fontWeight: "bold" }}>
-            {userName || "User"}
-          </div>
-        </div>
-
-        <ThreeDotMenu
-          isLoggedIn={isLoggedIn}
-          userName={userName}
-          onLogout={onLogout}
-          onLoginClick={onLoginClick}
-          onSaleOrders={onSaleOrders}
-          onDashboard={() => {}}
-        />
-      </div>
-
-      <div style={{
-        padding: isMobile ? "16px" : "24px 32px",
-        maxWidth: "1100px",
-        margin: "0 auto",
-      }}>
-        {/* Hero card */}
-        <div style={{
-          background: `linear-gradient(135deg, ${BROWN} 0%, ${BROWN_DARK} 100%)`,
-          borderRadius: "20px",
-          padding: isMobile ? "20px" : "28px",
-          color: "#fff",
-          position: "relative",
-          overflow: "hidden",
-          marginBottom: isMobile ? "16px" : "24px",
-          minHeight: isMobile ? "150px" : "170px",
-        }}>
-          <div style={{ fontSize: "13px", opacity: 0.85, marginBottom: "8px" }}>
-            Today's revenue
-          </div>
-          <div style={{ fontSize: isMobile ? "30px" : "36px", fontWeight: "bold", marginBottom: "10px" }}>
-            ₹{loading ? "—" : rupee(todaysRevenue)}
-          </div>
           <div style={{
-            display: "inline-flex", alignItems: "center", gap: "6px",
-            background: "rgba(255,255,255,0.15)", borderRadius: "20px",
-            padding: "4px 12px", fontSize: "12px",
+            backgroundColor: "#fff",
+            borderRadius: "16px",
+            width: "100%",
+            maxWidth: "900px",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            position: "relative",
           }}>
-            <span>{todayLabel}</span>
-          </div>
-
-          <svg
-            viewBox="0 0 400 100"
-            preserveAspectRatio="none"
-            style={{
-              position: "absolute", bottom: 0, left: 0, width: "100%", height: "60px",
-              opacity: 0.25,
-            }}
-          >
-            <path
-              d="M0,60 C60,10 100,90 160,50 C220,10 260,80 320,40 C360,15 380,40 400,30 L400,100 L0,100 Z"
-              fill="#fff"
-            />
-          </svg>
-        </div>
-
-     
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-          gap: isMobile ? "12px" : "16px",
-        }}>
-          {statCards.map((card) => (
-            <div
-              key={card.label}
-              onClick={card.onClick}
+            {/* Close Button */}
+            <button
+              onClick={() => setShowTransactionDetails(false)}
               style={{
-                background: "#fff",
-                borderRadius: "16px",
-                padding: isMobile ? "16px" : "20px",
-                border: "1px solid #e8ddd4",
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                background: "#f0f0f0",
+                border: "none",
+                borderRadius: "50%",
+                width: "40px",
+                height: "40px",
+                fontSize: "24px",
                 cursor: "pointer",
-                transition: "transform 0.2s, box-shadow 0.2s",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                color: "#999",
+                zIndex: 10001,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-4px)";
-                e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
+                e.currentTarget.style.background = BROWN_DARK;
+                e.currentTarget.style.color = "#fff";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                e.currentTarget.style.background = "#f0f0f0";
+                e.currentTarget.style.color = "#999";
               }}
             >
-              <div style={{
-                width: "36px", height: "36px", borderRadius: "10px",
-                background: card.iconBg, display: "flex", alignItems: "center",
-                justifyContent: "center", fontSize: "16px", marginBottom: "12px",
-              }}>
-                {card.icon}
-              </div>
-              <div style={{ fontSize: "12px", color: "#888", marginBottom: "4px" }}>
-                {card.label}
-              </div>
-              <div style={{ fontSize: isMobile ? "22px" : "26px", fontWeight: "bold", color: card.color || BROWN_DARK }}>
-                {card.value}
-              </div>
-            
-            </div>
-          ))}
-        </div>
-      </div>
+              ✕
+            </button>
 
-      {/* Footer nav (mobile only) */}
-      {isMobile && (
-        <div style={{
-          position: "fixed", bottom: 0, left: 0, right: 0,
-          backgroundColor: "#fff", borderTop: "1px solid #e8ddd4",
-          display: "flex", justifyContent: "space-around", alignItems: "center",
-          padding: "8px 0 calc(8px + env(safe-area-inset-bottom, 0px))",
-          zIndex: 1100, boxShadow: "0 -2px 10px rgba(0,0,0,0.06)",
-        }}>
-          {footerTabs.map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={tab.onClick}
-                style={{
-                  flex: 1, background: "transparent", border: "none", cursor: "pointer",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
-                  padding: "4px 0", position: "relative",
-                }}
-              >
-                <span style={{ fontSize: "20px" }}>{tab.icon}</span>
-                <span style={{
-                  fontSize: "11px",
-                  fontWeight: isActive ? "700" : "500",
-                  color: isActive ? BROWN_DARK : "#999",
-                }}>{tab.label}</span>
-                <span style={{
-                  position: "absolute", bottom: "-8px", width: "24px", height: "3px",
-                  borderRadius: "2px", background: isActive ? BROWN_DARK : "transparent",
-                }} />
-              </button>
-            );
-          })}
+            {/* TransactionDetails Content */}
+            <div style={{ padding: "24px" }}>
+              <TransactionDetails
+                onBack={() => setShowTransactionDetails(false)}
+                isMobile={false}
+                isModal={true}
+              />
+            </div>
+          </div>
         </div>
       )}
-    </div>
-  </>
-);
+
+
+      {showTransactionDetails && isMobile && (
+        <TransactionDetails
+          onBack={() => setShowTransactionDetails(false)}
+          isMobile={true}
+          isModal={false}
+        />
+      )}
+
+
+      <div style={{
+        fontFamily: "'Georgia', serif",
+        background: "#f5f0eb",
+        minHeight: "100vh",
+        paddingBottom: isMobile ? "76px" : "40px",
+        opacity: showTransactionDetails && !isMobile ? 0.3 : 1,
+        pointerEvents: showTransactionDetails && !isMobile ? "none" : "auto",
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: isMobile ? "16px 20px" : "20px 32px",
+          backgroundColor: BROWN_DARK,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+        }}>
+          <div>
+            <div style={{ fontSize: isMobile ? "13px" : "14px", opacity: 0.8 }}>
+              Welcome back,
+            </div>
+            <div style={{ fontSize: isMobile ? "18px" : "20px", fontWeight: "bold" }}>
+              {userName || "User"}
+            </div>
+          </div>
+
+          <ThreeDotMenu
+            isLoggedIn={isLoggedIn}
+            userName={userName}
+            onLogout={onLogout}
+            onLoginClick={onLoginClick}
+            onSaleOrders={onSaleOrders}
+            onDashboard={() => { }}
+          />
+        </div>
+
+        <div style={{
+          padding: isMobile ? "16px" : "24px 32px",
+          maxWidth: "1100px",
+          margin: "0 auto",
+        }}>
+          {/* Hero card */}
+          <div style={{
+            background: `linear-gradient(135deg, ${BROWN} 0%, ${BROWN_DARK} 100%)`,
+            borderRadius: "20px",
+            padding: isMobile ? "20px" : "28px",
+            color: "#fff",
+            position: "relative",
+            overflow: "hidden",
+            marginBottom: isMobile ? "16px" : "24px",
+            minHeight: isMobile ? "150px" : "170px",
+          }}>
+            <div style={{ fontSize: "13px", opacity: 0.85, marginBottom: "8px" }}>
+              Today's revenue
+            </div>
+            <div style={{ fontSize: isMobile ? "30px" : "36px", fontWeight: "bold", marginBottom: "10px" }}>
+              ₹{loading ? "—" : rupee(todaysRevenue)}
+            </div>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: "6px",
+              background: "rgba(255,255,255,0.15)", borderRadius: "20px",
+              padding: "4px 12px", fontSize: "12px",
+            }}>
+              <span>{todayLabel}</span>
+            </div>
+
+            <svg
+              viewBox="0 0 400 100"
+              preserveAspectRatio="none"
+              style={{
+                position: "absolute", bottom: 0, left: 0, width: "100%", height: "60px",
+                opacity: 0.25,
+              }}
+            >
+              <path
+                d="M0,60 C60,10 100,90 160,50 C220,10 260,80 320,40 C360,15 380,40 400,30 L400,100 L0,100 Z"
+                fill="#fff"
+              />
+            </svg>
+          </div>
+
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+            gap: isMobile ? "12px" : "16px",
+          }}>
+            {statCards.map((card) => (
+              <div
+                key={card.label}
+                onClick={card.onClick}
+                style={{
+                  background: "#fff",
+                  borderRadius: "16px",
+                  padding: isMobile ? "16px" : "20px",
+                  border: "1px solid #e8ddd4",
+                  cursor: "pointer",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+                }}
+              >
+                <div style={{
+                  width: "36px", height: "36px", borderRadius: "10px",
+                  background: card.iconBg, display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: "16px", marginBottom: "12px",
+                }}>
+                  {card.icon}
+                </div>
+                <div style={{ fontSize: "12px", color: "#888", marginBottom: "4px" }}>
+                  {card.label}
+                </div>
+                <div style={{ fontSize: isMobile ? "22px" : "26px", fontWeight: "bold", color: card.color || BROWN_DARK }}>
+                  {card.value}
+                </div>
+
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer nav (mobile only) */}
+        {isMobile && (
+          <div style={{
+            position: "fixed", bottom: 0, left: 0, right: 0,
+            backgroundColor: "#fff", borderTop: "1px solid #e8ddd4",
+            display: "flex", justifyContent: "space-around", alignItems: "center",
+            padding: "8px 0 calc(8px + env(safe-area-inset-bottom, 0px))",
+            zIndex: 1100, boxShadow: "0 -2px 10px rgba(0,0,0,0.06)",
+          }}>
+            {footerTabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={tab.onClick}
+                  style={{
+                    flex: 1, background: "transparent", border: "none", cursor: "pointer",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
+                    padding: "4px 0", position: "relative",
+                  }}
+                >
+                  <span style={{ fontSize: "20px" }}>{tab.icon}</span>
+                  <span style={{
+                    fontSize: "11px",
+                    fontWeight: isActive ? "700" : "500",
+                    color: isActive ? BROWN_DARK : "#999",
+                  }}>{tab.label}</span>
+                  <span style={{
+                    position: "absolute", bottom: "-8px", width: "24px", height: "3px",
+                    borderRadius: "2px", background: isActive ? BROWN_DARK : "transparent",
+                  }} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </>
+  );
 }
 
 
