@@ -1748,7 +1748,7 @@ const CommonHeader = ({
     padding: isMobile ? "10px 12px" : "12px 24px",
     position: "sticky",
     top: 0,
-    zIndex: 100,
+    zIndex: 1000,
     boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
   };
 

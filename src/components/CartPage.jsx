@@ -1335,6 +1335,12 @@ const CartItemRow = ({
     }
   };
 
+  const handlePriceStep = (delta) => {
+    const newPrice = Math.max(0, Math.round((currentPrice + delta) * 100) / 100);
+    handlePriceSave(newPrice);
+    setTempPrice(String(newPrice));
+  };
+
   return (
     <div
       style={{
@@ -1386,65 +1392,154 @@ const CartItemRow = ({
           </h3>
 
           <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-            {isEditingPrice ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={tempPrice}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^\d*\.?\d*$/.test(v)) {
-                      setTempPrice(v);
-                      const parsed = parseFloat(v);
-                      if (!Number.isNaN(parsed) && parsed >= 0) {
-                        handlePriceSave(v);
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+              {isEditingPrice ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={tempPrice}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^\d*\.?\d*$/.test(v)) {
+                        setTempPrice(v);
+                        const parsed = parseFloat(v);
+                        if (!Number.isNaN(parsed) && parsed >= 0) {
+                          handlePriceSave(v);
+                        }
                       }
-                    }
+                    }}
+                    onBlur={() => setIsEditingPrice(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Escape") setIsEditingPrice(false);
+                    }}
+                    autoFocus
+                    style={{
+                      width: isMobile ? "70px" : "80px",
+                      padding: isMobile ? "2px 6px" : "4px 8px",
+                      border: `2px solid ${BROWN}`,
+                      borderRadius: "12px",
+                      fontSize: isMobile ? "14px" : "18px",
+                      fontWeight: "600",
+                      color: BROWN,
+                      background: "#fff",
+                      outline: "none",
+                    }}
+                  />
+                  <span style={{ fontSize: isMobile ? "14px" : "18px", fontWeight: "600", color: BROWN }}>
+                    /kg
+                  </span>
+                </div>
+              ) : (
+                <span
+                  onClick={() => {
+                    setIsEditingPrice(true);
+                    setTempPrice(String(currentPrice));
                   }}
-                  onBlur={() => setIsEditingPrice(false)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === "Escape") setIsEditingPrice(false);
-                  }}
-                  autoFocus
                   style={{
-                    width: isMobile ? "70px" : "80px",
+                    background: "#f0e9e2",
                     padding: isMobile ? "2px 6px" : "4px 8px",
-                    border: `2px solid ${BROWN}`,
                     borderRadius: "12px",
-                    fontSize: isMobile ? "14px" : "18px",
-                    fontWeight: "600",
+                    fontSize: isMobile ? "15px" : "18px",
                     color: BROWN,
-                    background: "#fff",
-                    outline: "none",
+                    cursor: "pointer",
+                    fontWeight: "800",
+                    border: "1px solid transparent",
+                    whiteSpace: "nowrap",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
                   }}
-                />
-                <span style={{ fontSize: isMobile ? "14px" : "18px", fontWeight: "600", color: BROWN }}>
-                  /kg
+                  title="Tap to change the rate"
+                >
+                  ₹{currentPrice.toFixed(2)}/kg ✎
                 </span>
-              </div>
-            ) : (
-              <span
-                onClick={() => {
-                  setIsEditingPrice(true);
-                  setTempPrice(String(currentPrice));
-                }}
+              )}
+
+              {/* Up & Down arrow buttons to change product rate */}
+              <div
                 style={{
-                  background: "#f0e9e2",
-                  padding: isMobile ? "2px 6px" : "4px 8px",
-                  borderRadius: "12px",
-                  fontSize: isMobile ? "17px" : "18px",
-                  color: BROWN,
-                  cursor: "pointer",
-                  fontWeight: "800",
-                  border: "1px solid transparent",
-                  whiteSpace: "nowrap",
+                  display: "inline-flex",
+                  flexDirection: "column",
+                  gap: "1px",
+                  verticalAlign: "middle",
+                  flexShrink: 0,
                 }}
-                title="Tap to change the rate"
               >
-                ₹{currentPrice.toFixed(2)}/kg ✎
-              </span>
-            )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePriceStep(1);
+                  }}
+                  title="Increase rate by ₹1"
+                  style={{
+                    width: "24px",
+                    height: "16px",
+                    padding: 0,
+                    borderRadius: "4px 4px 1px 1px",
+                    border: `1.5px solid ${BROWN}`,
+                    background: "#fff",
+                    color: BROWN,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "10px",
+                    fontWeight: "900",
+                    lineHeight: 1,
+                    touchAction: "manipulation",
+                    WebkitTapHighlightColor: "transparent",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f5ece4";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                  }}
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePriceStep(-1);
+                  }}
+                  disabled={currentPrice <= 0}
+                  title="Decrease rate by ₹1"
+                  style={{
+                    width: "24px",
+                    height: "16px",
+                    padding: 0,
+                    borderRadius: "1px 1px 4px 4px",
+                    border: `1.5px solid ${BROWN}`,
+                    background: "#fff",
+                    color: BROWN,
+                    cursor: currentPrice <= 0 ? "not-allowed" : "pointer",
+                    opacity: currentPrice <= 0 ? 0.4 : 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "10px",
+                    fontWeight: "900",
+                    lineHeight: 1,
+                    touchAction: "manipulation",
+                    WebkitTapHighlightColor: "transparent",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentPrice > 0) e.currentTarget.style.background = "#f5ece4";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                  }}
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
 
             <span style={{ fontSize: isMobile ? "9px" : "11px", color: "#666", whiteSpace: "nowrap" }}>
               Pack: {packGet}kg
@@ -4970,15 +5065,7 @@ export default function CartPage() {
               </span>
             </div>
             {enhancedCartItems.map((item) => (
-              <div
-                key={item.id}
-                style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "12px" }}
-              >
-                <span>
-                  • {item.name} × {item.quantity} ({item.kgs.toFixed(2)} kg)
-                </span>
-                <span>₹{item.amount.toFixed(2)}</span>
-              </div>
+              <CartItemRow key={item.id} item={item} {...cartRowProps} />
             ))}
 
             {/* Expense breakdown in summary */}

@@ -3126,6 +3126,12 @@ const MobileCartDrawer = ({
     setTempValue(currentPrice.toString());
   };
 
+  const handlePriceStep = (productId, currentPrice, delta) => {
+    const newPrice = Math.max(0, Math.round(((currentPrice || 0) + delta) * 100) / 100);
+    setCustomPrices(prev => ({ ...prev, [productId]: newPrice }));
+    setTempValue(newPrice.toString());
+  };
+
   const handleQtyClick = (productId, currentQty) => {
     setEditingProductId(productId);
     setEditingField('qty');
@@ -3578,68 +3584,147 @@ const MobileCartDrawer = ({
               alignItems: "center",
               flexWrap: "wrap",
             }}>
-              {isEditingPrice ? (
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  flexWrap: "wrap",
-                }}>
-                  <input
-                    type="text"
-                    value={tempValue}
-                    onChange={handleInputChange}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === 'Escape') setEditingProductId(null);
-                    }}
-                    onBlur={() => setEditingProductId(null)}
-                    autoFocus
-                    style={{
-                      width: "70px",
-                      padding: "2px 6px",
-                      border: `2px solid ${BROWN}`,
-                      borderRadius: "12px",
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                {isEditingPrice ? (
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    flexWrap: "wrap",
+                  }}>
+                    <input
+                      type="text"
+                      value={tempValue}
+                      onChange={handleInputChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === 'Escape') setEditingProductId(null);
+                      }}
+                      onBlur={() => setEditingProductId(null)}
+                      autoFocus
+                      style={{
+                        width: "70px",
+                        padding: "2px 6px",
+                        border: `2px solid ${BROWN}`,
+                        borderRadius: "12px",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: BROWN,
+                        background: "#fff",
+                        outline: "none",
+                      }}
+                    />
+                    <span style={{
                       fontSize: "14px",
                       fontWeight: "600",
+                      color: BROWN
+                    }}>/kg</span>
+                  </div>
+                ) : (
+                  <span
+                    onClick={() => handlePriceClick(item.id, currentPrice)}
+                    style={{
+                      background: "#f0e9e2",
+                      padding: "3px 6px",
+                      borderRadius: "12px",
+                      fontSize: "15px",
                       color: BROWN,
-                      background: "#fff",
-                      outline: "none",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontWeight: "800",
+                      border: "1px solid transparent",
+                      whiteSpace: "nowrap",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
                     }}
-                  />
-                  <span style={{
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    color: BROWN
-                  }}>/kg</span>
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#e8ddd4";
+                      e.currentTarget.style.borderColor = BROWN;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "#f0e9e2";
+                      e.currentTarget.style.borderColor = "transparent";
+                    }}
+                    title="Click to edit price"
+                  >
+                    ₹{(currentPrice || 0).toFixed(2)}/kg ✎
+                  </span>
+                )}
+
+                {/* Up & Down arrow buttons to change product rate */}
+                <div style={{
+                  display: "inline-flex",
+                  flexDirection: "column",
+                  gap: "1px",
+                  verticalAlign: "middle",
+                  flexShrink: 0,
+                }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePriceStep(item.id, currentPrice, 1);
+                    }}
+                    title="Increase rate by ₹1"
+                    style={{
+                      width: "24px",
+                      height: "16px",
+                      padding: 0,
+                      borderRadius: "4px 4px 1px 1px",
+                      border: `1.5px solid ${BROWN}`,
+                      background: "#fff",
+                      color: BROWN,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "10px",
+                      fontWeight: "900",
+                      lineHeight: 1,
+                      touchAction: "manipulation",
+                      WebkitTapHighlightColor: "transparent",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "#f5ece4"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePriceStep(item.id, currentPrice, -1);
+                    }}
+                    disabled={(currentPrice || 0) <= 0}
+                    title="Decrease rate by ₹1"
+                    style={{
+                      width: "24px",
+                      height: "16px",
+                      padding: 0,
+                      borderRadius: "1px 1px 4px 4px",
+                      border: `1.5px solid ${BROWN}`,
+                      background: "#fff",
+                      color: BROWN,
+                      cursor: (currentPrice || 0) <= 0 ? "not-allowed" : "pointer",
+                      opacity: (currentPrice || 0) <= 0 ? 0.4 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "10px",
+                      fontWeight: "900",
+                      lineHeight: 1,
+                      touchAction: "manipulation",
+                      WebkitTapHighlightColor: "transparent",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+                    }}
+                    onMouseEnter={(e) => { if ((currentPrice || 0) > 0) e.currentTarget.style.background = "#f5ece4"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "#fff"; }}
+                  >
+                    ▼
+                  </button>
                 </div>
-              ) : (
-                <span
-                  onClick={() => handlePriceClick(item.id, currentPrice)}
-                  style={{
-                    background: "#f0e9e2",
-                    padding: "3px 6px",
-                    borderRadius: "12px",
-                    fontSize: "17px",
-                    color: BROWN,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    fontWeight: "800",
-                    border: "1px solid transparent",
-                    whiteSpace: "nowrap",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#e8ddd4";
-                    e.currentTarget.style.borderColor = BROWN;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#f0e9e2";
-                    e.currentTarget.style.borderColor = "transparent";
-                  }}
-                  title="Click to edit price"
-                >
-                  ₹{(currentPrice || 0).toFixed(2)}/kg ✎
-                </span>
-              )}
+              </div>
 
               <span style={{
                 fontSize: "9px",
@@ -5101,6 +5186,9 @@ export default function SMTraders() {
       (p.Short_Name && p.Short_Name.toLowerCase().includes(search.toLowerCase()))
     );
   }).sort((a, b) => {
+    const rateA = parseFloat(a.Price) || parseFloat(a.Product_Rate) || 0;
+    const rateB = parseFloat(b.Price) || parseFloat(b.Product_Rate) || 0;
+    if (rateB !== rateA) return rateB - rateA;
     const nameA = String(a.Product_Name || a.Stock_Item || "").trim();
     const nameB = String(b.Product_Name || b.Stock_Item || "").trim();
     return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
@@ -5194,6 +5282,9 @@ export default function SMTraders() {
     });
     map.forEach((g) => {
       g.items.sort((a, b) => {
+        const rateA = parseFloat(a.Price) || parseFloat(a.Product_Rate) || 0;
+        const rateB = parseFloat(b.Price) || parseFloat(b.Product_Rate) || 0;
+        if (rateB !== rateA) return rateB - rateA;
         const nameA = String(a.Product_Name || a.Stock_Item || "").trim();
         const nameB = String(b.Product_Name || b.Stock_Item || "").trim();
         return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
@@ -5220,6 +5311,9 @@ export default function SMTraders() {
       }
     }
     filtered.sort((a, b) => {
+      const rateA = parseFloat(a.Price) || parseFloat(a.Product_Rate) || 0;
+      const rateB = parseFloat(b.Price) || parseFloat(b.Product_Rate) || 0;
+      if (rateB !== rateA) return rateB - rateA;
       const nameA = String(a.Product_Name || a.Stock_Item || "").trim();
       const nameB = String(b.Product_Name || b.Stock_Item || "").trim();
       return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
@@ -5633,26 +5727,369 @@ export default function SMTraders() {
               )}
 
               {!isMobile && (
-                <div className="category-filters" style={{ background: "#f5f0eb", padding: "20px 24px 12px 24px", borderBottom: "1px solid #ddd", position: "sticky", top: 68, zIndex: 90, boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
-                  {loadingProducts ? (
-                    <div style={{ textAlign: "center", padding: "20px", width: "100%", color: "#999" }}>Loading categories...</div>
-                  ) : (
-                    <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", overflowY: "hidden", gap: "12px", margin: 0, padding: "0 0 12px 0", scrollbarWidth: "thin", WebkitOverflowScrolling: "touch", maxWidth: "100%" }}>
-                      {stockGroups.map((group) => (
-                        <CategoryCard key={group.id} category={{ name: group.name === "All" ? "All Categories" : group.name }} isSelected={selectedStockGroup === group.id} onClick={() => handleStockGroupClick(group)} isMobile={isMobile} isReduced={isCategoryReduced} />
-                      ))}
+                <div
+                  className="sticky-categories-and-groups"
+                  style={{
+                    position: "sticky",
+                    top: 60,
+                    zIndex: 850,
+                    background: "#f5f0eb",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+                  }}
+                >
+                  <div
+                    className="category-filters"
+                    style={{
+                      background: "#f5f0eb",
+                      padding: "16px 24px 8px 24px",
+                      borderBottom: showPOSGroups ? "none" : "1px solid #ddd",
+                    }}
+                  >
+                    {loadingProducts ? (
+                      <div style={{ textAlign: "center", padding: "20px", width: "100%", color: "#999" }}>
+                        Loading categories...
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "nowrap",
+                          overflowX: "auto",
+                          overflowY: "hidden",
+                          gap: "12px",
+                          margin: 0,
+                          padding: "0 0 10px 0",
+                          scrollbarWidth: "thin",
+                          WebkitOverflowScrolling: "touch",
+                          maxWidth: "100%",
+                        }}
+                      >
+                        {stockGroups.map((group) => (
+                          <CategoryCard
+                            key={group.id}
+                            category={{ name: group.name === "All" ? "All Categories" : group.name }}
+                            isSelected={selectedStockGroup === group.id}
+                            onClick={() => handleStockGroupClick(group)}
+                            isMobile={isMobile}
+                            isReduced={isCategoryReduced}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {showPOSGroups && (
+                    <div
+                      ref={dropdownRef}
+                      className="pos-groups-container"
+                      style={{
+                        background: "#f9f4ef",
+                        padding: "10px 24px 12px 24px",
+                        borderTop: "1px solid #e8ddd4",
+                        borderBottom: "1px solid #e8ddd4",
+                        position: "relative",
+                        zIndex: 860,
+                      }}
+                    >
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <button
+                          onClick={handleAllPOSGroupsClick}
+                          style={{
+                            padding: "8px 18px",
+                            borderRadius: "20px",
+                            border: `2px solid ${selectedPOSGroup === null ? BROWN_DARK : ACCENT}`,
+                            background: selectedPOSGroup === null ? BROWN_DARK : "#fff",
+                            color: selectedPOSGroup === null ? "#fff" : BROWN_DARK,
+                            fontSize: 13,
+                            cursor: "pointer",
+                            fontWeight: selectedPOSGroup === null ? "bold" : "600",
+                            boxShadow: selectedPOSGroup === null ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          All ({selectedStockGroup === "All" ? getValidProducts(allProducts).length : (getValidProducts(allProducts).filter((p) => toStrTrim(p.Stock_Group) === toStrTrim(selectedStockGroup)).length)})
+                        </button>
+                        {posGroups.length > 0 ? (
+                          posGroups.map((group, i) => {
+                            const isGroupActive = selectedPOSGroup === group.posGroup;
+                            const hasDropdown = group.itemCount > 3 || (group.items && group.items.length > 3);
+                            const isDropdownOpen = openDropdownGroup === group.posGroup;
+
+                            return (
+                              <div key={group.key || i} style={{ position: "relative", display: "inline-block" }}>
+                                <div
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    borderRadius: "20px",
+                                    border: `2px solid ${isGroupActive ? BROWN_DARK : ACCENT}`,
+                                    background: isGroupActive ? BROWN_DARK : "#fff",
+                                    color: isGroupActive ? "#fff" : BROWN_DARK,
+                                    boxShadow: isGroupActive ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                                    transition: "all 0.2s ease",
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => handlePOSGroupClick(group)}
+                                    style={{
+                                      border: "none",
+                                      background: "transparent",
+                                      color: "inherit",
+                                      padding: hasDropdown ? "8px 6px 8px 16px" : "8px 18px",
+                                      fontSize: 13,
+                                      cursor: "pointer",
+                                      fontWeight: isGroupActive ? "bold" : "500",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "6px",
+                                    }}
+                                  >
+                                    <span>{group.posGroup}</span>
+                                    <span
+                                      style={{
+                                        fontSize: "11px",
+                                        padding: "2px 6px",
+                                        borderRadius: "10px",
+                                        background: isGroupActive ? "rgba(255,255,255,0.2)" : "rgba(74,44,26,0.08)",
+                                        color: isGroupActive ? "#fff" : BROWN_DARK,
+                                        fontWeight: "600",
+                                      }}
+                                    >
+                                      {group.itemCount}
+                                    </span>
+                                    {isGroupActive && selectedSubItem && (
+                                      <span
+                                        style={{
+                                          fontSize: "11px",
+                                          maxWidth: "120px",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                          background: ACCENT,
+                                          color: BROWN_DARK,
+                                          padding: "1px 6px",
+                                          borderRadius: "8px",
+                                          marginLeft: "2px",
+                                          fontWeight: "bold",
+                                        }}
+                                      >
+                                        : {selectedSubItem.name}
+                                      </span>
+                                    )}
+                                  </button>
+
+                                  {hasDropdown && (
+                                    <button
+                                      onClick={(e) => handleToggleDropdown(group.posGroup, e)}
+                                      title={`Filter items in ${group.posGroup}`}
+                                      style={{
+                                        border: "none",
+                                        borderLeft: `1px solid ${isGroupActive ? "rgba(255,255,255,0.3)" : "rgba(200,169,110,0.4)"}`,
+                                        background: isDropdownOpen
+                                          ? isGroupActive
+                                            ? "rgba(255,255,255,0.15)"
+                                            : "rgba(74,44,26,0.08)"
+                                          : "transparent",
+                                        color: "inherit",
+                                        padding: "8px 10px 8px 6px",
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        borderTopRightRadius: "20px",
+                                        borderBottomRightRadius: "20px",
+                                        transition: "background 0.2s ease",
+                                      }}
+                                    >
+                                      <span
+                                        style={{
+                                          fontSize: "10px",
+                                          transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                          transition: "transform 0.2s ease",
+                                          display: "inline-block",
+                                        }}
+                                      >
+                                        ▼
+                                      </span>
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Dropdown Menu */}
+                                {hasDropdown && isDropdownOpen && (
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      top: "calc(100% + 6px)",
+                                      left: 0,
+                                      minWidth: "260px",
+                                      maxWidth: "340px",
+                                      maxHeight: "300px",
+                                      overflowY: "auto",
+                                      backgroundColor: "#fff",
+                                      borderRadius: "12px",
+                                      boxShadow: "0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+                                      border: "1px solid #e8ddd4",
+                                      zIndex: 1050,
+                                      padding: "6px 0",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        padding: "8px 14px",
+                                        fontSize: "11px",
+                                        fontWeight: "700",
+                                        color: "#8c7060",
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.5px",
+                                        borderBottom: "1px solid #f0e6dd",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <span>{group.posGroup} Items</span>
+                                      <span
+                                        style={{
+                                          background: "#f5ece4",
+                                          color: BROWN_DARK,
+                                          padding: "2px 6px",
+                                          borderRadius: "10px",
+                                        }}
+                                      >
+                                        {group.itemCount} items
+                                      </span>
+                                    </div>
+
+                                    {/* Option to select all in this group */}
+                                    <div
+                                      onClick={() => handlePOSGroupClick(group)}
+                                      style={{
+                                        padding: "9px 14px",
+                                        fontSize: "13px",
+                                        fontWeight: isGroupActive && !selectedSubItem ? "bold" : "600",
+                                        color: isGroupActive && !selectedSubItem ? BROWN_DARK : "#444",
+                                        backgroundColor: isGroupActive && !selectedSubItem ? "#fcf6f0" : "transparent",
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        borderBottom: "1px dashed #f0e6dd",
+                                        transition: "background 0.15s ease",
+                                      }}
+                                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fcf6f0")}
+                                      onMouseLeave={(e) => {
+                                        if (!(isGroupActive && !selectedSubItem)) e.currentTarget.style.backgroundColor = "transparent";
+                                      }}
+                                    >
+                                      <span>Show all {group.posGroup}</span>
+                                      {isGroupActive && !selectedSubItem && (
+                                        <span style={{ color: BROWN_DARK, fontWeight: "bold" }}>✓</span>
+                                      )}
+                                    </div>
+
+                                    {/* List of individual items in group */}
+                                    {(group.items || []).map((productItem) => {
+                                      const isItemSelected =
+                                        isGroupActive &&
+                                        selectedSubItem &&
+                                        String(selectedSubItem.id) === String(productItem.Product_Id);
+                                      const itemName = productItem.Product_Name || productItem.Stock_Item || "Unknown";
+                                      const packInfo = productItem.PackGet ? `${productItem.PackGet}kg` : "";
+                                      const shortName = productItem.Short_Name;
+                                      const rate =
+                                        parseFloat(productItem.Price) || parseFloat(productItem.Product_Rate) || 0;
+
+                                      return (
+                                        <div
+                                          key={productItem.Product_Id}
+                                          onClick={(e) => handleSubItemClick(group, productItem, e)}
+                                          style={{
+                                            padding: "8px 14px",
+                                            cursor: "pointer",
+                                            backgroundColor: isItemSelected ? "#fbf3eb" : "transparent",
+                                            borderLeft: isItemSelected ? `3px solid ${BROWN_DARK}` : "3px solid transparent",
+                                            transition: "background 0.15s ease",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "2px",
+                                          }}
+                                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fcf6f0")}
+                                          onMouseLeave={(e) => {
+                                            if (!isItemSelected) e.currentTarget.style.backgroundColor = "transparent";
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              justifyContent: "space-between",
+                                              alignItems: "center",
+                                              gap: "8px",
+                                            }}
+                                          >
+                                            <span
+                                              style={{
+                                                fontSize: "13px",
+                                                fontWeight: isItemSelected ? "bold" : "500",
+                                                color: isItemSelected ? BROWN_DARK : "#333",
+                                                lineHeight: 1.3,
+                                              }}
+                                            >
+                                              {itemName}
+                                            </span>
+                                            {isItemSelected && (
+                                              <span style={{ color: BROWN_DARK, fontWeight: "bold", fontSize: "12px" }}>
+                                                ✓
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "6px",
+                                              alignItems: "center",
+                                              fontSize: "11px",
+                                              color: "#888",
+                                            }}
+                                          >
+                                            {shortName && <span>{shortName}</span>}
+                                            {shortName && packInfo && <span>•</span>}
+                                            {packInfo && <span>{packInfo}</span>}
+                                            {rate > 0 && (
+                                              <>
+                                                <span>•</span>
+                                                <span style={{ color: BROWN_LIGHT, fontWeight: "600" }}>
+                                                  ₹{rate.toFixed(2)}
+                                                </span>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div style={{ color: "#777", fontStyle: "italic", fontSize: 13, padding: "4px" }}>
+                            No sub-groups available
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
               )}
 
-              {showPOSGroups && (
+              {isMobile && showPOSGroups && (
                 <div
                   ref={dropdownRef}
                   className="pos-groups-container"
                   style={{
                     background: "#f9f4ef",
-                    padding: "12px 24px",
+                    padding: "10px 16px 12px 16px",
                     borderBottom: "1px solid #e8ddd4",
                     position: "relative",
                     zIndex: 100,
@@ -5724,226 +6161,12 @@ export default function SMTraders() {
                                 >
                                   {group.itemCount}
                                 </span>
-                                {isGroupActive && selectedSubItem && (
-                                  <span
-                                    style={{
-                                      fontSize: "11px",
-                                      maxWidth: "120px",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      whiteSpace: "nowrap",
-                                      background: ACCENT,
-                                      color: BROWN_DARK,
-                                      padding: "1px 6px",
-                                      borderRadius: "8px",
-                                      marginLeft: "2px",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    : {selectedSubItem.name}
-                                  </span>
-                                )}
                               </button>
-
-                              {hasDropdown && (
-                                <button
-                                  onClick={(e) => handleToggleDropdown(group.posGroup, e)}
-                                  title={`Filter items in ${group.posGroup}`}
-                                  style={{
-                                    border: "none",
-                                    borderLeft: `1px solid ${isGroupActive ? "rgba(255,255,255,0.3)" : "rgba(200,169,110,0.4)"}`,
-                                    background: isDropdownOpen
-                                      ? isGroupActive
-                                        ? "rgba(255,255,255,0.15)"
-                                        : "rgba(74,44,26,0.08)"
-                                      : "transparent",
-                                    color: "inherit",
-                                    padding: "8px 10px 8px 6px",
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderTopRightRadius: "20px",
-                                    borderBottomRightRadius: "20px",
-                                    transition: "background 0.2s ease",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontSize: "10px",
-                                      transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
-                                      transition: "transform 0.2s ease",
-                                      display: "inline-block",
-                                    }}
-                                  >
-                                    ▼
-                                  </span>
-                                </button>
-                              )}
                             </div>
-
-                            {/* Dropdown Menu */}
-                            {hasDropdown && isDropdownOpen && (
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  top: "calc(100% + 6px)",
-                                  left: 0,
-                                  minWidth: "260px",
-                                  maxWidth: "340px",
-                                  maxHeight: "300px",
-                                  overflowY: "auto",
-                                  backgroundColor: "#fff",
-                                  borderRadius: "12px",
-                                  boxShadow: "0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-                                  border: "1px solid #e8ddd4",
-                                  zIndex: 1050,
-                                  padding: "6px 0",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    padding: "8px 14px",
-                                    fontSize: "11px",
-                                    fontWeight: "700",
-                                    color: "#8c7060",
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.5px",
-                                    borderBottom: "1px solid #f0e6dd",
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <span>{group.posGroup} Items</span>
-                                  <span
-                                    style={{
-                                      background: "#f5ece4",
-                                      color: BROWN_DARK,
-                                      padding: "2px 6px",
-                                      borderRadius: "10px",
-                                    }}
-                                  >
-                                    {group.itemCount} items
-                                  </span>
-                                </div>
-
-                                {/* Option to select all in this group */}
-                                <div
-                                  onClick={() => handlePOSGroupClick(group)}
-                                  style={{
-                                    padding: "9px 14px",
-                                    fontSize: "13px",
-                                    fontWeight: isGroupActive && !selectedSubItem ? "bold" : "600",
-                                    color: isGroupActive && !selectedSubItem ? BROWN_DARK : "#444",
-                                    backgroundColor: isGroupActive && !selectedSubItem ? "#fcf6f0" : "transparent",
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    borderBottom: "1px dashed #f0e6dd",
-                                    transition: "background 0.15s ease",
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fcf6f0")}
-                                  onMouseLeave={(e) => {
-                                    if (!(isGroupActive && !selectedSubItem)) e.currentTarget.style.backgroundColor = "transparent";
-                                  }}
-                                >
-                                  <span>Show all {group.posGroup}</span>
-                                  {isGroupActive && !selectedSubItem && (
-                                    <span style={{ color: BROWN_DARK, fontWeight: "bold" }}>✓</span>
-                                  )}
-                                </div>
-
-                                {/* List of individual items in group */}
-                                {(group.items || []).map((productItem) => {
-                                  const isItemSelected =
-                                    isGroupActive &&
-                                    selectedSubItem &&
-                                    String(selectedSubItem.id) === String(productItem.Product_Id);
-                                  const itemName = productItem.Product_Name || productItem.Stock_Item || "Unknown";
-                                  const packInfo = productItem.PackGet ? `${productItem.PackGet}kg` : "";
-                                  const shortName = productItem.Short_Name;
-                                  const rate =
-                                    parseFloat(productItem.Price) || parseFloat(productItem.Product_Rate) || 0;
-
-                                  return (
-                                    <div
-                                      key={productItem.Product_Id}
-                                      onClick={(e) => handleSubItemClick(group, productItem, e)}
-                                      style={{
-                                        padding: "8px 14px",
-                                        cursor: "pointer",
-                                        backgroundColor: isItemSelected ? "#fbf3eb" : "transparent",
-                                        borderLeft: isItemSelected ? `3px solid ${BROWN_DARK}` : "3px solid transparent",
-                                        transition: "background 0.15s ease",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "2px",
-                                      }}
-                                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fcf6f0")}
-                                      onMouseLeave={(e) => {
-                                        if (!isItemSelected) e.currentTarget.style.backgroundColor = "transparent";
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          justifyContent: "space-between",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                        }}
-                                      >
-                                        <span
-                                          style={{
-                                            fontSize: "13px",
-                                            fontWeight: isItemSelected ? "bold" : "500",
-                                            color: isItemSelected ? BROWN_DARK : "#333",
-                                            lineHeight: 1.3,
-                                          }}
-                                        >
-                                          {itemName}
-                                        </span>
-                                        {isItemSelected && (
-                                          <span style={{ color: BROWN_DARK, fontWeight: "bold", fontSize: "12px" }}>
-                                            ✓
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "6px",
-                                          alignItems: "center",
-                                          fontSize: "11px",
-                                          color: "#888",
-                                        }}
-                                      >
-                                        {shortName && <span>{shortName}</span>}
-                                        {shortName && packInfo && <span>•</span>}
-                                        {packInfo && <span>{packInfo}</span>}
-                                        {rate > 0 && (
-                                          <>
-                                            <span>•</span>
-                                            <span style={{ color: BROWN_LIGHT, fontWeight: "600" }}>
-                                              ₹{rate.toFixed(2)}
-                                            </span>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
                           </div>
                         );
                       })
-                    ) : (
-                      <div style={{ color: "#777", fontStyle: "italic", fontSize: 13, padding: "4px" }}>
-                        No sub-groups available
-                      </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               )}
