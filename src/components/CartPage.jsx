@@ -807,7 +807,28 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilled
       );
     });
 
-    setFilteredCustomers(results);
+    const startsWithName = (c, text) => {
+      const s = text.toLowerCase().trim();
+      const name = (c.Short_Name || "").toLowerCase().trim();
+      const bill = (c.Billl_Name || "").toLowerCase().trim();
+      return name.startsWith(s) || bill.startsWith(s);
+    };
+
+    const prefixMatches = [];
+    const otherMatches = [];
+    results.forEach((c) => {
+      if (startsWithName(c, searchText)) {
+        prefixMatches.push(c);
+      } else {
+        otherMatches.push(c);
+      }
+    });
+
+    const getCustName = (c) => String(c.Short_Name || c.Billl_Name || c.Customer_Name || "").trim();
+    prefixMatches.sort((a, b) => getCustName(a).localeCompare(getCustName(b), undefined, { sensitivity: "base" }));
+    otherMatches.sort((a, b) => getCustName(a).localeCompare(getCustName(b), undefined, { sensitivity: "base" }));
+
+    setFilteredCustomers([...prefixMatches, ...otherMatches]);
     setIsSearchTriggered(true);
     setIsOpen(true);
   };
@@ -1018,23 +1039,17 @@ const PartyDropdown = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
-  const inputRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      const t = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(t);
-    }
-    return undefined;
-  }, [isOpen]);
 
   const filtered = searchTerm.trim()
     ? options.filter((o) => {
@@ -1043,48 +1058,79 @@ const PartyDropdown = ({
     })
     : options;
 
+  const displayValue = isOpen ? searchTerm : (selected?.name || "");
+
   return (
     <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
       <div
-        onClick={() => {
-          setIsOpen((v) => !v);
-          if (onOpen) onOpen();
-        }}
         style={{
-          padding: "12px",
+          padding: "10px 12px",
           border: `1px solid ${isOpen ? BROWN : "#ddd"}`,
           borderRadius: "8px",
           background: "#fff",
-          cursor: "pointer",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           transition: "border-color 0.2s",
+          boxSizing: "border-box",
         }}
       >
-        <span
+        <input
+          type="text"
+          placeholder={selected?.name || `Select ${label.toLowerCase()}`}
+          value={displayValue}
+          onFocus={() => {
+            setIsOpen(true);
+            if (onOpen) onOpen();
+          }}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
           style={{
-            color: selected?.name ? BROWN : "#999",
+            border: "none",
+            outline: "none",
             fontSize: "14px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1,
+            color: (isOpen && searchTerm) || selected?.name ? BROWN_DARK : "#999",
+            background: "transparent",
+            width: "100%",
+            padding: 0,
           }}
-        >
-          {selected?.name || `Select ${label.toLowerCase()}`}
-        </span>
-        <span
-          style={{
-            color: BROWN_LIGHT,
-            fontSize: "11px",
-            marginLeft: "8px",
-            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-          }}
-        >
-          ▼
-        </span>
+        />
+        {searchTerm ? (
+          <button
+            onClick={() => setSearchTerm("")}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "#aaa",
+              fontSize: "16px",
+              lineHeight: 1,
+              padding: "0 2px",
+              marginLeft: "4px",
+            }}
+          >
+            ×
+          </button>
+        ) : (
+          <span
+            onClick={() => {
+              setIsOpen((v) => !v);
+              if (!isOpen && onOpen) onOpen();
+            }}
+            style={{
+              color: BROWN_LIGHT,
+              fontSize: "11px",
+              marginLeft: "8px",
+              cursor: "pointer",
+              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s",
+            }}
+          >
+            ▼
+          </span>
+        )}
       </div>
 
       {isOpen && (
@@ -1103,57 +1149,6 @@ const PartyDropdown = ({
             boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
           }}
         >
-          <div
-            style={{
-              padding: "8px",
-              borderBottom: "1px solid #f0f0f0",
-              position: "sticky",
-              top: 0,
-              background: "#fff",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <SearchIcon style={{ fontSize: "16px", color: "#999", flexShrink: 0 }} />
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder={`Search ${label.toLowerCase()}`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                flex: 1,
-                border: `1px solid ${ACCENT}`,
-                borderRadius: "6px",
-                padding: "6px 8px",
-                fontSize: "13px",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-            {searchTerm && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSearchTerm("");
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#aaa",
-                  fontSize: "16px",
-                  lineHeight: 1,
-                  padding: "0 2px",
-                }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-
           {searchTerm.trim() && (
             <div
               style={{
@@ -1185,7 +1180,7 @@ const PartyDropdown = ({
             onMouseEnter={(e) => (e.currentTarget.style.background = "#faf6f2")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            None
+            — None —
           </div>
 
           {loading ? (
@@ -1194,38 +1189,34 @@ const PartyDropdown = ({
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ padding: "16px", textAlign: "center", color: "#999", fontSize: "13px" }}>
-              No {label.toLowerCase()}s found{searchTerm ? ` for "${searchTerm}"` : ""}
+              No {label.toLowerCase()}s found
             </div>
           ) : (
-            filtered.map((option) => (
+            filtered.map((o) => (
               <div
-                key={option.id}
+                key={o.id}
                 onClick={() => {
-                  onSelect({ id: option.id, name: option.name });
+                  onSelect(o);
                   setIsOpen(false);
                   setSearchTerm("");
                 }}
                 style={{
-                  padding: "10px 16px",
-                  borderBottom: "1px solid #f0f0f0",
+                  padding: "10px 12px",
+                  borderBottom: "1px solid #f5f0eb",
                   cursor: "pointer",
-                  background: selected?.id === option.id ? "#f0e9e2" : "transparent",
+                  background: selected?.id === o.id ? "#f0e9e2" : "transparent",
+                  fontSize: "13px",
+                  color: BROWN_DARK,
                 }}
                 onMouseEnter={(e) => {
-                  if (selected?.id !== option.id) e.currentTarget.style.background = "#faf6f2";
+                  if (selected?.id !== o.id) e.currentTarget.style.background = "#faf6f2";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = selected?.id === option.id ? "#f0e9e2" : "transparent";
+                  e.currentTarget.style.background = selected?.id === o.id ? "#f0e9e2" : "transparent";
                 }}
               >
-                <div style={{ fontWeight: "600", color: BROWN, fontSize: "14px" }}>{option.name}</div>
-                {(option.code || option.mobile) && (
-                  <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-                    {option.code && `Code: ${option.code}`}
-                    {option.code && option.mobile && " | "}
-                    {option.mobile}
-                  </div>
-                )}
+                <div style={{ fontWeight: "500" }}>{o.name}</div>
+                {o.alias && <div style={{ fontSize: "11px", color: "#888" }}>{o.alias}</div>}
               </div>
             ))
           )}
@@ -1295,11 +1286,10 @@ const CartItemRow = ({
     setTempQty("");
   };
 
-  const handlePriceSave = () => {
-    const newPrice = parseFloat(tempPrice);
+  const handlePriceSave = (valToSave) => {
+    const targetVal = valToSave !== undefined ? valToSave : tempPrice;
+    const newPrice = parseFloat(targetVal);
     if (Number.isNaN(newPrice) || newPrice < 0) {
-      toast.error("Enter a valid price");
-      setIsEditingPrice(false);
       return;
     }
 
@@ -1343,9 +1333,6 @@ const CartItemRow = ({
         )
       );
     }
-
-    toast.success(`Price set to ₹${newPrice.toFixed(2)}/kg`);
-    setIsEditingPrice(false);
   };
 
   return (
@@ -1407,11 +1394,17 @@ const CartItemRow = ({
                   value={tempPrice}
                   onChange={(e) => {
                     const v = e.target.value;
-                    if (v === "" || /^\d*\.?\d*$/.test(v)) setTempPrice(v);
+                    if (v === "" || /^\d*\.?\d*$/.test(v)) {
+                      setTempPrice(v);
+                      const parsed = parseFloat(v);
+                      if (!Number.isNaN(parsed) && parsed >= 0) {
+                        handlePriceSave(v);
+                      }
+                    }
                   }}
+                  onBlur={() => setIsEditingPrice(false)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handlePriceSave();
-                    if (e.key === "Escape") setIsEditingPrice(false);
+                    if (e.key === "Enter" || e.key === "Escape") setIsEditingPrice(false);
                   }}
                   autoFocus
                   style={{
@@ -1429,34 +1422,6 @@ const CartItemRow = ({
                 <span style={{ fontSize: isMobile ? "14px" : "18px", fontWeight: "600", color: BROWN }}>
                   /kg
                 </span>
-                <button
-                  onClick={handlePriceSave}
-                  style={{
-                    background: "#4CAF50",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: isMobile ? "4px 6px" : "4px 8px",
-                    color: "#fff",
-                    fontSize: isMobile ? "13px" : "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  ✓
-                </button>
-                <button
-                  onClick={() => setIsEditingPrice(false)}
-                  style={{
-                    background: "#f44336",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: isMobile ? "4px 6px" : "2px 6px",
-                    color: "#fff",
-                    fontSize: isMobile ? "13px" : "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  ✕
-                </button>
               </div>
             ) : (
               <span
@@ -3781,8 +3746,21 @@ export default function CartPage() {
       }
     });
 
+    let cartOrder = [];
+    try {
+      cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || [];
+    } catch (e) {}
+
     return Object.entries(cartItems)
       .filter(([, qty]) => qty > 0)
+      .sort(([idA], [idB]) => {
+        const indexA = cartOrder.indexOf(String(idA));
+        const indexB = cartOrder.indexOf(String(idB));
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return 0;
+      })
       .map(([productId, qty]) => {
         const sid = String(productId);
         const editP = editProductsMap.get(sid);
@@ -4077,6 +4055,7 @@ export default function CartPage() {
   /* ---------------- Cart mutations ---------------- */
 
   const updateQty = (id, delta) => {
+    const sid = String(id);
     setCartItems((prev) => {
       const next = Math.max(0, (prev[id] || 0) + delta);
       let newCart;
@@ -4087,23 +4066,60 @@ export default function CartPage() {
         newCart = { ...prev, [id]: next };
       }
       localStorage.setItem("cartItems", JSON.stringify(newCart));
+
+      let cartOrder = [];
+      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch(e) {}
+      const exists = cartOrder.includes(sid);
+      if (next > 0 && !exists) {
+        cartOrder.push(sid);
+      } else if (next === 0 && exists) {
+        cartOrder = cartOrder.filter(item => item !== sid);
+      }
+      localStorage.setItem("cartItemOrder", JSON.stringify(cartOrder));
+
       return newCart;
     });
   };
 
   const setItemQty = (id, qty) => {
+    const sid = String(id);
     setCartItems((prev) => {
-      const newCart = { ...prev, [id]: qty };
+      const next = Math.max(0, qty);
+      let newCart;
+      if (next === 0) {
+        const { [id]: _removed, ...rest } = prev;
+        newCart = rest;
+      } else {
+        newCart = { ...prev, [id]: next };
+      }
       localStorage.setItem("cartItems", JSON.stringify(newCart));
+
+      let cartOrder = [];
+      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch(e) {}
+      const exists = cartOrder.includes(sid);
+      if (next > 0 && !exists) {
+        cartOrder.push(sid);
+      } else if (next === 0 && exists) {
+        cartOrder = cartOrder.filter(item => item !== sid);
+      }
+      localStorage.setItem("cartItemOrder", JSON.stringify(cartOrder));
+
       return newCart;
     });
   };
 
   const removeItem = (id) => {
-    const product = enhancedCartItems.find((p) => String(p.id) === String(id));
+    const sid = String(id);
+    const product = enhancedCartItems.find((p) => String(p.id) === sid);
     setCartItems((prev) => {
       const { [id]: _removed, ...rest } = prev;
       localStorage.setItem("cartItems", JSON.stringify(rest));
+
+      let cartOrder = [];
+      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch(e) {}
+      cartOrder = cartOrder.filter(item => item !== sid);
+      localStorage.setItem("cartItemOrder", JSON.stringify(cartOrder));
+
       return rest;
     });
     if (product) toast.info(`Removed ${product.name}`);
@@ -4946,6 +4962,7 @@ export default function CartPage() {
                 onClick={() => {
                   setCartItems({});
                   localStorage.removeItem("cartItems");
+                  localStorage.removeItem("cartItemOrder");
                   setStep(1);
                 }}
               >
@@ -5747,7 +5764,7 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, creat
             </thead>
             <tbody>
               {items.length > 0
-                ? items.map((item, i) => {
+                ? [...items].sort((a, b) => (b.shortName || b.Print_Name || "").localeCompare(a.shortName || a.Print_Name || "")).map((item, i) => {
                   const pw = packWeightOf(item);
                   const bags = pw > 0 ? safeNum(item.kgs) / pw : 0;
                   return (

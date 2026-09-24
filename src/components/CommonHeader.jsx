@@ -1619,27 +1619,32 @@ const CommonHeader = ({
     }, 100);
   };
 
-  const handleSearchChange = (e) => {
-    setCustomerSearch(e.target.value);
+  const startsWithSearch = (c, search) => {
+    if (!search) return false;
+    const s = search.toLowerCase().trim();
+    const normS = removeSplChar(search);
+    const name = (c.name || '').toLowerCase().trim();
+    const normName = removeSplChar(c.name || '');
+    const billName = (c.billName || '').toLowerCase().trim();
+    const normBill = removeSplChar(c.billName || '');
+    const partyName = (c.partyMailingName || '').toLowerCase().trim();
+    const normParty = removeSplChar(c.partyMailingName || '');
+    
+    return name.startsWith(s) || normName.startsWith(normS) ||
+           billName.startsWith(s) || normBill.startsWith(normS) ||
+           partyName.startsWith(s) || normParty.startsWith(normS);
   };
 
-  const performSearch = () => {
-    if (!customerSearch.trim()) {
-      setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
-      setHasSearched(false);
-      setDisplayCount(INITIAL_LOAD);
-      return;
+  const filterAndSortCustomers = (searchQuery) => {
+    if (!searchQuery || !searchQuery.trim()) {
+      return customers;
     }
-    
-    const normalizedSearch = removeSplChar(customerSearch);
+    const normalizedSearch = removeSplChar(searchQuery);
     if (!normalizedSearch) {
-      setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
-      setHasSearched(false);
-      setDisplayCount(INITIAL_LOAD);
-      return;
+      return customers;
     }
-    
-    const results = customers.filter((c) => {
+
+    const matched = customers.filter((c) => {
       const allFields = [];
       if (c.name) allFields.push(String(c.name));
       if (c.billName) allFields.push(String(c.billName));
@@ -1668,7 +1673,38 @@ const CommonHeader = ({
         return normalizedField.includes(normalizedSearch);
       });
     });
+
+    const prefixMatches = [];
+    const otherMatches = [];
+    matched.forEach(c => {
+      if (startsWithSearch(c, searchQuery)) {
+        prefixMatches.push(c);
+      } else {
+        otherMatches.push(c);
+      }
+    });
+
+    return [...prefixMatches, ...otherMatches];
+  };
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setCustomerSearch(val);
+    if (!customerDropdownOpen) {
+      setCustomerDropdownOpen(true);
+    }
+    performSearch(val);
+  };
+
+  const performSearch = (searchTerm = customerSearch) => {
+    if (!searchTerm.trim()) {
+      setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
+      setHasSearched(false);
+      setDisplayCount(INITIAL_LOAD);
+      return;
+    }
     
+    const results = filterAndSortCustomers(searchTerm);
     setFilteredCustomers(results.slice(0, INITIAL_LOAD));
     setHasSearched(true);
     setDisplayCount(INITIAL_LOAD);
@@ -1677,7 +1713,7 @@ const CommonHeader = ({
   const handleSearchKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      performSearch();
+      performSearch(customerSearch);
     }
   };
 
@@ -1700,77 +1736,10 @@ const CommonHeader = ({
   };
 
   const handleLoadMore = () => {
-    const totalResults = hasSearched ? 
-      customers.filter(c => {
-        // Re-run search for load more
-        const normalizedSearch = removeSplChar(customerSearch);
-        const allFields = [];
-        if (c.name) allFields.push(String(c.name));
-        if (c.billName) allFields.push(String(c.billName));
-        if (c.mobile) allFields.push(String(c.mobile));
-        if (c.city) allFields.push(String(c.city));
-        if (c.id) allFields.push(String(c.id));
-        if (c.address) allFields.push(String(c.address));
-        if (c.ledgerName) allFields.push(String(c.ledgerName));
-        if (c.partyMailingName) allFields.push(String(c.partyMailingName));
-        if (c.ledgerTallyId) allFields.push(String(c.ledgerTallyId));
-        if (c.brokerName) allFields.push(String(c.brokerName));
-        if (c.brokerId) allFields.push(String(c.brokerId));
-        if (c.transporterName) allFields.push(String(c.transporterName));
-        if (c.transporterId) allFields.push(String(c.transporterId));
-        
-        Object.keys(c).forEach(key => {
-          const value = c[key];
-          if (value !== null && value !== undefined && value !== '' && 
-              typeof value !== 'object' && !allFields.includes(String(value))) {
-            allFields.push(String(value));
-          }
-        });
-        
-        return allFields.some(field => {
-          const normalizedField = removeSplChar(field);
-          return normalizedField.includes(normalizedSearch);
-        });
-      }) : customers;
-    
+    const totalResults = hasSearched ? filterAndSortCustomers(customerSearch) : customers;
     const nextCount = Math.min(displayCount + LOAD_MORE_COUNT, totalResults.length);
     setDisplayCount(nextCount);
-    
-    if (hasSearched) {
-      const results = customers.filter(c => {
-        const normalizedSearch = removeSplChar(customerSearch);
-        const allFields = [];
-        if (c.name) allFields.push(String(c.name));
-        if (c.billName) allFields.push(String(c.billName));
-        if (c.mobile) allFields.push(String(c.mobile));
-        if (c.city) allFields.push(String(c.city));
-        if (c.id) allFields.push(String(c.id));
-        if (c.address) allFields.push(String(c.address));
-        if (c.ledgerName) allFields.push(String(c.ledgerName));
-        if (c.partyMailingName) allFields.push(String(c.partyMailingName));
-        if (c.ledgerTallyId) allFields.push(String(c.ledgerTallyId));
-        if (c.brokerName) allFields.push(String(c.brokerName));
-        if (c.brokerId) allFields.push(String(c.brokerId));
-        if (c.transporterName) allFields.push(String(c.transporterName));
-        if (c.transporterId) allFields.push(String(c.transporterId));
-        
-        Object.keys(c).forEach(key => {
-          const value = c[key];
-          if (value !== null && value !== undefined && value !== '' && 
-              typeof value !== 'object' && !allFields.includes(String(value))) {
-            allFields.push(String(value));
-          }
-        });
-        
-        return allFields.some(field => {
-          const normalizedField = removeSplChar(field);
-          return normalizedField.includes(normalizedSearch);
-        });
-      });
-      setFilteredCustomers(results.slice(0, nextCount));
-    } else {
-      setFilteredCustomers(customers.slice(0, nextCount));
-    }
+    setFilteredCustomers(totalResults.slice(0, nextCount));
   };
 
   const headerStyle = {
@@ -1900,22 +1869,25 @@ const CommonHeader = ({
     pointerEvents: 'none',
   };
 
-  // FIXED: Mobile dropdown - full screen with no gaps
+  // Mobile dropdown - positioned below the header search box
   const mobileDropdownStyle = {
-    position: 'fixed',
-    top: 0,
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
     left: 0,
     right: 0,
-    bottom: 0,
+    width: '100%',
+    maxHeight: 'calc(100vh - 120px)',
     backgroundColor: '#fff',
     zIndex: 9999,
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
     margin: 0,
     padding: 0,
-    border: 'none',
-    borderRadius: 0,
+    border: '1px solid #ddd',
+    borderRadius: '12px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
   };
 
   const desktopDropdownStyle = {
@@ -2015,14 +1987,13 @@ const CommonHeader = ({
         
             {showCustomerSelector && isLoggedIn && customers.length > 0 && (
               <div style={customerSelectorStyle} ref={customerDropdownRef}>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDropdownToggle();
-                  }}
+                <div
                   style={customerSelectorButtonStyle}
-                  type="button"
+                  onClick={() => {
+                    if (searchInputRef.current) {
+                      searchInputRef.current.focus();
+                    }
+                  }}
                 >
                   <div style={{ 
                     display: "flex", 
@@ -2033,131 +2004,80 @@ const CommonHeader = ({
                     flex: 1,
                   }}>
                     <span style={{ fontSize: isMobile ? "12px" : "14px", flexShrink: 0 }}>🏪</span>
-                    <span style={{
-                      fontSize: isMobile ? "11px" : "14px",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: "#fff",
-                      flex: 1,
-                      minWidth: 0,
-                    }}>
-                      {selectedCustomer ? selectedCustomer.name : (userType === "customer" ? "Select Retailer" : "Select Customer")}
-                    </span>
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder={selectedCustomer ? selectedCustomer.name : (userType === "customer" ? "Select Retailer..." : "Select Customer...")}
+                      value={customerDropdownOpen ? customerSearch : (selectedCustomer ? selectedCustomer.name : "")}
+                      onFocus={() => {
+                        if (!customerDropdownOpen) {
+                          setCustomerDropdownOpen(true);
+                          if (!customerSearch) {
+                            setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
+                          }
+                        }
+                      }}
+                      onChange={handleSearchChange}
+                      onKeyDown={handleSearchKeyDown}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      style={{
+                        border: "none",
+                        outline: "none",
+                        background: "transparent",
+                        color: "#fff",
+                        fontSize: isMobile ? "12px" : "14px",
+                        fontWeight: "500",
+                        width: "100%",
+                        padding: "2px 0",
+                        boxSizing: "border-box",
+                        textOverflow: "ellipsis",
+                      }}
+                    />
                   </div>
-                  <span style={{
-                    fontSize: "10px",
-                    flexShrink: 0,
-                    marginLeft: "4px",
-                    transform: customerDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
-                    transition: "transform 0.2s",
-                  }}>▼</span>
-                </button>
+                  {customerSearch ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCustomerSearch("");
+                        performSearch("");
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#fff",
+                        cursor: "pointer",
+                        padding: "0 4px",
+                        fontSize: "14px",
+                        lineHeight: 1,
+                      }}
+                      type="button"
+                    >
+                      ✕
+                    </button>
+                  ) : (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropdownToggle();
+                      }}
+                      style={{
+                        fontSize: "10px",
+                        flexShrink: 0,
+                        marginLeft: "4px",
+                        color: "#fff",
+                        cursor: "pointer",
+                        transform: customerDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 0.2s",
+                      }}
+                    >
+                      ▼
+                    </span>
+                  )}
+                </div>
 
                 {customerDropdownOpen && (
                   <div style={dropdownStyle}>
-                    {/* Mobile Header */}
-                    {isMobile && (
-                      <div style={{
-                        padding: "14px 16px",
-                        background: BROWN_DARK,
-                        color: "#fff",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexShrink: 0,
-                        borderBottom: `1px solid ${ACCENT}`,
-                        width: "100%",
-                        boxSizing: "border-box",
-                        minHeight: "56px",
-                      }}>
-                        <span style={{ fontSize: "17px", fontWeight: "bold" }}>
-                          {userType === "customer" ? "Select Retailer" : "Select Customer"}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleCloseDropdown();
-                          }}
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "#fff",
-                            fontSize: "24px",
-                            cursor: "pointer",
-                            padding: "4px 8px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            WebkitTapHighlightColor: "transparent",
-                          }}
-                          type="button"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Search bar - FIXED: full width with proper alignment */}
-                    <div style={{ 
-                      padding: isMobile ? "10px 16px" : "12px", 
-                      borderBottom: "1px solid #f0f0f0", 
-                      background: "#f9f9f9",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      flexShrink: 0,
-                      width: "100%",
-                      boxSizing: "border-box",
-                    }}>
-                      <div style={{ 
-                        flex: 1, 
-                        minWidth: 0,
-                        position: "relative",
-                        width: "100%",
-                      }}>
-                        <input
-                          ref={searchInputRef}
-                          type="text"
-                          placeholder="Search by name, mobile, city..."
-                          value={customerSearch}
-                          onChange={handleSearchChange}
-                          onKeyDown={handleSearchKeyDown}
-                          autoComplete="off"
-                          autoCorrect="off"
-                          style={{
-                            width: "100%",
-                            padding: isMobile ? "10px 14px 10px 36px" : "8px 12px 8px 32px",
-                            border: `1px solid ${ACCENT}`,
-                            color: BROWN_DARK,
-                            borderRadius: "8px",
-                            fontSize: isMobile ? "15px" : "13px",
-                            outline: "none",
-                            boxSizing: "border-box",
-                            WebkitAppearance: "none",
-                            backgroundColor: "#fff",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = BROWN;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = ACCENT;
-                          }}
-                        />
-                        {/* Search icon inside input - FIXED alignment */}
-                        <SearchIcon style={{
-                          position: "absolute",
-                          left: isMobile ? "10px" : "8px",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          fontSize: isMobile ? "18px" : "16px",
-                          color: "#999",
-                          pointerEvents: "none",
-                        }} />
-                      </div>
-                    </div>
-                    
                     {/* Scrollable content - FIXED: full width */}
                     <div 
                       ref={listContainerRef}

@@ -1350,10 +1350,34 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
               setTimeout(processChunk, 50);
             }
           } else {
-            setAllFilteredResults(results);
+            const startsWithSearch = (c, search) => {
+              if (!search) return false;
+              const s = search.toLowerCase().trim();
+              const normS = search.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const name = (c.name || '').toLowerCase().trim();
+              const normName = (c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              const billName = (c.billName || '').toLowerCase().trim();
+              const normBill = (c.billName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              
+              return name.startsWith(s) || normName.startsWith(normS) ||
+                     billName.startsWith(s) || normBill.startsWith(normS);
+            };
+
+            const prefixMatches = [];
+            const otherMatches = [];
+            results.forEach(c => {
+              if (startsWithSearch(c, searchTerm)) {
+                prefixMatches.push(c);
+              } else {
+                otherMatches.push(c);
+              }
+            });
+            const sortedResults = [...prefixMatches, ...otherMatches];
+
+            setAllFilteredResults(sortedResults);
             setHasSearched(true);
-            const initialResults = results.slice(0, INITIAL_LOAD);
-            setDisplayCount(Math.min(INITIAL_LOAD, results.length));
+            const initialResults = sortedResults.slice(0, INITIAL_LOAD);
+            setDisplayCount(Math.min(INITIAL_LOAD, sortedResults.length));
             setDisplayedCustomers(initialResults);
           }
         };
@@ -1490,22 +1514,25 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
     }, 200);
   };
 
-  // Mobile dropdown - Full screen with proper styling
+  // Mobile dropdown - Positioned below header search
   const mobileDropdownStyle = {
-    position: 'fixed',
-    top: 0,
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
     left: 0,
     right: 0,
-    bottom: 0,
     width: '100%',
-    height: '100%',
+    maxHeight: 'calc(100vh - 120px)',
     backgroundColor: '#fff',
     zIndex: 9999,
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
     margin: 0,
     padding: 0,
+    border: '1px solid #ddd',
+    borderRadius: '12px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
   };
 
   const desktopDropdownStyle = {
@@ -1531,15 +1558,19 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
       width: isMobile ? "100%" : "auto",
       maxWidth: isMobile ? "100%" : "320px",
     }} ref={dropdownRef}>
-      {/* Dropdown Button */}
+      {/* Dropdown Button / Direct Search Box */}
       <div
         ref={buttonRef}
-        onClick={handleToggle}
+        onClick={() => {
+          if (searchInputRef.current) {
+            searchInputRef.current.focus();
+          }
+        }}
         style={{
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          padding: isMobile ? "8px 12px" : "8px 14px",
+          padding: isMobile ? "6px 12px" : "6px 14px",
           background: "#f5ede3",
           border: `1.5px solid ${isOpen ? BROWN : ACCENT}`,
           borderRadius: "25px",
@@ -1552,128 +1583,80 @@ function CustomerSelector({ isLoggedIn, userType, customers, selectedCustomer, o
         }}
       >
         <span style={{ fontSize: isMobile ? "14px" : "16px", flexShrink: 0 }}>🏪</span>
-        <span style={{
-          fontSize: isMobile ? "12px" : "14px",
-          fontWeight: "500",
-          color: selectedCustomer ? BROWN_DARK : "#666",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          flex: 1,
-          minWidth: 0,
-        }}>
-          {selectedCustomer ? selectedCustomer.name : "Select outlet..."}
-        </span>
-        {selectedCustomer && selectedCustomer.mobile && !isMobile && (
-          <span style={{ fontSize: "10px", color: "#888", marginLeft: "2px", flexShrink: 0 }}>
-            📱{selectedCustomer.mobile}
+        <input
+          ref={searchInputRef}
+          type="text"
+          placeholder={selectedCustomer ? selectedCustomer.name : "Select outlet..."}
+          value={isOpen ? search : (selectedCustomer ? selectedCustomer.name : "")}
+          onFocus={() => {
+            if (!isOpen) {
+              setDisplayedCustomers(initialCustomers);
+              setAllFilteredResults(customers);
+              setSearch("");
+              setDisplayCount(INITIAL_LOAD);
+              setHasSearched(false);
+              setIsInitializing(false);
+              setIsOpen(true);
+            }
+          }}
+          onChange={handleSearchChange}
+          autoComplete="off"
+          style={{
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            color: BROWN_DARK,
+            fontSize: isMobile ? "12px" : "14px",
+            fontWeight: "500",
+            width: "100%",
+            padding: "2px 0",
+            boxSizing: "border-box",
+            textOverflow: "ellipsis",
+          }}
+        />
+        {search ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSearch("");
+              performSearch("");
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#888",
+              cursor: "pointer",
+              padding: "0 4px",
+              fontSize: "14px",
+              lineHeight: 1,
+            }}
+            type="button"
+          >
+            ✕
+          </button>
+        ) : (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggle(e);
+            }}
+            style={{
+              fontSize: "10px",
+              color: BROWN_LIGHT,
+              flexShrink: 0,
+              cursor: "pointer",
+              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s",
+            }}
+          >
+            ▼
           </span>
         )}
-        <span style={{
-          fontSize: "10px",
-          color: BROWN_LIGHT,
-          flexShrink: 0,
-          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-          transition: "transform 0.2s",
-        }}>▼</span>
       </div>
 
       {/* Dropdown Content */}
       {isOpen && (
         <div style={dropdownStyle}>
-          {/* Mobile Header */}
-          {isMobile && (
-            <div style={{
-              padding: "14px 16px",
-              background: BROWN_DARK,
-              color: "#fff",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexShrink: 0,
-              borderBottom: `1px solid ${ACCENT}`,
-              width: "100%",
-              boxSizing: "border-box",
-            }}>
-              <span style={{ fontSize: "17px", fontWeight: "bold" }}>Select Customer</span>
-              <button
-                onClick={handleClose}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#fff",
-                  fontSize: "22px",
-                  cursor: "pointer",
-                  padding: "4px 8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >✕</button>
-            </div>
-          )}
-
-          {/* Search Bar - Fixed width issues */}
-          <div style={{
-            padding: isMobile ? "10px 16px" : "12px",
-            borderBottom: "1px solid #f0f0f0",
-            background: "#f9f9f9",
-            flexShrink: 0,
-            width: "100%",
-            boxSizing: "border-box",
-          }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              width: "100%",
-              boxSizing: "border-box",
-            }}>
-              <div style={{
-                flex: 1,
-                minWidth: 0,
-                position: "relative",
-              }}>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder={isMobile ? "Search customers..." : "Search by name, mobile, city..."}
-                  value={search}
-                  onChange={handleSearchChange}
-                  autoComplete="off"
-                  style={{
-                    width: "100%",
-                    padding: isMobile ? "10px 14px" : "10px 12px",
-                    paddingLeft: isMobile ? "36px" : "12px",
-                    border: `1px solid ${ACCENT}`,
-                    borderRadius: "8px",
-                    fontSize: isMobile ? "15px" : "14px",
-                    outline: "none",
-                    boxSizing: "border-box",
-                    backgroundColor: "#fff",
-                    color: BROWN_DARK,
-                    WebkitAppearance: "none",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = BROWN}
-                  onBlur={(e) => e.target.style.borderColor = ACCENT}
-                />
-                {/* Search Icon inside input */}
-                {isMobile && (
-                  <SearchIcon style={{
-                    position: "absolute",
-                    left: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    fontSize: "18px",
-                    color: "#999",
-                    pointerEvents: "none",
-                  }} />
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* Search Results Info */}
           {hasSearched && search.trim() && (
             <div style={{
@@ -2056,7 +2039,7 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, creat
             </thead>
             <tbody>
               {cartItems && cartItems.length > 0 ? (
-                cartItems.map((item, i) => {
+                [...cartItems].sort((a, b) => (Number(a.S_No ?? a.Sno ?? 0)) - (Number(b.S_No ?? b.Sno ?? 0))).map((item, i) => {
                   const displayName = item.shortName || item.Print_Name || "";
                   const packWeight = parseFloat(displayName?.match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]) || 0;
                   const bags = packWeight > 0 ? safeNum(item.kgs) / packWeight : 0;
@@ -2199,7 +2182,8 @@ const PrintPreviewModal = ({ open, onClose, customer, cartItems, totals, onPrint
       return sum + (packWeight ? safeNum(item.kgs) / packWeight : 0);
     }, 0);
 
-    const rows = (cartItems || [])
+    const rows = [...(cartItems || [])]
+      .sort((a, b) => (Number(a.S_No ?? a.Sno ?? 0)) - (Number(b.S_No ?? b.Sno ?? 0)))
       .map((item) => {
         const displayName = item.shortName || item.Print_Name || "";
         const packWeight = parseFloat(displayName?.match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]) || 0;
@@ -2559,25 +2543,17 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
-  const inputRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsOpen(false);
+        setSearchTerm("");
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [isOpen]);
-
-
 
   const filteredTransporters = searchTerm.trim()
     ? availableTransporters.filter(t => {
@@ -2591,30 +2567,57 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
     })
     : availableTransporters;
 
-
+  const displayValue = isOpen ? searchTerm : (selectedTransporter.name || "");
 
   return (
     <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
       <div
-        onClick={() => { setIsOpen(prev => !prev); onOpen && onOpen(); }}
         style={{
-          padding: "12px",
+          padding: "10px 12px",
           border: `1px solid ${isOpen ? BROWN : "#ddd"}`,
-          borderRadius: "8px", background: "#fff", cursor: "pointer",
+          borderRadius: "8px", background: "#fff",
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          transition: "border-color 0.2s",
+          transition: "border-color 0.2s", boxSizing: "border-box"
         }}
       >
-        <span style={{
-          color: selectedTransporter.name ? BROWN : "#999", fontSize: "14px",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1
-        }}>
-          {selectedTransporter.name || "Select Transporter"}
-        </span>
-        <span style={{
-          color: BROWN_LIGHT, fontSize: "11px", marginLeft: "8px",
-          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s",
-        }}>▼</span>
+        <input
+          type="text"
+          placeholder={selectedTransporter.name || "Select Transporter"}
+          value={displayValue}
+          onFocus={() => {
+            setIsOpen(true);
+            if (onOpen) onOpen();
+          }}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          style={{
+            border: "none", outline: "none", fontSize: "14px",
+            color: (isOpen && searchTerm) || selectedTransporter.name ? BROWN_DARK : "#999",
+            background: "transparent", width: "100%", padding: 0
+          }}
+        />
+        {searchTerm ? (
+          <button
+            onClick={() => setSearchTerm("")}
+            style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "#aaa", fontSize: "16px", lineHeight: 1, padding: "0 2px", marginLeft: "4px"
+            }}
+          >×</button>
+        ) : (
+          <span
+            onClick={() => {
+              setIsOpen(prev => !prev);
+              if (!isOpen && onOpen) onOpen();
+            }}
+            style={{
+              color: BROWN_LIGHT, fontSize: "11px", marginLeft: "8px", cursor: "pointer",
+              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s"
+            }}
+          >▼</span>
+        )}
       </div>
 
       {isOpen && (
@@ -2624,38 +2627,6 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
           maxHeight: "280px", overflowY: "auto", zIndex: 1000,
           boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
         }}>
-          <div style={{
-            padding: "8px", borderBottom: "1px solid #f0f0f0",
-            position: "sticky", top: 0, background: "#fff",
-            display: "flex", alignItems: "center", gap: "6px",
-          }}>
-            <SearchIcon style={{ fontSize: "16px", color: "#999", flexShrink: 0 }} />
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search by name, alias, code or mobile..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                flex: 1, border: `1px solid ${ACCENT}`,
-                borderRadius: "6px", padding: "6px 8px",
-                fontSize: "13px", outline: "none", boxSizing: "border-box",
-              }}
-              onFocus={(e) => e.target.style.borderColor = BROWN}
-              onBlur={(e) => e.target.style.borderColor = ACCENT}
-            />
-            {searchTerm && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setSearchTerm(""); }}
-                style={{
-                  background: "transparent", border: "none", cursor: "pointer",
-                  color: "#aaa", fontSize: "16px", lineHeight: 1, padding: "0 2px", flexShrink: 0
-                }}
-              >×</button>
-            )}
-          </div>
-
           {searchTerm.trim() && (
             <div style={{
               padding: "4px 12px", fontSize: "11px", color: "#999",
@@ -2668,46 +2639,35 @@ const TransporterDropdown = ({ selectedTransporter, onSelectTransporter, availab
           <div
             onClick={() => { onSelectTransporter({ id: null, name: "" }); setIsOpen(false); setSearchTerm(""); }}
             style={{
-              padding: "10px 12px", borderBottom: "1px solid #f5f0eb",
-              cursor: "pointer", fontSize: "13px", color: "#999", fontStyle: "italic",
+              padding: "10px 12px", borderBottom: "1px solid #f5f0eb", cursor: "pointer",
+              fontSize: "13px", color: "#999", fontStyle: "italic"
             }}
             onMouseEnter={(e) => e.currentTarget.style.background = "#faf6f2"}
             onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-          >
-            — None —
-          </div>
+          >— None —</div>
 
           {loading ? (
-            <div style={{ padding: "16px", textAlign: "center" }}>
-              <CircularProgress size={16} style={{ color: BROWN }} />
-            </div>
+            <div style={{ padding: "16px", textAlign: "center" }}><CircularProgress size={16} style={{ color: BROWN }} /></div>
           ) : filteredTransporters.length === 0 ? (
-            <div style={{ padding: "16px", textAlign: "center", color: "#999", fontSize: "13px" }}>
-              No transporters found{searchTerm ? ` for "${searchTerm}"` : ""}
-            </div>
+            <div style={{ padding: "16px", textAlign: "center", color: "#999", fontSize: "13px" }}>No transporters found</div>
           ) : (
             filteredTransporters.map(transporter => (
               <div
                 key={transporter.id}
-                onClick={() => { onSelectTransporter({ id: transporter.id, name: transporter.name }); setIsOpen(false); setSearchTerm(""); }}
+                onClick={() => { onSelectTransporter(transporter); setIsOpen(false); setSearchTerm(""); }}
                 style={{
-                  padding: "10px 16px", borderBottom: "1px solid #f0f0f0", cursor: "pointer",
+                  padding: "10px 12px", borderBottom: "1px solid #f5f0eb", cursor: "pointer",
                   background: selectedTransporter.id === transporter.id ? "#f0e9e2" : "transparent",
+                  fontSize: "13px", color: BROWN_DARK,
                 }}
                 onMouseEnter={(e) => { if (selectedTransporter.id !== transporter.id) e.currentTarget.style.background = "#faf6f2"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = selectedTransporter.id === transporter.id ? "#f0e9e2" : "transparent"; }}
               >
-                <div style={{ fontWeight: "600", color: BROWN, fontSize: "14px" }}>{transporter.name}</div>
-                {/* {transporter.alias_name && (
-                  <div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
-                    Alias: {transporter.alias_name}
-                  </div>
-                )} */}
+                <div style={{ fontWeight: "500" }}>{transporter.name}</div>
                 {(transporter.code || transporter.mobile) && (
-                  <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-                    {transporter.code && `Code: ${transporter.code}`}
-                    {transporter.code && transporter.mobile && " | "}
-                    {transporter.mobile}
+                  <div style={{ fontSize: "11px", color: "#888", display: "flex", gap: "8px", marginTop: "2px" }}>
+                    {transporter.code && <span>Code: {transporter.code}</span>}
+                    {transporter.mobile && <span>Mob: {transporter.mobile}</span>}
                   </div>
                 )}
               </div>
@@ -2733,6 +2693,7 @@ const MobileCartDrawer = ({
   isOpen, onClose, cartItems, products, allProducts, onUpdateQty, onRemoveItem,
   isLoggedIn, onLoginClick, externalCustomers, onCustomerChange,
   selectedCustomer: headerSelectedCustomer, userType, footerOffset = 0,
+  cartItemOrder = [],
 }) => {
   const [step, setStep] = useState(1);
   const [contactNumber, setContactNumber] = useState("");
@@ -2966,6 +2927,18 @@ const MobileCartDrawer = ({
 
   const enhancedCartItems = Object.entries(cartItems)
     .filter(([_, qty]) => qty > 0)
+    .sort(([idA], [idB]) => {
+      let order = cartItemOrder && cartItemOrder.length ? cartItemOrder : [];
+      if (!order.length) {
+        try { order = JSON.parse(localStorage.getItem('cartItemOrder')) || []; } catch (e) {}
+      }
+      const indexA = order.indexOf(String(idA));
+      const indexB = order.indexOf(String(idB));
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return 0;
+    })
     .map(([productId, qty]) => {
       const sid = String(productId);
       const product =
@@ -2973,7 +2946,7 @@ const MobileCartDrawer = ({
         allProducts.find(p => String(p.id) === sid || String(p.Product_Id) === sid) ||
         {};
 
-      // Check if this is an edit mode and get original quantity
+
       const isEditing = localStorage.getItem('isEditingOrder') === 'true';
       let originalQty = 0;
       let originalCoolieRate = 0;
@@ -3041,7 +3014,7 @@ const MobileCartDrawer = ({
       const editData = JSON.parse(editDataStr);
       const rawExpenses = editData.Expence_Array || editData.Expense_Array || [];
 
-      // Store the base coolie value from the original order
+
       let baseCoolieValue = 0;
       const existingCoolie = (Array.isArray(rawExpenses) ? rawExpenses : []).find(
         e => (e.Account_Name || e.Expence_Name || "").trim().toUpperCase() === "COOLIE EXPENSES"
@@ -3164,6 +3137,16 @@ const MobileCartDrawer = ({
     if (editingField === 'price') {
       if (value === '' || /^\d*\.?\d*$/.test(value)) {
         setTempValue(value);
+        const numVal = parseFloat(value);
+        if (!isNaN(numVal) && numVal >= 0) {
+          setCustomPrices(prev => ({ ...prev, [editingProductId]: numVal }));
+        } else if (value === '') {
+          setCustomPrices(prev => {
+            const copy = { ...prev };
+            delete copy[editingProductId];
+            return copy;
+          });
+        }
       }
     } else if (editingField === 'qty') {
       if (value === '' || /^\d+$/.test(value)) {
@@ -3246,7 +3229,7 @@ const MobileCartDrawer = ({
     if (!customerSearch.trim()) return [];
     const searchTerm = customerSearch.toLowerCase().trim();
     const searchMobile = customerSearch.replace(/\D/g, "");
-    return (externalCustomers || []).filter(c =>
+    const matched = (externalCustomers || []).filter(c =>
       (c.name && c.name.toLowerCase().includes(searchTerm)) ||
       (c.billName && c.billName.toLowerCase().includes(searchTerm)) ||
       (c.mobile && c.mobile.replace(/\D/g, "").includes(searchMobile)) ||
@@ -3254,6 +3237,20 @@ const MobileCartDrawer = ({
       (c.brokerName && c.brokerName.toLowerCase().includes(searchTerm)) ||
       (c.transporterName && c.transporterName.toLowerCase().includes(searchTerm))
     );
+
+    const prefixMatches = [];
+    const otherMatches = [];
+    matched.forEach(c => {
+      const name = (c.name || "").toLowerCase().trim();
+      const billName = (c.billName || "").toLowerCase().trim();
+      if (name.startsWith(searchTerm) || billName.startsWith(searchTerm)) {
+        prefixMatches.push(c);
+      } else {
+        otherMatches.push(c);
+      }
+    });
+
+    return [...prefixMatches, ...otherMatches];
   };
 
   const filteredCustomers = getFilteredCustomers();
@@ -3592,8 +3589,10 @@ const MobileCartDrawer = ({
                     type="text"
                     value={tempValue}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, item.id)}
-                    onBlur={() => handleBlur(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === 'Escape') setEditingProductId(null);
+                    }}
+                    onBlur={() => setEditingProductId(null)}
                     autoFocus
                     style={{
                       width: "70px",
@@ -3612,44 +3611,6 @@ const MobileCartDrawer = ({
                     fontWeight: "600",
                     color: BROWN
                   }}>/kg</span>
-                  <div style={{
-                    display: "flex",
-                    gap: "3px",
-                    alignItems: "center",
-                  }}>
-                    <button
-                      onClick={() => handleSaveEdit(item.id)}
-                      style={{
-                        background: "#4CAF50",
-                        border: "none",
-                        borderRadius: "12px",
-                        padding: "3px 6px",
-                        color: "#fff",
-                        fontSize: "15px",
-                        cursor: "pointer",
-                        minWidth: "16px",
-                        minHeight: "16px",
-                      }}
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      style={{
-                        background: "#f44336",
-                        border: "none",
-                        borderRadius: "12px",
-                        padding: "3px 6px",
-                        color: "#fff",
-                        fontSize: "15px",
-                        cursor: "pointer",
-                        minWidth: "16px",
-                        minHeight: "16px",
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
                 </div>
               ) : (
                 <span
@@ -4058,18 +4019,74 @@ const MobileCartDrawer = ({
                 <label style={{ fontSize: "13px", fontWeight: "600", color: "#333", marginBottom: "4px", display: "block" }}>Customer *</label>
                 <div style={{ position: "relative" }}>
                   <div
-                    onClick={() => { setCustomerDropdownOpen(prev => !prev); if (!customerDropdownOpen) setCustomerSearch(""); }}
                     style={{
-                      padding: "10px 12px", border: `1px solid ${customerDropdownOpen ? BROWN : "#ddd"}`,
+                      padding: "8px 12px", border: `1px solid ${customerDropdownOpen ? BROWN : "#ddd"}`,
                       borderRadius: "8px", fontSize: "14px", background: "#fff", cursor: "pointer",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       color: selectedCustomer ? BROWN_DARK : "#999",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
                     }}
                   >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                      {selectedCustomer ? selectedCustomer.name : "Select customer..."}
-                    </span>
-                    <span style={{ fontSize: "11px", marginLeft: "8px", color: BROWN_LIGHT, transform: customerDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
+                    <input
+                      type="text"
+                      placeholder={selectedCustomer ? selectedCustomer.name : "Select customer..."}
+                      value={customerDropdownOpen ? customerSearch : (selectedCustomer ? selectedCustomer.name : "")}
+                      onFocus={() => {
+                        setCustomerDropdownOpen(true);
+                      }}
+                      onChange={(e) => {
+                        setCustomerSearch(e.target.value);
+                        if (!customerDropdownOpen) setCustomerDropdownOpen(true);
+                      }}
+                      style={{
+                        border: "none",
+                        outline: "none",
+                        fontSize: "14px",
+                        color: (customerDropdownOpen && customerSearch) || selectedCustomer?.name ? BROWN_DARK : "#999",
+                        background: "transparent",
+                        width: "100%",
+                        padding: 0,
+                      }}
+                    />
+                    {customerSearch ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCustomerSearch("");
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#aaa",
+                          fontSize: "16px",
+                          lineHeight: 1,
+                          padding: "0 2px",
+                          marginLeft: "4px",
+                        }}
+                        type="button"
+                      >
+                        ✕
+                      </button>
+                    ) : (
+                      <span
+                        onClick={() => {
+                          setCustomerDropdownOpen((v) => !v);
+                          if (!customerDropdownOpen) setCustomerSearch("");
+                        }}
+                        style={{
+                          fontSize: "11px",
+                          marginLeft: "8px",
+                          color: BROWN_LIGHT,
+                          cursor: "pointer",
+                          transform: customerDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                          transition: "transform 0.2s",
+                        }}
+                      >
+                        ▼
+                      </span>
+                    )}
                   </div>
 
                   {customerDropdownOpen && (
@@ -4079,22 +4096,6 @@ const MobileCartDrawer = ({
                       boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 2000,
                       maxHeight: "320px", overflowY: "auto",
                     }}>
-                      <div style={{ padding: "12px", borderBottom: "1px solid #f0f0f0", position: "sticky", top: 0, background: "#fff" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", border: `1px solid ${ACCENT}`, borderRadius: "8px", padding: "4px 8px", background: "#fff" }}>
-                          <SearchIcon style={{ fontSize: "18px", color: "#999" }} />
-                          <input
-                            type="text" placeholder="Search by name, mobile, or city..."
-                            value={customerSearch}
-                            onChange={(e) => setCustomerSearch(e.target.value)}
-                            autoFocus
-                            style={{ flex: 1, border: "none", padding: "8px 4px", fontSize: "14px", outline: "none", background: "transparent" }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          {customerSearch && (
-                            <button onClick={(e) => { e.stopPropagation(); setCustomerSearch(""); }} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#aaa", fontSize: "16px", padding: "4px" }}>✕</button>
-                          )}
-                        </div>
-                      </div>
 
                       {customerSearch.trim() && (
                         <div style={{ padding: "6px 12px", fontSize: "11px", color: filteredCustomers.length > 0 ? "#4caf50" : "#e74c3c", background: "#fafafa", borderBottom: "1px solid #f0f0f0" }}>
@@ -4172,18 +4173,45 @@ const MobileCartDrawer = ({
                 <label style={{ fontSize: "13px", fontWeight: "600", color: "#333", marginBottom: "4px", display: "block" }}>Broker</label>
                 <div style={{ position: "relative" }}>
                   <div
-                    onClick={() => { setBrokerDropdownOpen(prev => !prev); }}
                     style={{
                       padding: "10px 12px", border: `1px solid ${brokerDropdownOpen ? BROWN : "#ddd"}`,
-                      borderRadius: "8px", fontSize: "14px", background: "#fff", cursor: "pointer",
+                      borderRadius: "8px", fontSize: "14px", background: "#fff",
                       display: "flex", justifyContent: "space-between", alignItems: "center",
-                      color: selectedBroker.name ? BROWN_DARK : "#999",
+                      boxSizing: "border-box"
                     }}
                   >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                      {selectedBroker.name || "Select broker..."}
-                    </span>
-                    <span style={{ fontSize: "11px", marginLeft: "8px", color: BROWN_LIGHT, transform: brokerDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
+                    <input
+                      type="text"
+                      placeholder={selectedBroker.name || "Select broker..."}
+                      value={brokerDropdownOpen ? brokerSearch : (selectedBroker.name || "")}
+                      onFocus={() => setBrokerDropdownOpen(true)}
+                      onChange={(e) => {
+                        setBrokerSearch(e.target.value);
+                        if (!brokerDropdownOpen) setBrokerDropdownOpen(true);
+                      }}
+                      style={{
+                        border: "none", outline: "none", fontSize: "14px",
+                        color: (brokerDropdownOpen && brokerSearch) || selectedBroker.name ? BROWN_DARK : "#999",
+                        background: "transparent", width: "100%", padding: 0
+                      }}
+                    />
+                    {brokerSearch ? (
+                      <button
+                        onClick={() => setBrokerSearch("")}
+                        style={{
+                          background: "transparent", border: "none", cursor: "pointer",
+                          color: "#aaa", fontSize: "16px", lineHeight: 1, padding: "0 2px", marginLeft: "4px"
+                        }}
+                      >×</button>
+                    ) : (
+                      <span
+                        onClick={() => setBrokerDropdownOpen(prev => !prev)}
+                        style={{
+                          fontSize: "11px", marginLeft: "8px", color: BROWN_LIGHT, cursor: "pointer",
+                          transform: brokerDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s"
+                        }}
+                      >▼</span>
+                    )}
                   </div>
 
                   {brokerDropdownOpen && (
@@ -4192,20 +4220,6 @@ const MobileCartDrawer = ({
                       background: "#fff", border: "1px solid #ddd", borderRadius: "8px",
                       boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 2000, maxHeight: "240px", overflowY: "auto",
                     }}>
-                      <div style={{ padding: "8px", borderBottom: "1px solid #f0f0f0", position: "sticky", top: 0, background: "#fff", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <SearchIcon style={{ fontSize: "16px", color: "#999", flexShrink: 0 }} />
-                        <input
-                          type="text" placeholder="Search broker..." value={brokerSearch}
-                          onChange={(e) => setBrokerSearch(e.target.value)}
-                          autoFocus
-                          style={{ flex: 1, border: `1px solid ${ACCENT}`, borderRadius: "6px", padding: "6px 8px", fontSize: "13px", outline: "none", boxSizing: "border-box" }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        {brokerSearch && (
-                          <button onClick={(e) => { e.stopPropagation(); setBrokerSearch(""); }} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#aaa", fontSize: "16px", lineHeight: 1, padding: "0 2px" }}>×</button>
-                        )}
-                      </div>
-
                       {brokerSearch.trim() && (
                         <div style={{ padding: "4px 12px", fontSize: "11px", color: "#999", background: "#fafafa", borderBottom: "1px solid #f0f0f0" }}>
                           {filteredBrokers.length} result{filteredBrokers.length !== 1 ? "s" : ""} for "{brokerSearch}"
@@ -4433,6 +4447,13 @@ export default function SMTraders() {
   const navigate = useNavigate();
 
   const [quantities, setQuantities] = useState({});
+  const [cartItemOrder, setCartItemOrder] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cartItemOrder')) || [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [search, setSearch] = useState("");
   const [allProducts, setAllProducts] = useState([]);
   const [stockGroups, setStockGroups] = useState([]);
@@ -4440,6 +4461,9 @@ export default function SMTraders() {
   const [displayProducts, setDisplayProducts] = useState([]);
   const [selectedStockGroup, setSelectedStockGroup] = useState("All");
   const [selectedPOSGroup, setSelectedPOSGroup] = useState(null);
+  const [selectedSubItem, setSelectedSubItem] = useState(null);
+  const [openDropdownGroup, setOpenDropdownGroup] = useState(null);
+  const dropdownRef = useRef(null);
   const [showPOSGroups, setShowPOSGroups] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -5011,7 +5035,7 @@ export default function SMTraders() {
         return pg > 0 ? bq / pg > 0 : false;
       });
       // setAllProducts(inStock); setDisplayProducts(inStock);
-      setAllProducts(active); setDisplayProducts(active);
+      setAllProducts(active); setDisplayProducts(getValidProducts(active));
       localStorage.setItem("products", JSON.stringify(inStock.map(formatProduct)));
       setInitialLoadDone(true);
     } catch (error) {
@@ -5022,18 +5046,38 @@ export default function SMTraders() {
   };
 
   const updateQty = (id, delta) => {
+    const sid = String(id);
+    let nextQty = 0;
     setQuantities((prev) => {
-      const next = Math.max(0, (prev[id] || 0) + delta);
-      if (next === 0) { const { [id]: _, ...rest } = prev; return rest; }
-      return { ...prev, [id]: next };
+      const current = prev[id] || 0;
+      nextQty = Math.max(0, current + delta);
+      if (nextQty === 0) { const { [id]: _, ...rest } = prev; return rest; }
+      return { ...prev, [id]: nextQty };
+    });
+    setCartItemOrder((prevOrder) => {
+      const exists = prevOrder.includes(sid);
+      let nextOrder = prevOrder;
+      if (nextQty > 0 && !exists) {
+        nextOrder = [...prevOrder, sid];
+      } else if (nextQty === 0 && exists) {
+        nextOrder = prevOrder.filter((item) => item !== sid);
+      }
+      localStorage.setItem("cartItemOrder", JSON.stringify(nextOrder));
+      return nextOrder;
     });
   };
 
   const handleRemoveItem = (id) => {
+    const sid = String(id);
     setQuantities(prev => {
       const { [id]: _, ...rest } = prev;
       localStorage.setItem("cartItems", JSON.stringify(rest));
       return rest;
+    });
+    setCartItemOrder(prevOrder => {
+      const nextOrder = prevOrder.filter(item => item !== sid);
+      localStorage.setItem("cartItemOrder", JSON.stringify(nextOrder));
+      return nextOrder;
     });
   };
 
@@ -5056,6 +5100,10 @@ export default function SMTraders() {
       (p.Product_Name && p.Product_Name.toLowerCase().includes(search.toLowerCase())) ||
       (p.Short_Name && p.Short_Name.toLowerCase().includes(search.toLowerCase()))
     );
+  }).sort((a, b) => {
+    const nameA = String(a.Product_Name || a.Stock_Item || "").trim();
+    const nameB = String(b.Product_Name || b.Stock_Item || "").trim();
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
   });
 
   const formattedProducts = allProducts.map(formatProduct);
@@ -5121,24 +5169,79 @@ export default function SMTraders() {
 
   const toStrTrim = (val) => String(val ?? "").trim();
 
-  const extractPOSGroups = (list) =>
-    [...new Set((list || []).map((p) => toStrTrim(p.POS_Group)))]
-      .filter((g) => g && g !== "NULL")
-      .map((g) => ({ posGroup: g, itemCount: list.filter((p) => toStrTrim(p.POS_Group) === g).length }))
-      .sort((a, b) => a.posGroup.localeCompare(b.posGroup));
+  const getValidProducts = (list) =>
+    (list || []).filter((p) => {
+      const sg = toStrTrim(p.Stock_Group);
+      return sg && sg !== "NOT FOUND" && sg !== "NULL";
+    });
+
+  const extractPOSGroups = (list) => {
+    if (!list || !list.length) return [];
+    const valid = getValidProducts(list);
+    const map = new Map();
+    valid.forEach((p) => {
+      const pg = toStrTrim(p.POS_Group);
+      if (pg && pg !== "NULL" && pg !== "NOT FOUND") {
+        if (!map.has(pg)) {
+          map.set(pg, { key: pg, posGroup: pg, displayName: pg, itemCount: 0, items: [] });
+        }
+        const g = map.get(pg);
+        g.itemCount += 1;
+        if (!g.items.some((item) => String(item.Product_Id) === String(p.Product_Id))) {
+          g.items.push(p);
+        }
+      }
+    });
+    map.forEach((g) => {
+      g.items.sort((a, b) => {
+        const nameA = String(a.Product_Name || a.Stock_Item || "").trim();
+        const nameB = String(b.Product_Name || b.Stock_Item || "").trim();
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.displayName.localeCompare(b.displayName));
+  };
+
+  const applyProductFilter = (stockGrp, posGrp, subItem) => {
+    const curStockGroup = toStrTrim(stockGrp);
+    const validProducts = getValidProducts(allProducts);
+    let filtered = validProducts;
+    if (curStockGroup !== "All" && curStockGroup !== "") {
+      filtered = filtered.filter((p) => toStrTrim(p.Stock_Group) === curStockGroup);
+    }
+    if (posGrp) {
+      filtered = filtered.filter((p) => toStrTrim(p.POS_Group) === toStrTrim(posGrp));
+    }
+    if (subItem) {
+      if (subItem.id) {
+        filtered = filtered.filter((p) => String(p.Product_Id) === String(subItem.id));
+      } else if (subItem.name) {
+        filtered = filtered.filter((p) => toStrTrim(p.Product_Name) === toStrTrim(subItem.name));
+      }
+    }
+    filtered.sort((a, b) => {
+      const nameA = String(a.Product_Name || a.Stock_Item || "").trim();
+      const nameB = String(b.Product_Name || b.Stock_Item || "").trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
+    });
+    setDisplayProducts(filtered);
+  };
 
   const handleStockGroupClick = (group) => {
     setSelectedPOSGroup(null);
+    setSelectedSubItem(null);
+    setOpenDropdownGroup(null);
     const targetGroupId = toStrTrim(group?.id);
     setSelectedStockGroup(targetGroupId);
     setViewMode('products');
+    const validProducts = getValidProducts(allProducts);
     if (targetGroupId === "All") {
-      setDisplayProducts(allProducts);
-      const pgl = extractPOSGroups(allProducts);
+      setDisplayProducts(validProducts);
+      const pgl = extractPOSGroups(validProducts);
       setPosGroups(pgl);
       setShowPOSGroups(true);
     } else {
-      const filtered = allProducts.filter((p) => toStrTrim(p.Stock_Group) === targetGroupId);
+      const filtered = validProducts.filter((p) => toStrTrim(p.Stock_Group) === targetGroupId);
       setDisplayProducts(filtered);
       const pgl = extractPOSGroups(filtered);
       setPosGroups(pgl);
@@ -5146,33 +5249,64 @@ export default function SMTraders() {
     }
   };
 
-  const handleBackToCategories = () => { setSelectedStockGroup("All"); setSearch(""); setViewMode('categories'); };
+  const handleBackToCategories = () => { 
+    setSelectedStockGroup("All"); 
+    setSelectedPOSGroup(null);
+    setSelectedSubItem(null);
+    setOpenDropdownGroup(null);
+    setSearch(""); 
+    setViewMode('categories'); 
+  };
 
-  const handlePOSGroupClick = (posGroup) => {
-    const targetPosGroup = toStrTrim(posGroup);
+  const handlePOSGroupClick = (groupItem) => {
+    const targetPosGroup = typeof groupItem === "string" ? groupItem : groupItem?.posGroup || groupItem?.key;
     setSelectedPOSGroup(targetPosGroup);
-    const curStockGroup = toStrTrim(selectedStockGroup);
-    if (curStockGroup === "All") {
-      setDisplayProducts(allProducts.filter((p) => toStrTrim(p.POS_Group) === targetPosGroup));
-    } else {
-      setDisplayProducts(allProducts.filter((p) =>
-        toStrTrim(p.Stock_Group) === curStockGroup &&
-        toStrTrim(p.POS_Group) === targetPosGroup
-      ));
-    }
+    setSelectedSubItem(null);
+    setOpenDropdownGroup(null);
+    applyProductFilter(selectedStockGroup, targetPosGroup, null);
+    if (isMobile) setIsDrawerOpen(false);
+  };
+
+  const handleSubItemClick = (group, productItem, e) => {
+    if (e) e.stopPropagation();
+    const targetPosGroup = typeof group === "string" ? group : group?.posGroup;
+    const subItem = {
+      id: productItem.Product_Id,
+      name: productItem.Product_Name || productItem.Stock_Item
+    };
+    setSelectedPOSGroup(targetPosGroup);
+    setSelectedSubItem(subItem);
+    setOpenDropdownGroup(null);
+    applyProductFilter(selectedStockGroup, targetPosGroup, subItem);
     if (isMobile) setIsDrawerOpen(false);
   };
 
   const handleAllPOSGroupsClick = () => {
     setSelectedPOSGroup(null);
-    const curStockGroup = toStrTrim(selectedStockGroup);
-    if (curStockGroup === "All") {
-      setDisplayProducts(allProducts);
-    } else {
-      setDisplayProducts(allProducts.filter((p) => toStrTrim(p.Stock_Group) === curStockGroup));
-    }
+    setSelectedSubItem(null);
+    setOpenDropdownGroup(null);
+    applyProductFilter(selectedStockGroup, null, null);
     if (isMobile) setIsDrawerOpen(false);
   };
+
+  const handleToggleDropdown = (groupPosName, e) => {
+    if (e) e.stopPropagation();
+    setOpenDropdownGroup((prev) => (prev === groupPosName ? null : groupPosName));
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdownGroup(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
 
   const MobileDrawer = () => (
     <>
@@ -5209,19 +5343,103 @@ export default function SMTraders() {
                   textAlign: "left", width: "100%",
                 }}
               >All POS Groups ({displayProducts.length})</button>
-              {posGroups.map((group, i) => (
-                <button
-                  key={i} onClick={() => handlePOSGroupClick(group.posGroup)}
-                  style={{
-                    padding: "12px 16px", borderRadius: "8px", border: "none",
-                    backgroundColor: selectedPOSGroup === group.posGroup ? BROWN_DARK : "#f5f0eb",
-                    color: selectedPOSGroup === group.posGroup ? "#fff" : BROWN_DARK,
-                    fontSize: "14px", cursor: "pointer",
-                    fontWeight: selectedPOSGroup === group.posGroup ? "bold" : "normal",
-                    textAlign: "left", width: "100%",
-                  }}
-                >{group.posGroup} ({group.itemCount})</button>
-              ))}
+              {posGroups.map((group, i) => {
+                const isGroupActive = selectedPOSGroup === group.posGroup;
+                const hasDropdown = (group.itemCount > 3 || (group.items && group.items.length > 3));
+                const isExpanded = openDropdownGroup === group.posGroup;
+
+                return (
+                  <div key={group.key || i} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div style={{ display: "flex", gap: "6px", width: "100%" }}>
+                      <button
+                        onClick={() => handlePOSGroupClick(group)}
+                        style={{
+                          flex: 1,
+                          padding: "12px 16px", borderRadius: "8px", border: "none",
+                          backgroundColor: isGroupActive ? BROWN_DARK : "#f5f0eb",
+                          color: isGroupActive ? "#fff" : BROWN_DARK,
+                          fontSize: "14px", cursor: "pointer",
+                          fontWeight: isGroupActive ? "bold" : "normal",
+                          textAlign: "left",
+                          display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}
+                      >
+                        <span>{group.posGroup}</span>
+                        <span style={{
+                          fontSize: "12px",
+                          padding: "2px 8px",
+                          borderRadius: "10px",
+                          background: isGroupActive ? "rgba(255,255,255,0.25)" : "rgba(74,44,26,0.1)",
+                          fontWeight: "bold"
+                        }}>
+                          {group.itemCount}
+                        </span>
+                      </button>
+                      {hasDropdown && (
+                        <button
+                          onClick={(e) => handleToggleDropdown(group.posGroup, e)}
+                          style={{
+                            padding: "0 14px", borderRadius: "8px", border: "none",
+                            backgroundColor: isGroupActive ? BROWN_LIGHT : "#ebdccf",
+                            color: isGroupActive ? "#fff" : BROWN_DARK,
+                            cursor: "pointer",
+                            fontSize: "12px"
+                          }}
+                        >
+                          {isExpanded ? "▲" : "▼"}
+                        </button>
+                      )}
+                    </div>
+                    {hasDropdown && isExpanded && (
+                      <div style={{
+                        padding: "6px 10px 8px 16px",
+                        backgroundColor: "#fcf8f4",
+                        borderRadius: "8px",
+                        borderLeft: `3px solid ${BROWN_DARK}`,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px"
+                      }}>
+                        <div
+                          onClick={() => handlePOSGroupClick(group)}
+                          style={{
+                            padding: "6px 8px",
+                            fontSize: "12px",
+                            fontWeight: isGroupActive && !selectedSubItem ? "bold" : "600",
+                            color: BROWN_DARK,
+                            cursor: "pointer"
+                          }}
+                        >
+                          Show all ({group.itemCount})
+                        </div>
+                        {(group.items || []).map((productItem) => {
+                          const isItemSelected = isGroupActive && selectedSubItem && String(selectedSubItem.id) === String(productItem.Product_Id);
+                          return (
+                            <div
+                              key={productItem.Product_Id}
+                              onClick={(e) => handleSubItemClick(group, productItem, e)}
+                              style={{
+                                padding: "6px 8px",
+                                fontSize: "12px",
+                                cursor: "pointer",
+                                borderRadius: "4px",
+                                backgroundColor: isItemSelected ? "#ecd9c9" : "transparent",
+                                fontWeight: isItemSelected ? "bold" : "normal",
+                                color: "#333",
+                                display: "flex",
+                                justifyContent: "space-between"
+                              }}
+                            >
+                              <span>{productItem.Product_Name || productItem.Stock_Item}</span>
+                              {isItemSelected && <span>✓</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "#999", fontSize: "14px" }}>
@@ -5288,12 +5506,14 @@ export default function SMTraders() {
       try {
         const saved = localStorage.getItem("cartItems");
         if (saved) setQuantities(JSON.parse(saved));
+        const savedOrder = localStorage.getItem("cartItemOrder");
+        if (savedOrder) setCartItemOrder(JSON.parse(savedOrder));
       } catch (e) { console.error(e); }
     };
     load();
     const onVisible = () => { if (document.visibilityState === "visible") load(); };
     const onFocus = () => load();
-    const onStorage = (e) => { if (e.key === "cartItems") load(); };
+    const onStorage = (e) => { if (e.key === "cartItems" || e.key === "cartItemOrder") load(); };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
     window.addEventListener("storage", onStorage);
@@ -5309,13 +5529,23 @@ export default function SMTraders() {
 
   useEffect(() => {
     if (allProducts.length > 0) {
-      const groups = [...new Set(allProducts.map((p) => String(p.Stock_Group ?? "").trim()))]
-        .filter((g) => g && g !== "NOT FOUND" && g !== "NULL")
+      const validProducts = getValidProducts(allProducts);
+      const groups = [...new Set(validProducts.map((p) => String(p.Stock_Group ?? "").trim()))]
         .sort()
         .map((g) => ({ id: g, name: g }));
       setStockGroups([{ id: "All", name: "All" }, ...groups]);
-      const pgl = extractPOSGroups(allProducts);
-      setPosGroups(pgl);
+
+      const currentGroup = toStrTrim(selectedStockGroup);
+      if (currentGroup === "All") {
+        setDisplayProducts(validProducts);
+        const pgl = extractPOSGroups(validProducts);
+        setPosGroups(pgl);
+      } else {
+        const filtered = validProducts.filter((p) => toStrTrim(p.Stock_Group) === currentGroup);
+        setDisplayProducts(filtered);
+        const pgl = extractPOSGroups(filtered);
+        setPosGroups(pgl);
+      }
       setShowPOSGroups(true);
     }
   }, [allProducts]);
@@ -5417,38 +5647,303 @@ export default function SMTraders() {
               )}
 
               {showPOSGroups && (
-                <div className="pos-groups-container" style={{ background: "#f9f4ef", padding: "12px 24px", borderBottom: "1px solid #e8ddd4" }}>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", overflowX: "auto" }}>
+                <div
+                  ref={dropdownRef}
+                  className="pos-groups-container"
+                  style={{
+                    background: "#f9f4ef",
+                    padding: "12px 24px",
+                    borderBottom: "1px solid #e8ddd4",
+                    position: "relative",
+                    zIndex: 100,
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                     <button
                       onClick={handleAllPOSGroupsClick}
                       style={{
-                        padding: "8px 18px", borderRadius: "20px",
+                        padding: "8px 18px",
+                        borderRadius: "20px",
                         border: `2px solid ${selectedPOSGroup === null ? BROWN_DARK : ACCENT}`,
                         background: selectedPOSGroup === null ? BROWN_DARK : "#fff",
                         color: selectedPOSGroup === null ? "#fff" : BROWN_DARK,
-                        fontSize: 13, cursor: "pointer",
+                        fontSize: 13,
+                        cursor: "pointer",
                         fontWeight: selectedPOSGroup === null ? "bold" : "600",
                         boxShadow: selectedPOSGroup === null ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
-                        transition: "all 0.2s ease"
+                        transition: "all 0.2s ease",
                       }}
                     >
-                      All ({selectedStockGroup === "All" ? allProducts.length : (allProducts.filter((p) => toStrTrim(p.Stock_Group) === toStrTrim(selectedStockGroup)).length)})
+                      All ({selectedStockGroup === "All" ? getValidProducts(allProducts).length : (getValidProducts(allProducts).filter((p) => toStrTrim(p.Stock_Group) === toStrTrim(selectedStockGroup)).length)})
                     </button>
-                    {posGroups.length > 0 ? posGroups.map((group, i) => (
-                      <button
-                        key={i} onClick={() => handlePOSGroupClick(group.posGroup)}
-                        style={{
-                          padding: "8px 18px", borderRadius: "20px",
-                          border: `2px solid ${selectedPOSGroup === group.posGroup ? BROWN_DARK : ACCENT}`,
-                          background: selectedPOSGroup === group.posGroup ? BROWN_DARK : "#fff",
-                          color: selectedPOSGroup === group.posGroup ? "#fff" : BROWN_DARK,
-                          fontSize: 13, cursor: "pointer",
-                          fontWeight: selectedPOSGroup === group.posGroup ? "bold" : "500",
-                          boxShadow: selectedPOSGroup === group.posGroup ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
-                          transition: "all 0.2s ease"
-                        }}
-                      >{group.posGroup} ({group.itemCount})</button>
-                    )) : <div style={{ color: "#777", fontStyle: "italic", fontSize: 13, padding: "4px" }}>No sub-groups available</div>}
+                    {posGroups.length > 0 ? (
+                      posGroups.map((group, i) => {
+                        const isGroupActive = selectedPOSGroup === group.posGroup;
+                        const hasDropdown = group.itemCount > 3 || (group.items && group.items.length > 3);
+                        const isDropdownOpen = openDropdownGroup === group.posGroup;
+
+                        return (
+                          <div key={group.key || i} style={{ position: "relative", display: "inline-block" }}>
+                            <div
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                borderRadius: "20px",
+                                border: `2px solid ${isGroupActive ? BROWN_DARK : ACCENT}`,
+                                background: isGroupActive ? BROWN_DARK : "#fff",
+                                color: isGroupActive ? "#fff" : BROWN_DARK,
+                                boxShadow: isGroupActive ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                                transition: "all 0.2s ease",
+                              }}
+                            >
+                              <button
+                                onClick={() => handlePOSGroupClick(group)}
+                                style={{
+                                  border: "none",
+                                  background: "transparent",
+                                  color: "inherit",
+                                  padding: hasDropdown ? "8px 6px 8px 16px" : "8px 18px",
+                                  fontSize: 13,
+                                  cursor: "pointer",
+                                  fontWeight: isGroupActive ? "bold" : "500",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                }}
+                              >
+                                <span>{group.posGroup}</span>
+                                <span
+                                  style={{
+                                    fontSize: "11px",
+                                    padding: "2px 6px",
+                                    borderRadius: "10px",
+                                    background: isGroupActive ? "rgba(255,255,255,0.2)" : "rgba(74,44,26,0.08)",
+                                    color: isGroupActive ? "#fff" : BROWN_DARK,
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  {group.itemCount}
+                                </span>
+                                {isGroupActive && selectedSubItem && (
+                                  <span
+                                    style={{
+                                      fontSize: "11px",
+                                      maxWidth: "120px",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                      background: ACCENT,
+                                      color: BROWN_DARK,
+                                      padding: "1px 6px",
+                                      borderRadius: "8px",
+                                      marginLeft: "2px",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
+                                    : {selectedSubItem.name}
+                                  </span>
+                                )}
+                              </button>
+
+                              {hasDropdown && (
+                                <button
+                                  onClick={(e) => handleToggleDropdown(group.posGroup, e)}
+                                  title={`Filter items in ${group.posGroup}`}
+                                  style={{
+                                    border: "none",
+                                    borderLeft: `1px solid ${isGroupActive ? "rgba(255,255,255,0.3)" : "rgba(200,169,110,0.4)"}`,
+                                    background: isDropdownOpen
+                                      ? isGroupActive
+                                        ? "rgba(255,255,255,0.15)"
+                                        : "rgba(74,44,26,0.08)"
+                                      : "transparent",
+                                    color: "inherit",
+                                    padding: "8px 10px 8px 6px",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderTopRightRadius: "20px",
+                                    borderBottomRightRadius: "20px",
+                                    transition: "background 0.2s ease",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      transform: isDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                      transition: "transform 0.2s ease",
+                                      display: "inline-block",
+                                    }}
+                                  >
+                                    ▼
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Dropdown Menu */}
+                            {hasDropdown && isDropdownOpen && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: "calc(100% + 6px)",
+                                  left: 0,
+                                  minWidth: "260px",
+                                  maxWidth: "340px",
+                                  maxHeight: "300px",
+                                  overflowY: "auto",
+                                  backgroundColor: "#fff",
+                                  borderRadius: "12px",
+                                  boxShadow: "0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+                                  border: "1px solid #e8ddd4",
+                                  zIndex: 1050,
+                                  padding: "6px 0",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    padding: "8px 14px",
+                                    fontSize: "11px",
+                                    fontWeight: "700",
+                                    color: "#8c7060",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.5px",
+                                    borderBottom: "1px solid #f0e6dd",
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <span>{group.posGroup} Items</span>
+                                  <span
+                                    style={{
+                                      background: "#f5ece4",
+                                      color: BROWN_DARK,
+                                      padding: "2px 6px",
+                                      borderRadius: "10px",
+                                    }}
+                                  >
+                                    {group.itemCount} items
+                                  </span>
+                                </div>
+
+                                {/* Option to select all in this group */}
+                                <div
+                                  onClick={() => handlePOSGroupClick(group)}
+                                  style={{
+                                    padding: "9px 14px",
+                                    fontSize: "13px",
+                                    fontWeight: isGroupActive && !selectedSubItem ? "bold" : "600",
+                                    color: isGroupActive && !selectedSubItem ? BROWN_DARK : "#444",
+                                    backgroundColor: isGroupActive && !selectedSubItem ? "#fcf6f0" : "transparent",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    borderBottom: "1px dashed #f0e6dd",
+                                    transition: "background 0.15s ease",
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fcf6f0")}
+                                  onMouseLeave={(e) => {
+                                    if (!(isGroupActive && !selectedSubItem)) e.currentTarget.style.backgroundColor = "transparent";
+                                  }}
+                                >
+                                  <span>Show all {group.posGroup}</span>
+                                  {isGroupActive && !selectedSubItem && (
+                                    <span style={{ color: BROWN_DARK, fontWeight: "bold" }}>✓</span>
+                                  )}
+                                </div>
+
+                                {/* List of individual items in group */}
+                                {(group.items || []).map((productItem) => {
+                                  const isItemSelected =
+                                    isGroupActive &&
+                                    selectedSubItem &&
+                                    String(selectedSubItem.id) === String(productItem.Product_Id);
+                                  const itemName = productItem.Product_Name || productItem.Stock_Item || "Unknown";
+                                  const packInfo = productItem.PackGet ? `${productItem.PackGet}kg` : "";
+                                  const shortName = productItem.Short_Name;
+                                  const rate =
+                                    parseFloat(productItem.Price) || parseFloat(productItem.Product_Rate) || 0;
+
+                                  return (
+                                    <div
+                                      key={productItem.Product_Id}
+                                      onClick={(e) => handleSubItemClick(group, productItem, e)}
+                                      style={{
+                                        padding: "8px 14px",
+                                        cursor: "pointer",
+                                        backgroundColor: isItemSelected ? "#fbf3eb" : "transparent",
+                                        borderLeft: isItemSelected ? `3px solid ${BROWN_DARK}` : "3px solid transparent",
+                                        transition: "background 0.15s ease",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "2px",
+                                      }}
+                                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fcf6f0")}
+                                      onMouseLeave={(e) => {
+                                        if (!isItemSelected) e.currentTarget.style.backgroundColor = "transparent";
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "space-between",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            fontSize: "13px",
+                                            fontWeight: isItemSelected ? "bold" : "500",
+                                            color: isItemSelected ? BROWN_DARK : "#333",
+                                            lineHeight: 1.3,
+                                          }}
+                                        >
+                                          {itemName}
+                                        </span>
+                                        {isItemSelected && (
+                                          <span style={{ color: BROWN_DARK, fontWeight: "bold", fontSize: "12px" }}>
+                                            ✓
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: "6px",
+                                          alignItems: "center",
+                                          fontSize: "11px",
+                                          color: "#888",
+                                        }}
+                                      >
+                                        {shortName && <span>{shortName}</span>}
+                                        {shortName && packInfo && <span>•</span>}
+                                        {packInfo && <span>{packInfo}</span>}
+                                        {rate > 0 && (
+                                          <>
+                                            <span>•</span>
+                                            <span style={{ color: BROWN_LIGHT, fontWeight: "600" }}>
+                                              ₹{rate.toFixed(2)}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ color: "#777", fontStyle: "italic", fontSize: 13, padding: "4px" }}>
+                        No sub-groups available
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -5484,6 +5979,7 @@ export default function SMTraders() {
           <MobileCartDrawer
             isOpen={isMobileCartDrawerOpen} onClose={() => setIsMobileCartDrawerOpen(false)}
             cartItems={quantities} products={formattedProducts} allProducts={allProducts}
+            cartItemOrder={cartItemOrder}
             onUpdateQty={updateQty} onRemoveItem={handleRemoveItem}
             isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginPopupOpen(true)}
             selectedCustomer={selectedCustomer} userType={userType}
@@ -5721,11 +6217,12 @@ function SaleOrders({ onBack }) {
       const originalBrokerName = getBrokerName(order);
       const originalTransporterName = getTransporterName(order);
 
-      const printCartItems = productsList.map(p => ({
+      const printCartItems = productsList.map((p, idx) => ({
         Print_Name: p.Product_Short_Name || p.Product_Name || "",
         shortName: p.Short_Name || p.Product_Short_Name || p.Product_Name || "",
         kgs: parseFloat(p.Bill_Qty) || 0,
         price: parseFloat(p.Item_Rate) || parseFloat(p.Price) || 0,
+        S_No: p.S_No ?? p.Sno ?? idx,
       }));
 
       let customerData = {
