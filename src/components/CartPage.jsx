@@ -22,6 +22,7 @@ import { encryptPasswordFun } from "./functions";
 import { ISOStrings, Multiplication, isEqualNumber } from "../components/functions";
 import TransactionDetails from './TransactionDetails';
 import PendingBillDetails from './PendingBillDetails';
+import { orderQueue } from './orderQueue';
 
 /* ------------------------------------------------------------------ */
 /* Theme                                                               */
@@ -720,17 +721,27 @@ const isPartialMatch = (text, term) => {
 };
 
 const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilledCustomer }) => {
+  const INITIAL_LOAD = 50;
+  const LOAD_MORE_COUNT = 50;
+
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(prefilledCustomer?.name || "");
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
-  const [isSearchTriggered, setIsSearchTriggered] = useState(false);
+  const [displayCount, setDisplayCount] = useState(INITIAL_LOAD);
+  const [hasSearched, setHasSearched] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(
     prefilledCustomer ? { Customer_Id: prefilledCustomer.id, Short_Name: prefilledCustomer.name } : null
   );
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
+  const listContainerRef = useRef(null);
+
+  const removeSplChar = (str) => {
+    if (!str) return "";
+    return String(str).replace(/[^\w\s]/gi, "").toLowerCase();
+  };
 
   useEffect(() => {
     if (prefilledCustomer?.id) {
@@ -743,8 +754,6 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilled
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsOpen(false);
-        setIsSearchTriggered(false);
-        setFilteredCustomers([]);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -760,18 +769,33 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilled
           address: `pos/retailerMasterOptRetailerId?limit=10000000&page=1`,
         });
         if (!cancelled && response?.success && Array.isArray(response.data)) {
-          setCustomers(
-            response.data.map((c) => ({
-              ...c,
-              Short_Name: c.Short_Name ? c.Short_Name.replace(/\u0004/g, "").trim() : "",
-              Billl_Name: c.Billl_Name ? c.Billl_Name.trim() : "",
-              Mobile_No: c.Mobile_No ? c.Mobile_No.trim() : "",
-              Address: c.Address ? c.Address.trim() : "",
-              City: c.City ? c.City.trim() : "",
-              Broker_Name: c.Broker_Name?.trim() || c.Broker?.trim() || "",
-              Transporter_Name: c.Transporter_Name?.trim() || c.Transporter?.trim() || "",
-            }))
-          );
+          const mapped = response.data.map((c) => ({
+            ...c,
+            id: c.Customer_Id || c.Ret_Id,
+            Customer_Id: c.Customer_Id || c.Ret_Id,
+            name: c.Short_Name ? c.Short_Name.replace(/\u0004/g, "").trim() : (c.Customer_Name || c.Ledger_Name || "").trim(),
+            Short_Name: c.Short_Name ? c.Short_Name.replace(/\u0004/g, "").trim() : (c.Customer_Name || c.Ledger_Name || "").trim(),
+            Billl_Name: c.Billl_Name ? c.Billl_Name.trim() : "",
+            billName: c.Billl_Name ? c.Billl_Name.trim() : "",
+            Mobile_No: c.Mobile_No ? String(c.Mobile_No).trim() : "",
+            A1: c.A1 ? String(c.A1).trim() : "",
+            Party_Mobile_1: c.Party_Mobile_1 ? String(c.Party_Mobile_1).trim() : "",
+            Party_Mobile_2: c.Party_Mobile_2 ? String(c.Party_Mobile_2).trim() : "",
+            Land_Line: c.Land_Line ? String(c.Land_Line).trim() : "",
+            mobile: (c.Mobile_No || c.A1 || c.Party_Mobile_1 || c.Party_Mobile_2 || "").trim(),
+            Address: c.Address ? c.Address.trim() : "",
+            address: c.Address ? c.Address.trim() : "",
+            City: c.City ? c.City.trim() : "",
+            city: c.City ? c.City.trim() : "",
+            Broker_Name: c.Broker_Name?.trim() || c.Broker?.trim() || "",
+            brokerName: c.Broker_Name?.trim() || c.Broker?.trim() || "",
+            Transporter_Name: c.Transporter_Name?.trim() || c.Transporter?.trim() || "",
+            transporterName: c.Transporter_Name?.trim() || c.Transporter?.trim() || "",
+            partyMailingName: c.Party_Mailing_Name || c.Billl_Name || c.Short_Name || "",
+            partyMailingAddress: c.Party_Mailing_Address || c.Address || "",
+          }));
+          setCustomers(mapped);
+          setFilteredCustomers(mapped.slice(0, INITIAL_LOAD));
         }
       } catch (error) {
         if (!cancelled) toast.error("Couldn't load customers");
@@ -785,61 +809,100 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilled
     };
   }, []);
 
-  const performSearch = () => {
-    const searchText = searchTerm.trim();
-    if (!searchText) {
-      setFilteredCustomers([]);
-      setIsSearchTriggered(false);
-      setIsOpen(false);
-      return;
+  const startsWithSearch = (c, search) => {
+    if (!search) return false;
+    const s = search.toLowerCase().trim();
+    const normS = removeSplChar(search);
+    const name = (c.Short_Name || c.name || "").toLowerCase().trim();
+    const normName = removeSplChar(c.Short_Name || c.name || "");
+    const billName = (c.Billl_Name || c.billName || "").toLowerCase().trim();
+    const normBill = removeSplChar(c.Billl_Name || c.billName || "");
+    const partyName = (c.partyMailingName || "").toLowerCase().trim();
+    const normParty = removeSplChar(c.partyMailingName || "");
+
+    return (
+      name.startsWith(s) ||
+      normName.startsWith(normS) ||
+      billName.startsWith(s) ||
+      normBill.startsWith(normS) ||
+      partyName.startsWith(s) ||
+      normParty.startsWith(normS)
+    );
+  };
+
+  const filterAndSortCustomers = (searchQuery) => {
+    if (!searchQuery || !searchQuery.trim()) {
+      return customers;
+    }
+    const normalizedSearch = removeSplChar(searchQuery);
+    if (!normalizedSearch) {
+      return customers;
     }
 
-    const searchMobile = searchText.replace(/\D/g, "");
+    const matched = customers.filter((c) => {
+      const allFields = [];
+      if (c.Short_Name) allFields.push(String(c.Short_Name));
+      if (c.Billl_Name) allFields.push(String(c.Billl_Name));
+      if (c.Mobile_No) allFields.push(String(c.Mobile_No));
+      if (c.A1) allFields.push(String(c.A1));
+      if (c.Party_Mobile_1) allFields.push(String(c.Party_Mobile_1));
+      if (c.Party_Mobile_2) allFields.push(String(c.Party_Mobile_2));
+      if (c.mobile) allFields.push(String(c.mobile));
+      if (c.City) allFields.push(String(c.City));
+      if (c.Address) allFields.push(String(c.Address));
+      if (c.Customer_Id) allFields.push(String(c.Customer_Id));
+      if (c.Broker_Name) allFields.push(String(c.Broker_Name));
+      if (c.Transporter_Name) allFields.push(String(c.Transporter_Name));
 
-    const results = customers.filter((c) => {
-      const mobileNorm = (c.Mobile_No || "").replace(/\D/g, "");
-      return (
-        isPartialMatch(c.Short_Name, searchText) ||
-        isPartialMatch(c.Billl_Name, searchText) ||
-        isPartialMatch(c.City, searchText) ||
-        isPartialMatch(c.Address, searchText) ||
-        (searchMobile.length >= 3 && mobileNorm.includes(searchMobile))
-      );
+      return allFields.some((field) => {
+        const normalizedField = removeSplChar(field);
+        return normalizedField.includes(normalizedSearch);
+      });
     });
-
-    const startsWithName = (c, text) => {
-      const s = text.toLowerCase().trim();
-      const name = (c.Short_Name || "").toLowerCase().trim();
-      const bill = (c.Billl_Name || "").toLowerCase().trim();
-      return name.startsWith(s) || bill.startsWith(s);
-    };
 
     const prefixMatches = [];
     const otherMatches = [];
-    results.forEach((c) => {
-      if (startsWithName(c, searchText)) {
+    matched.forEach((c) => {
+      if (startsWithSearch(c, searchQuery)) {
         prefixMatches.push(c);
       } else {
         otherMatches.push(c);
       }
     });
 
-    const getCustName = (c) => String(c.Short_Name || c.Billl_Name || c.Customer_Name || "").trim();
-    prefixMatches.sort((a, b) => getCustName(a).localeCompare(getCustName(b), undefined, { sensitivity: "base" }));
-    otherMatches.sort((a, b) => getCustName(a).localeCompare(getCustName(b), undefined, { sensitivity: "base" }));
+    return [...prefixMatches, ...otherMatches];
+  };
 
-    setFilteredCustomers([...prefixMatches, ...otherMatches]);
-    setIsSearchTriggered(true);
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchTerm(val);
     setIsOpen(true);
+    if (!val.trim()) {
+      setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
+      setHasSearched(false);
+      setDisplayCount(INITIAL_LOAD);
+      return;
+    }
+    const results = filterAndSortCustomers(val);
+    setFilteredCustomers(results.slice(0, INITIAL_LOAD));
+    setHasSearched(true);
+    setDisplayCount(INITIAL_LOAD);
+  };
+
+  const handleLoadMore = () => {
+    const totalResults = hasSearched ? filterAndSortCustomers(searchTerm) : customers;
+    const nextCount = Math.min(displayCount + LOAD_MORE_COUNT, totalResults.length);
+    setDisplayCount(nextCount);
+    setFilteredCustomers(totalResults.slice(0, nextCount));
   };
 
   const handleSelectCustomer = (c) => {
     setSelectedCustomer(c);
     setSearchTerm(c.Short_Name || "");
     setIsOpen(false);
-    setIsSearchTriggered(false);
-    setFilteredCustomers([]);
+    setHasSearched(false);
 
+    const initialMobile = c.Mobile_No || c.A1 || c.Party_Mobile_1 || c.Party_Mobile_2 || c.mobile || "";
     onChange(c.Customer_Id);
     if (onCustomerSelect) {
       onCustomerSelect({
@@ -847,7 +910,13 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilled
         transporter: c.Transporter_Name || "",
         customerId: c.Customer_Id,
         customerName: c.Short_Name || "",
-        mobileNo: c.Mobile_No || "",
+        mobileNo: c.Mobile_No || initialMobile,
+        Mobile_No: c.Mobile_No || "",
+        A1: c.A1 || "",
+        Party_Mobile_1: c.Party_Mobile_1 || "",
+        Party_Mobile_2: c.Party_Mobile_2 || "",
+        Land_Line: c.Land_Line || "",
+        mobile: initialMobile,
         address: c.Address || c.Party_Mailing_Address || "",
         city: c.City || "",
         Broker_Id: c.Broker_Id || "",
@@ -859,165 +928,262 @@ const SearchableCustomerSelect = ({ value, onChange, onCustomerSelect, prefilled
     }
   };
 
+  const totalResultsCount = hasSearched ? filterAndSortCustomers(searchTerm).length : customers.length;
+
   return (
     <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8px 12px",
+          border: `1px solid ${isOpen ? BROWN : "#ddd"}`,
+          borderRadius: "8px",
+          background: "#fff",
+          boxSizing: "border-box",
+          transition: "border-color 0.2s",
+        }}
+      >
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search by name, mobile or city"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setIsSearchTriggered(false);
-            setFilteredCustomers([]);
+          placeholder={selectedCustomer ? selectedCustomer.Short_Name : "Select/search customer..."}
+          value={isOpen ? searchTerm : (selectedCustomer ? selectedCustomer.Short_Name : searchTerm)}
+          onChange={handleSearchChange}
+          onFocus={() => {
             setIsOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              performSearch();
+            if (!searchTerm.trim()) {
+              setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
+              setHasSearched(false);
+              setDisplayCount(INITIAL_LOAD);
             }
           }}
-          onFocus={() => setIsOpen(true)}
           style={{
             flex: 1,
-            padding: "12px",
-            border: `1px solid ${isOpen ? BROWN : "#ddd"}`,
-            borderRadius: "8px",
-            fontSize: "14px",
+            border: "none",
             outline: "none",
-            boxSizing: "border-box",
-            transition: "border-color 0.2s",
+            fontSize: "14px",
+            color: selectedCustomer || searchTerm ? BROWN_DARK : "#999",
+            background: "transparent",
+            padding: 0,
           }}
         />
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            performSearch();
-          }}
-          style={{
-            background: BROWN,
-            border: "none",
-            borderRadius: "8px",
-            padding: "12px 16px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = BROWN_DARK)}
-          onMouseLeave={(e) => (e.currentTarget.style.background = BROWN)}
-        >
-          <SearchIcon style={{ fontSize: "20px", color: "#fff" }} />
-        </button>
+
+        {searchTerm ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSearchTerm("");
+              setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
+              setHasSearched(false);
+              setDisplayCount(INITIAL_LOAD);
+              if (inputRef.current) inputRef.current.focus();
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "#aaa",
+              fontSize: "16px",
+              lineHeight: 1,
+              padding: "0 4px",
+              marginLeft: "4px",
+            }}
+            type="button"
+          >
+            ✕
+          </button>
+        ) : (
+          <span
+            onClick={() => {
+              setIsOpen(!isOpen);
+              if (!isOpen && !searchTerm.trim()) {
+                setFilteredCustomers(customers.slice(0, INITIAL_LOAD));
+                setHasSearched(false);
+                setDisplayCount(INITIAL_LOAD);
+              }
+            }}
+            style={{
+              fontSize: "10px",
+              color: BROWN_LIGHT,
+              cursor: "pointer",
+              marginLeft: "4px",
+              transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s",
+            }}
+          >
+            ▼
+          </span>
+        )}
       </div>
 
-      {isOpen && isSearchTriggered && (
+      {isOpen && (
         <div
           style={{
             position: "absolute",
-            top: "100%",
+            top: "calc(100% + 4px)",
             left: 0,
             right: 0,
-            maxHeight: "300px",
-            overflowY: "auto",
+            maxHeight: "360px",
             background: "#fff",
             border: "1px solid #ddd",
             borderRadius: "8px",
-            marginTop: "4px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            zIndex: 1000,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+            zIndex: 2000,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
           }}
         >
-          {searchTerm.trim() && (
+          {hasSearched && searchTerm.trim() && (
             <div
               style={{
-                padding: "8px 12px",
-                fontSize: "12px",
+                padding: "8px 16px",
+                fontSize: "11px",
                 color: filteredCustomers.length > 0 ? "#4caf50" : "#e74c3c",
-                background: "#fafafa",
                 borderBottom: "1px solid #f0f0f0",
+                background: "#fafafa",
+                width: "100%",
+                boxSizing: "border-box",
+                fontWeight: 600,
               }}
             >
-              {filteredCustomers.length} result{filteredCustomers.length !== 1 ? "s" : ""} for "{searchTerm}"
+              {totalResultsCount} result{totalResultsCount !== 1 ? "s" : ""} found
             </div>
           )}
 
-          {loading ? (
-            <div style={{ padding: "12px", color: "#666", textAlign: "center" }}>
-              <CircularProgress size={20} style={{ color: BROWN }} />
-              <div style={{ marginTop: "8px" }}>Loading customers…</div>
-            </div>
-          ) : filteredCustomers.length > 0 ? (
-            filteredCustomers.map((c) => (
-              <div
-                key={c.Customer_Id}
-                onClick={() => handleSelectCustomer(c)}
-                style={{
-                  padding: "12px 16px",
-                  cursor: "pointer",
-                  borderBottom: "1px solid #eee",
-                  backgroundColor: selectedCustomer?.Customer_Id === c.Customer_Id ? "#f0e9e2" : "transparent",
-                }}
-              >
-                <div style={{ fontWeight: "600", color: BROWN, fontSize: "14px" }}>
-                  {selectedCustomer?.Customer_Id === c.Customer_Id && "✓ "}
-                  {c.Short_Name || "Unnamed customer"}
-                </div>
-                {c.Billl_Name && c.Billl_Name !== c.Short_Name && (
-                  <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>{c.Billl_Name}</div>
+          <div
+            ref={listContainerRef}
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            {loading ? (
+              <div style={{ padding: "30px", textAlign: "center", color: "#999" }}>
+                <CircularProgress size={22} style={{ color: BROWN }} />
+                <div style={{ marginTop: "10px", fontSize: "13px" }}>Loading customers...</div>
+              </div>
+            ) : filteredCustomers.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#999", fontSize: "13px" }}>
+                {hasSearched && searchTerm.trim() ? "No matching customers found" : "No customers found"}
+              </div>
+            ) : (
+              <>
+                {filteredCustomers.map((c, idx) => {
+                  const isSelected = selectedCustomer?.Customer_Id === c.Customer_Id;
+                  const phoneStr = c.Mobile_No || c.A1 || c.Party_Mobile_1 || c.Party_Mobile_2 || c.mobile;
+                  return (
+                    <div
+                      key={c.Customer_Id || c.id || idx}
+                      onClick={() => handleSelectCustomer(c)}
+                      style={{
+                        padding: "10px 14px",
+                        borderBottom: "1px solid #f5f0eb",
+                        cursor: "pointer",
+                        background: isSelected ? "#f0e9e2" : "transparent",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = "#faf6f2";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = isSelected ? "#f0e9e2" : "transparent";
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: isSelected ? "700" : "600",
+                          color: BROWN_DARK,
+                          fontSize: "14px",
+                          marginBottom: "3px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        {isSelected && <span style={{ color: "#4caf50", fontSize: "14px" }}>✓</span>}
+                        <span style={{ wordBreak: "break-word" }}>{c.Short_Name || c.Billl_Name}</span>
+                      </div>
+                      {c.Billl_Name && c.Billl_Name !== c.Short_Name && (
+                        <div style={{ fontSize: "12px", color: "#666", marginBottom: "3px" }}>
+                          {c.Billl_Name}
+                        </div>
+                      )}
+                      {phoneStr && (
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#666",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            marginTop: "2px",
+                          }}
+                        >
+                          <span>📱</span> {phoneStr}
+                        </div>
+                      )}
+                      {c.City && (
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            color: "#888",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            marginTop: "2px",
+                          }}
+                        >
+                          <span>📍</span> {c.City}
+                        </div>
+                      )}
+                      {(c.Broker_Name || c.Transporter_Name) && (
+                        <div style={{ fontSize: "11px", color: "#aaa", marginTop: "2px", display: "flex", gap: "8px" }}>
+                          {c.Broker_Name && <span>🏢 {c.Broker_Name}</span>}
+                          {c.Transporter_Name && <span>🚚 {c.Transporter_Name}</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {filteredCustomers.length < totalResultsCount && (
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      textAlign: "center",
+                      borderTop: "1px solid #f0f0f0",
+                      background: "#f9f9f9",
+                    }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLoadMore();
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: `1px solid ${BROWN_LIGHT}`,
+                        borderRadius: "6px",
+                        padding: "6px 14px",
+                        color: BROWN_DARK,
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                        width: "100%",
+                      }}
+                    >
+                      Load More ({totalResultsCount - filteredCustomers.length} remaining)
+                    </button>
+                  </div>
                 )}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "12px",
-                    fontSize: "11px",
-                    color: "#888",
-                    marginTop: "4px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {c.Mobile_No && (
-                    <span style={{ background: "#f0e9e2", padding: "2px 8px", borderRadius: "12px" }}>
-                      📞 {c.Mobile_No}
-                    </span>
-                  )}
-                  {c.City && <span>📍 {c.City}</span>}
-                </div>
-              </div>
-            ))
-          ) : (
-            searchTerm.trim() && (
-              <div style={{ padding: "24px", textAlign: "center", color: "#999", fontSize: "13px" }}>
-                <p>No customers match "{searchTerm}".</p>
-                <p style={{ fontSize: "11px", marginTop: "8px" }}>Try a name, mobile number or city.</p>
-              </div>
-            )
-          )}
-        </div>
-      )}
-
-      {isOpen && searchTerm.trim() && !isSearchTriggered && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            background: "#fff",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            marginTop: "4px",
-            padding: "10px 12px",
-            fontSize: "12px",
-            color: "#999",
-            textAlign: "center",
-            zIndex: 1000,
-          }}
-        >
-          Press Enter or tap search to find customers
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -1227,6 +1393,126 @@ const PartyDropdown = ({
 };
 
 /* ------------------------------------------------------------------ */
+/* Mobile Number Dropdown (Select between Mobile_No, A1, Party_Mobile_1, Party_Mobile_2) */
+/* ------------------------------------------------------------------ */
+
+const MobileNumberDropdown = ({
+  customer,
+  value,
+  onChange,
+  style = {},
+}) => {
+  const [isCustom, setIsCustom] = useState(false);
+  const inputRef = useRef(null);
+
+  const phoneOptions = useMemo(() => {
+    if (!customer) return [];
+    const list = [];
+    const seen = new Set();
+    const addOpt = (label, val) => {
+      const clean = String(val || "").trim();
+      if (clean && clean !== "null" && clean !== "undefined" && clean !== "0" && !seen.has(clean)) {
+        list.push({ label, value: clean });
+        seen.add(clean);
+      }
+    };
+
+    addOpt("Mobile_No", customer.Mobile_No || customer.mobileNo || customer.mobile_no);
+    addOpt("A1", customer.A1 || customer.a1 || customer.lolA1 || customer.A1_Phone);
+    addOpt("Party_Mobile_1", customer.Party_Mobile_1 || customer.party_mobile_1 || customer.partyMobile1);
+    addOpt("Party_Mobile_2", customer.Party_Mobile_2 || customer.party_mobile_2 || customer.partyMobile2);
+    addOpt("Land_Line", customer.Land_Line || customer.landline || customer.Landline || customer.A3);
+    if (customer.mobile) addOpt("Mobile", customer.mobile);
+    if (customer.contactNumber) addOpt("Phone", customer.contactNumber);
+
+    return list;
+  }, [customer?.Mobile_No, customer?.mobileNo, customer?.mobile_no, customer?.A1, customer?.Party_Mobile_1, customer?.Party_Mobile_2, customer?.Land_Line, customer?.mobile, customer?.contactNumber]);
+
+  const isMatchingOption = phoneOptions.some((opt) => opt.value === String(value || "").trim());
+  const showCustomInput = isCustom || (!isMatchingOption && Boolean(value)) || phoneOptions.length === 0;
+
+  useEffect(() => {
+    if (!value && phoneOptions.length > 0 && !isCustom) {
+      const initial = customer?.Mobile_No || customer?.mobileNo || customer?.mobile || phoneOptions[0]?.value || "";
+      if (initial) onChange(initial);
+    }
+  }, [customer?.id, customer?.Retailer_Id, customer?.CustomerId]);
+
+  const selectValue = isCustom
+    ? "__custom__"
+    : isMatchingOption
+      ? value
+      : value
+        ? "__custom__"
+        : phoneOptions[0]?.value || "";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+      {phoneOptions.length > 0 ? (
+        <select
+          value={selectValue}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "__custom__") {
+              setIsCustom(true);
+              setTimeout(() => inputRef.current?.focus(), 50);
+            } else {
+              setIsCustom(false);
+              onChange(val);
+            }
+          }}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            fontSize: "14px",
+            color: "#3a1f0e",
+            background: "#fff",
+            boxSizing: "border-box",
+            outline: "none",
+            cursor: "pointer",
+            ...style,
+          }}
+        >
+          {phoneOptions.map((opt, i) => (
+            <option key={i} value={opt.value}>
+              {opt.value}
+            </option>
+          ))}
+          <option value="__custom__">Custom / Enter another number...</option>
+        </select>
+      ) : null}
+
+      {showCustomInput && (
+        <input
+          ref={inputRef}
+          type="tel"
+          placeholder="Enter contact number"
+          value={value || ""}
+          onChange={(e) => {
+            setIsCustom(true);
+            onChange(e.target.value);
+          }}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            border: "1px solid #ddd",
+            borderRadius: "8px",
+            fontSize: "14px",
+            color: "#3a1f0e",
+            background: "#fff",
+            boxSizing: "border-box",
+            outline: "none",
+            ...style,
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
 /* Cart row (hoisted: defining it inside CartPage remounted every row  */
 /* on each render, which dropped focus while editing price/qty)        */
 /* ------------------------------------------------------------------ */
@@ -1386,9 +1672,7 @@ const CartItemRow = ({
             }}
             title={item.name}
           >
-            {item.name?.length > (isMobile ? 15 : 20)
-              ? `${item.name.substring(0, isMobile ? 15 : 20)}…`
-              : item.name}
+            {item.name}
           </h3>
 
           <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
@@ -1793,8 +2077,9 @@ const ProductListExpand = ({ products }) => {
   );
 };
 
-function SaleOrders({ onBack, onEditOrder, onDashboard }) {
+function SaleOrders({ onBack, onEditOrder, onDashboard, isLoggedIn, onLoginClick }) {
   const [orders, setOrders] = useState([]);
+  const [whatsappCounts, setWhatsappCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -1845,6 +2130,12 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
   }, [searchTerm]);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     const fetchSaleOrders = async () => {
@@ -1855,12 +2146,17 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
         const userId =
           userData.UserId || userData.user_id || userData.User_Id || sessionData?.userId || "";
         const mobileNo = getStoredUsername();
-        const usertypeid = userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || "";
-        console.log("usertypeid", usertypeid)
+        const usertypeid = String(
+          userData.UserTypeId ?? userData.user_type_id ?? userData.User_Type_Id ?? sessionData?.userTypeId ?? localStorage.getItem("userTypeId") ?? ""
+        );
+        const isFullAccessUser = usertypeid === "0" || usertypeid === "1";
+        const effectiveCreatedBy = isFullAccessUser ? "" : userId;
+        const effectiveMobileNo = isFullAccessUser ? "" : mobileNo;
+
         const response = await fetchLink({
           address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
-            userId
-          )}&Mobile_No=${encodeURIComponent(mobileNo)}&FromDate=${toLocalYMD(
+            effectiveCreatedBy
+          )}&Mobile_No=${encodeURIComponent(effectiveMobileNo)}&FromDate=${toLocalYMD(
             fromDate
           )}&ToDate=${toLocalYMD(toDate)}&UserTypeId=${encodeURIComponent(usertypeid)}`,
           method: "GET",
@@ -1870,7 +2166,43 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
 
         if (response?.success) {
           const orderData = response.data || response.Data || [];
-          setOrders(Array.isArray(orderData) ? orderData : []);
+          const validOrders = Array.isArray(orderData) ? orderData : [];
+          setOrders(validOrders);
+
+          const refIds = validOrders
+            .map((o) => o.So_Id || o.orderId || o.So_No || o.So_Branch_Inv_Id)
+            .filter(Boolean);
+
+          if (refIds.length > 0) {
+            try {
+              const countsResp = await fetchLink({
+                address: `masters/whatsapp/getWhatsappCounts?documentType=SalesOrder&referenceIds=${refIds.join(",")}`,
+                method: "GET",
+              });
+              if (countsResp?.data) {
+                const countMap = {};
+                const rawData = countsResp.data;
+                if (Array.isArray(rawData)) {
+                  rawData.forEach((item) => {
+                    const id = String(item.referenceId || item.reference_id || item.Reference_Id || item.ReferenceId || item.id || item.Id || item.So_Id || "");
+                    const cnt = Number(item.count ?? item.Count ?? item.sendCount ?? item.send_count ?? item.SendCount ?? item.counts ?? item.total ?? 0);
+                    if (id) countMap[id] = cnt;
+                  });
+                } else if (typeof rawData === "object" && rawData !== null) {
+                  Object.entries(rawData).forEach(([key, val]) => {
+                    if (typeof val === "number") {
+                      countMap[String(key)] = val;
+                    } else if (typeof val === "object" && val !== null) {
+                      countMap[String(key)] = Number(val.count ?? val.Count ?? val.sendCount ?? val.counts ?? 0);
+                    }
+                  });
+                }
+                setWhatsappCounts(countMap);
+              }
+            } catch (err) {
+              console.warn("Failed to fetch WhatsApp counts:", err);
+            }
+          }
         } else {
           toast.error(response?.message || "Couldn't load orders");
           setOrders([]);
@@ -1890,7 +2222,7 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
     return () => {
       cancelled = true;
     };
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, isLoggedIn]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -1977,7 +2309,8 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
     try {
       const productsList = order.Products_List || [];
 
-      const printCartItems = productsList.map((p) => ({
+      const printCartItems = productsList.map((p, idx) => ({
+        S_No: Number(p.S_No ?? p.Sno ?? p.sNo ?? idx + 1),
         Print_Name: p.Product_Short_Name || p.Product_Name || "",
         shortName: p.Product_Short_Name || p.Short_Name || "",
         name: p.Product_Name || "",
@@ -1986,36 +2319,55 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
         packGet: parseFloat(p.PackGet) || 1,
       }));
 
+      const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id || order.Custome_Id;
+      const orderMobile = (order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || "").trim();
+
       let customerData = {
+        id: retailerId,
+        Customer_Id: retailerId,
+        Retailer_Id: retailerId,
         Billl_Name: order.Retailer_Name || order.Customer_Name || "",
         Short_Name: order.Retailer_Name || order.Customer_Name || "",
         Party_Mailing_Name: order.Retailer_Name || order.Customer_Name || "",
         Party_Location: order.Shipp_Address || order.Address || "",
         City: order.City || "",
-        Mobile_No: order.Ord_Mobile_No || order.Mobile_No || "",
-        Land_Line: "",
+        Mobile_No: orderMobile,
+        Ord_Mobile_No: orderMobile,
+        A1: (order.A1 || order.a1 || "").trim(),
+        Party_Mobile_1: (order.Party_Mobile_1 || order.party_mobile_1 || "").trim(),
+        Party_Mobile_2: (order.Party_Mobile_2 || order.party_mobile_2 || "").trim(),
+        Land_Line: (order.Land_Line || "").trim(),
+        mobile: orderMobile,
+        contactNumber: orderMobile,
         Transporter: getTransporterName(order),
         Broker: getBrokerName(order),
       };
-
-      const retailerId = order.Retailer_Id || order.Customer_Id || order.Party_Id;
 
       if (retailerId) {
         const response = await fetchLink({
           address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1`,
         });
         if (response?.success && Array.isArray(response.data)) {
-          const found = response.data.find((c) => String(c.Customer_Id) === String(retailerId));
+          const found = response.data.find((c) => String(c.Customer_Id || c.Retailer_Id) === String(retailerId)) || response.data[0];
           if (found) {
+            const resolvedOrderMobile = (orderMobile || found.Last_Ord_Mobile_No || found.Ord_Mobile_No || "").trim();
             customerData = {
+              ...customerData,
               Billl_Name: found.Billl_Name || found.Short_Name || customerData.Billl_Name,
               Short_Name: found.Short_Name || customerData.Short_Name,
               Party_Mailing_Name:
                 found.Party_Mailing_Name || found.Billl_Name || customerData.Party_Mailing_Name,
-              Party_Location: found.Address || found.Party_Mailing_Address || "",
-              City: found.City || "",
-              Mobile_No: found.Mobile_No || order.Ord_Mobile_No || "",
-              Land_Line: found.Land_Line || "",
+              Party_Location: found.Address || found.Party_Mailing_Address || order.Shipp_Address || "",
+              City: found.City || order.City || "",
+              Mobile_No: resolvedOrderMobile || (found.Mobile_No || "").trim(),
+              Ord_Mobile_No: resolvedOrderMobile,
+              Customer_Mobile: (found.Mobile_No || "").trim(),
+              A1: (found.A1 || customerData.A1 || "").trim(),
+              Party_Mobile_1: (found.Party_Mobile_1 || customerData.Party_Mobile_1 || "").trim(),
+              Party_Mobile_2: (found.Party_Mobile_2 || customerData.Party_Mobile_2 || "").trim(),
+              Land_Line: (found.Land_Line || customerData.Land_Line || "").trim(),
+              mobile: resolvedOrderMobile || (found.Mobile_No || "").trim(),
+              contactNumber: resolvedOrderMobile || (found.Mobile_No || "").trim(),
               Transporter: getTransporterName(order) || found.Transporter_Name || found.Transporter || "",
               Broker: getBrokerName(order) || found.Broker_Name || found.Broker || "",
             };
@@ -2107,6 +2459,7 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
 
       const originalCustomerName =
         order.Retailer_Name || order.Customer_Name || order.Party_Name || "";
+      const orderMobile = (order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || completeCustomerDetails?.Last_Ord_Mobile_No || completeCustomerDetails?.Ord_Mobile_No || completeCustomerDetails?.Mobile_No || "").trim();
 
       const cartItemsObj = {};
       const productsList = [];
@@ -2143,12 +2496,15 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
         });
       });
 
+      const orderShippingAddress = order.Shipp_Address || order.Shipping_Address || order.Address || completeCustomerDetails?.Address || "";
+      const orderDeliveryAddress = order.Deliv_Address || order.Delivery_Address || order.Shipp_Address || order.Shipping_Address || order.Address || completeCustomerDetails?.Address || "";
+
       const editData = {
         customerId: retailerId,
         customerName: originalCustomerName,
-        customerMobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
-        customerAddress: completeCustomerDetails?.Address || order.Shipp_Address || "",
-        customerCity: completeCustomerDetails?.City || order.City || "",
+        customerMobile: orderMobile || completeCustomerDetails?.Mobile_No || "",
+        customerAddress: orderShippingAddress || completeCustomerDetails?.Address || "",
+        customerCity: order.City || completeCustomerDetails?.City || "",
         orderId,
         orderNumber: order.So_Inv_No || order.So_No,
         cartItems: cartItemsObj,
@@ -2158,17 +2514,22 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
         brokerName: actualBrokerName,
         transporterId: actualTransporterId,
         transporterName: actualTransporterName,
-        shippingAddress: completeCustomerDetails?.Address || order.Shipp_Address || "",
-        deliveryAddress:
-          completeCustomerDetails?.Address || order.Deliv_Address || order.Shipp_Address || "",
-        contactNumber: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
+        shippingAddress: orderShippingAddress,
+        deliveryAddress: orderDeliveryAddress,
+        contactNumber: orderMobile || completeCustomerDetails?.Mobile_No || "",
         description: order.Narration || "",
         customerDetails: {
           id: retailerId,
           name: originalCustomerName,
-          mobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || "",
-          address: completeCustomerDetails?.Address || order.Shipp_Address || "",
-          city: completeCustomerDetails?.City || order.City || "",
+          mobile: orderMobile || completeCustomerDetails?.Mobile_No || "",
+          Ord_Mobile_No: orderMobile,
+          Mobile_No: completeCustomerDetails?.Mobile_No || orderMobile || "",
+          A1: completeCustomerDetails?.A1 || "",
+          Party_Mobile_1: completeCustomerDetails?.Party_Mobile_1 || "",
+          Party_Mobile_2: completeCustomerDetails?.Party_Mobile_2 || "",
+          Land_Line: completeCustomerDetails?.Land_Line || "",
+          address: orderShippingAddress || completeCustomerDetails?.Address || "",
+          city: order.City || completeCustomerDetails?.City || "",
           brokerId: actualBrokerId,
           brokerName: actualBrokerName,
           transporterId: actualTransporterId,
@@ -2408,7 +2769,9 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
                     </label>
                     <DatePicker
                       selected={tempFromDate}
-                      onChange={(date) => setTempFromDate(date)}
+                      onChange={() => { }}
+                      disabled
+                      readOnly
                       selectsStart
                       startDate={tempFromDate}
                       endDate={tempToDate}
@@ -2432,7 +2795,9 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
                     </label>
                     <DatePicker
                       selected={tempToDate}
-                      onChange={(date) => setTempToDate(date)}
+                      onChange={() => { }}
+                      disabled
+                      readOnly
                       selectsEnd
                       startDate={tempFromDate}
                       endDate={tempToDate}
@@ -2565,7 +2930,46 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
         )}
 
         <div style={{ padding: isMobile ? "12px" : "24px", overflowX: "auto" }}>
-          {loading ? (
+          {!isLoggedIn ? (
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: "20px",
+                border: "1px solid #e8ddd4",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                padding: isMobile ? "40px 20px" : "56px 32px",
+                marginTop: isMobile ? "12px" : "20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: isMobile ? "40px" : "48px", marginBottom: "12px" }}>🔒</div>
+              <div
+                style={{
+                  fontSize: isMobile ? "17px" : "20px",
+                  fontWeight: "bold",
+                  color: BROWN_DARK,
+                  marginBottom: "20px",
+                }}
+              >
+                Please login to view your sale order
+              </div>
+              <button
+                onClick={() => onLoginClick && onLoginClick()}
+                style={{
+                  background: BROWN,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "10px 28px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                }}
+              >
+                Login
+              </button>
+            </div>
+          ) : loading ? (
             <div style={{ textAlign: "center", padding: "60px 0", color: "#999" }}>
               <CircularProgress style={{ color: BROWN, marginBottom: "16px" }} />
               <p>Loading orders…</p>
@@ -2676,6 +3080,21 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
                           </span>
                           <span
                             style={{
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              background: (whatsappCounts[String(order.So_Id)] || whatsappCounts[String(order.So_No)] || 0) > 0 ? "#e8f5e9" : "#f5f5f5",
+                              color: (whatsappCounts[String(order.So_Id)] || whatsappCounts[String(order.So_No)] || 0) > 0 ? "#2e7d32" : "#888",
+                              fontSize: "10px",
+                              fontWeight: "600",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px",
+                            }}
+                          >
+                            💬 {whatsappCounts[String(order.So_Id)] || whatsappCounts[String(order.So_No)] || 0}
+                          </span>
+                          <span
+                            style={{
                               transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
                               transition: "transform 0.3s ease",
                               fontSize: "16px",
@@ -2753,6 +3172,7 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
                       { label: "Broker", align: "left" },
                       { label: "Transporter", align: "left" },
                       { label: "Status", align: "left" },
+                      { label: "WA Sent", align: "center" },
                       { label: "Items", align: "right" },
                       { label: "Kgs", align: "right" },
                       { label: "Amount", align: "right" },
@@ -2828,6 +3248,27 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
                           <td style={{ padding: "14px 16px", color: "#666", fontSize: "13px" }}>
                             {order.OrderStatus || "-"}
                           </td>
+                          <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                            {(whatsappCounts[String(order.So_Id)] || whatsappCounts[String(order.So_No)] || 0) > 0 ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  background: "#e8f5e9",
+                                  color: "#2e7d32",
+                                  padding: "3px 8px",
+                                  borderRadius: "12px",
+                                  fontSize: "11px",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                💬 {whatsappCounts[String(order.So_Id)] || whatsappCounts[String(order.So_No)]}
+                              </span>
+                            ) : (
+                              <span style={{ color: "#aaa", fontSize: "12px" }}>0</span>
+                            )}
+                          </td>
                           <td style={{ padding: "14px 16px", textAlign: "right", color: "#666", fontSize: "13px" }}>
                             {totalItems}
                           </td>
@@ -2886,8 +3327,7 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
 
                         {isExpanded && (
                           <tr>
-                            {/* 11 columns, not 10 — the caret column was being clipped */}
-                            <td colSpan={11} style={{ padding: 0 }}>
+                            <td colSpan={12} style={{ padding: 0 }}>
                               <ProductListExpand products={order.Products_List} />
                             </td>
                           </tr>
@@ -2915,6 +3355,9 @@ function SaleOrders({ onBack, onEditOrder, onDashboard }) {
           isReprint
           createdOn={printData?.createdOn}
           orderDate={printData?.orderDate}
+          orderId={printData?.orderId || printData?.customer?.So_Id || printData?.customer?.orderId}
+          referenceId={printData?.orderId || printData?.customer?.So_Id || printData?.customer?.orderId}
+          retailerId={printData?.retailerId || printData?.customer?.id || printData?.customer?.Retailer_Id || printData?.customer?.Customer_Id}
         />
       )}
 
@@ -2966,6 +3409,7 @@ export default function CartPage() {
   const [description, setDescription] = useState("");
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [prefilledCustomer, setPrefilledCustomer] = useState(null);
+  const customerSelectionRequestRef = useRef(0);
 
   // Brokers / transporters
   const [availableBrokers, setAvailableBrokers] = useState([]);
@@ -2989,8 +3433,18 @@ export default function CartPage() {
   const [expenseMaster, setExpenseMaster] = useState([]);
   const [loadingExpenseMaster, setLoadingExpenseMaster] = useState(false);
   const [invoiceExpenses, setInvoiceExpenses] = useState([]);
-
   const [manualExpenseEdits, setManualExpenseEdits] = useState({});
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const isSubmittingRef = useRef(false);
+  const cooldownTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    };
+  }, []);
 
   const handleDashboard = () => setShowDashboard(true);
   const handleBackFromDashboard = () => setShowDashboard(false);
@@ -3195,11 +3649,17 @@ export default function CartPage() {
       setCartItems(existingCart);
     } else if (Array.isArray(editData.productsList) && editData.productsList.length > 0) {
       const restored = {};
+      const order = [];
       editData.productsList.forEach((p) => {
-        if (p.id && p.quantity > 0) restored[p.id] = p.quantity;
+        const pid = String(p.id || p.Product_Id || "");
+        if (pid && p.quantity > 0) {
+          restored[pid] = p.quantity;
+          if (!order.includes(pid)) order.push(pid);
+        }
       });
       setCartItems(restored);
       localStorage.setItem("cartItems", JSON.stringify(restored));
+      localStorage.setItem("cartItemOrder", JSON.stringify(order));
       localStorage.setItem("editProductsList", JSON.stringify(editData.productsList));
     } else if (editData.cartItems && Object.keys(editData.cartItems).length > 0) {
       setCartItems(editData.cartItems);
@@ -3230,7 +3690,11 @@ export default function CartPage() {
             id: c.Ret_Id,
             name: c.Ledger_Name || c.Party_Mailing_Name || c.A1,
             billName: c.Party_Name || c.Ledger_Name,
-            mobile: c.A1 || "",
+            Mobile_No: (c.Mobile_No || "").trim(),
+            A1: (c.A1 || "").trim(),
+            Party_Mobile_1: (c.Party_Mobile_1 || "").trim(),
+            Party_Mobile_2: (c.Party_Mobile_2 || "").trim(),
+            mobile: (c.Mobile_No || c.A1 || c.Party_Mobile_1 || c.Party_Mobile_2 || "").trim(),
             city: c.Party_Location || "",
             address: c.Party_Mailing_Address || "",
             brokerId: c.Broker_Id || c.Ref_Brokers || "",
@@ -3295,6 +3759,7 @@ export default function CartPage() {
       "cartPageShippingAddress",
       "cartPageDeliveryAddress",
       "cartPageDescription",
+      "cartItemOrder",
       "userData",
       "sessionData",
     ];
@@ -3327,7 +3792,11 @@ export default function CartPage() {
             id: c.Customer_Id || c.Ret_Id,
             name: (c.Short_Name || c.Billl_Name || "").replace(/\u0004/g, "").trim(),
             billName: (c.Billl_Name || "").trim(),
-            mobile: (c.Mobile_No || "").trim(),
+            Mobile_No: (c.Mobile_No || "").trim(),
+            A1: (c.A1 || "").trim(),
+            Party_Mobile_1: (c.Party_Mobile_1 || "").trim(),
+            Party_Mobile_2: (c.Party_Mobile_2 || "").trim(),
+            mobile: (c.Mobile_No || c.A1 || c.Party_Mobile_1 || c.Party_Mobile_2 || "").trim(),
             city: (c.City || "").trim(),
             address: (c.Address || "").trim(),
             brokerId: c.Broker_Id || "",
@@ -3500,6 +3969,7 @@ export default function CartPage() {
 
   /* Restore a previously selected customer by id (once, on mount) */
   useEffect(() => {
+    const selectionRequest = customerSelectionRequestRef.current;
     const restoreCustomerFromId = async () => {
       const customerIdToUse =
         localStorage.getItem("selectedCustomerId") ||
@@ -3515,13 +3985,17 @@ export default function CartPage() {
         if (!response?.success || !Array.isArray(response.data)) return;
 
         const found = response.data.find((c) => String(c.Customer_Id) === String(customerIdToUse));
-        if (!found) return;
+        if (!found || selectionRequest !== customerSelectionRequestRef.current) return;
 
         const completeCustomer = {
           id: String(found.Customer_Id),
           name: (found.Short_Name || found.Billl_Name || "").replace(/\u0004/g, "").trim(),
           billName: (found.Billl_Name || "").trim(),
-          mobile: (found.Mobile_No || "").trim(),
+          Mobile_No: (found.Mobile_No || "").trim(),
+          A1: (found.A1 || "").trim(),
+          Party_Mobile_1: (found.Party_Mobile_1 || "").trim(),
+          Party_Mobile_2: (found.Party_Mobile_2 || "").trim(),
+          mobile: (found.Mobile_No || found.A1 || found.Party_Mobile_1 || found.Party_Mobile_2 || "").trim(),
           address: (found.Address || "").trim(),
           city: (found.City || "").trim(),
           brokerId: found.Broker_Id ? String(found.Broker_Id).trim() : "",
@@ -3533,9 +4007,12 @@ export default function CartPage() {
         setHeaderSelectedCustomer((prev) => prev || completeCustomer);
         setPrefilledCustomer((prev) => prev || { id: completeCustomer.id, name: completeCustomer.name });
         setCustomer((prev) => prev || String(completeCustomer.id));
-        setContactNumber((prev) => prev || completeCustomer.mobile || "");
-        setShippingAddress((prev) => prev || completeCustomer.address || "");
-        setDeliveryAddress((prev) => prev || completeCustomer.address || "");
+        setContactNumber((prev) => prev || completeCustomer.Mobile_No || completeCustomer.A1 || completeCustomer.Party_Mobile_1 || completeCustomer.Party_Mobile_2 || completeCustomer.mobile || "");
+        const isEditingOrderNow = localStorage.getItem("isEditingOrder") === "true";
+        if (!isEditingOrderNow) {
+          setShippingAddress((prev) => prev || completeCustomer.address || "");
+          setDeliveryAddress((prev) => prev || completeCustomer.address || "");
+        }
 
         if (completeCustomer.brokerId && completeCustomer.brokerName) {
           setSelectedBroker((prev) =>
@@ -3652,6 +4129,7 @@ export default function CartPage() {
   /* ---------------- Customer selection ---------------- */
 
   const handleHeaderCustomerSelect = async (selected) => {
+    const selectionRequest = ++customerSelectionRequestRef.current;
     let updatedCustomer = { ...selected };
 
     const isEditing = localStorage.getItem("isEditingOrder") === "true";
@@ -3668,6 +4146,7 @@ export default function CartPage() {
         if (found) {
           updatedCustomer = {
             ...selected,
+            address: found.Address || selected.address || "",
             brokerId: found.Broker_Id ? String(found.Broker_Id).trim() : selected.brokerId || "",
             brokerName: (found.Broker_Name || found.Broker || selected.brokerName || "").trim(),
             transporterId: found.Transporter_Id
@@ -3684,7 +4163,11 @@ export default function CartPage() {
             billName: found.Billl_Name || selected.name || "",
             originalAddress: found.Address || selected.address || "",
             originalCity: found.City || selected.city || "",
-            mobile: found.Mobile_No || selected.mobile || "",
+            Mobile_No: (found.Mobile_No || selected.Mobile_No || "").trim(),
+            A1: (found.A1 || selected.A1 || "").trim(),
+            Party_Mobile_1: (found.Party_Mobile_1 || selected.Party_Mobile_1 || "").trim(),
+            Party_Mobile_2: (found.Party_Mobile_2 || selected.Party_Mobile_2 || "").trim(),
+            mobile: (found.Mobile_No || selected.Mobile_No || found.A1 || selected.A1 || found.Party_Mobile_1 || selected.Party_Mobile_1 || found.Party_Mobile_2 || selected.Party_Mobile_2 || selected.mobile || "").trim(),
           };
         }
       }
@@ -3692,16 +4175,16 @@ export default function CartPage() {
       console.error("Error fetching customer details:", e);
     }
 
+    if (selectionRequest !== customerSelectionRequestRef.current) return;
     setHeaderSelectedCustomer(updatedCustomer);
     setCustomer(String(updatedCustomer.id || ""));
-    setContactNumber(updatedCustomer.mobile || "");
+    const initialCustomerMobile = updatedCustomer.Mobile_No || updatedCustomer.A1 || updatedCustomer.Party_Mobile_1 || updatedCustomer.Party_Mobile_2 || updatedCustomer.mobile || "";
+    setContactNumber(initialCustomerMobile);
 
     const displayAddress =
       updatedCustomer.partyMailingAddress || updatedCustomer.originalAddress || updatedCustomer.address || "";
-    if (displayAddress) {
-      setShippingAddress(displayAddress);
-      setDeliveryAddress(displayAddress);
-    }
+    setShippingAddress(displayAddress);
+    setDeliveryAddress(displayAddress);
 
     if (isEditing && editOrderData) {
       const brokerIdNum = parseInt(editOrderData.brokerId, 10);
@@ -3760,22 +4243,33 @@ export default function CartPage() {
   };
 
   const handleCustomerSelect = (customerData) => {
+    ++customerSelectionRequestRef.current;
     setCustomer(String(customerData.customerId || ""));
-    setContactNumber(customerData.mobileNo || "");
+    const initialMob = customerData.Mobile_No || customerData.mobileNo || customerData.A1 || customerData.Party_Mobile_1 || customerData.Party_Mobile_2 || customerData.mobile || "";
+    setContactNumber(initialMob);
 
     const displayAddress = customerData.partyMailingAddress || customerData.address || "";
 
-    setSelectedDetails({
+    const fullCustomerObj = {
       ...customerData,
+      id: customerData.customerId,
+      name: customerData.customerName,
+      Mobile_No: customerData.Mobile_No || "",
+      A1: customerData.A1 || "",
+      Party_Mobile_1: customerData.Party_Mobile_1 || "",
+      Party_Mobile_2: customerData.Party_Mobile_2 || "",
+      Land_Line: customerData.Land_Line || "",
+      mobile: initialMob,
+      mobileNo: customerData.mobileNo || initialMob,
       partyMailingName: customerData.partyMailingName,
       address: displayAddress,
       billName: customerData.billName,
-    });
+    };
 
-    if (displayAddress) {
-      setShippingAddress(displayAddress);
-      setDeliveryAddress(displayAddress);
-    }
+    setSelectedDetails(fullCustomerObj);
+
+    setShippingAddress(displayAddress);
+    setDeliveryAddress(displayAddress);
 
     if (customerData.Broker_Id && customerData.broker) {
       setSelectedBroker({ id: customerData.Broker_Id, name: customerData.broker });
@@ -3794,9 +4288,15 @@ export default function CartPage() {
     }
 
     setHeaderSelectedCustomer({
+      ...fullCustomerObj,
       id: customerData.customerId,
       name: customerData.customerName,
-      mobile: customerData.mobileNo || "",
+      Mobile_No: customerData.Mobile_No || "",
+      A1: customerData.A1 || "",
+      Party_Mobile_1: customerData.Party_Mobile_1 || "",
+      Party_Mobile_2: customerData.Party_Mobile_2 || "",
+      mobile: initialMob,
+      mobileNo: customerData.mobileNo || initialMob,
       city: customerData.city || "",
       address: displayAddress || "",
       brokerId: customerData.Broker_Id || "",
@@ -3844,106 +4344,117 @@ export default function CartPage() {
     let cartOrder = [];
     try {
       cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || [];
-    } catch (e) {}
+    } catch (e) { }
 
-    return Object.entries(cartItems)
-      .filter(([, qty]) => qty > 0)
-      .sort(([idA], [idB]) => {
-        const indexA = cartOrder.indexOf(String(idA));
-        const indexB = cartOrder.indexOf(String(idB));
-        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-        if (indexA !== -1) return -1;
-        if (indexB !== -1) return 1;
-        return 0;
-      })
-      .map(([productId, qty]) => {
-        const sid = String(productId);
-        const editP = editProductsMap.get(sid);
+    const orderedIds = [];
+    const seen = new Set();
 
-        // Get the live product for coolie rate
-        const liveProduct =
-          products.find((p) => String(p.id) === sid) ||
-          allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
+    cartOrder.forEach((id) => {
+      const sid = String(id);
+      const qty = cartItems[sid] ?? cartItems[id] ?? 0;
+      if (!seen.has(sid) && qty > 0) {
+        seen.add(sid);
+        orderedIds.push(sid);
+      }
+    });
 
-        // Priority: live product coolie rate > edit data coolie rate > 0
-        const coolieRate = liveProduct
-          ? liveProduct.coolie ?? liveProduct.coolieRate ?? liveProduct.Coolie_Rate ?? liveProduct.Coolie ?? 0
-          : editP?.coolieRate || 0;
+    Object.entries(cartItems).forEach(([id, qty]) => {
+      const sid = String(id);
+      if (!seen.has(sid) && qty > 0) {
+        seen.add(sid);
+        orderedIds.push(sid);
+      }
+    });
 
-        if (editP && editP.name) {
-          const packGet = Number(editP.packGet) || 1;
-          const kgs = qty * packGet;
-          const price = Number(editP.price) || 0;
+    return orderedIds.map((productId) => {
+      const sid = String(productId);
+      const qty = cartItems[sid] ?? cartItems[productId] ?? 0;
+      const editP = editProductsMap.get(sid);
 
-          return {
-            id: productId,
-            name: editP.name,
-            shortName: editP.shortName || editP.name,
-            quantity: qty,
-            originalQuantity: editP.originalQuantity || 0,
-            kgs,
-            price,
-            packGet,
-            amount: price * kgs,
-            Print_Name: editP.name,
-            coolieRate,
-            hsn: editP.hsn || "",
-            taxRate: Number(editP.taxRate) || 0,
-            unitId: editP.unitId,
-            unitName: editP.unitName,
-            unit: editP.unit,
-            image: editP.image || "",
-            isNew: !editP.originalQuantity || editP.originalQuantity === 0,
-          };
-        }
+      // Get the live product for coolie rate
+      const liveProduct =
+        products.find((p) => String(p.id) === sid) ||
+        allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
 
-        const product =
-          products.find((p) => String(p.id) === sid || String(p.Product_Id) === sid) ||
-          allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
-        if (product && product.name) {
-          const packGet = parseFloat(product.packGet) || 1;
-          const editedPrice = getEditedPrice(productId);
-          const price = editedPrice !== null ? editedPrice : parseFloat(product.price) || 0;
-          const kgs = qty * packGet;
-          return {
-            id: productId,
-            name: product.name,
-            shortName: product.shortName || product.Short_Name || product.name,
-            quantity: qty,
-            originalQuantity: 0,
-            kgs,
-            price,
-            packGet,
-            amount: price * kgs,
-            Print_Name: product.name,
-            coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? liveProduct?.Coolie_Rate ?? liveProduct?.Coolie ?? product.coolie ?? product.coolieRate ?? product.Coolie_Rate ?? product.Coolie ?? 0,
-            hsn: product.hsnCode || product.hsn || "",
-            taxRate: Number(product.taxRate) || 0,
-            unitId: product.unitId,
-            unitName: product.unitName,
-            unit: product.unit,
-            image: product.image || "",
-            isNew: true,
-          };
-        }
+      // Priority: live product coolie rate > edit data coolie rate > 0
+      const coolieRate = liveProduct
+        ? liveProduct.coolie ?? liveProduct.coolieRate ?? liveProduct.Coolie_Rate ?? liveProduct.Coolie ?? 0
+        : editP?.coolieRate || 0;
+
+      if (editP && editP.name) {
+        const packGet = Number(editP.packGet) || 1;
+        const kgs = qty * packGet;
+        const price = Number(editP.price) || 0;
 
         return {
           id: productId,
-          name: `Product ${productId}`,
-          shortName: `Product ${productId}`,
+          name: editP.name,
+          shortName: editP.shortName || editP.name,
+          quantity: qty,
+          originalQuantity: editP.originalQuantity || 0,
+          kgs,
+          price,
+          packGet,
+          amount: price * kgs,
+          Print_Name: editP.name,
+          coolieRate,
+          hsn: editP.hsn || "",
+          taxRate: Number(editP.taxRate) || 0,
+          unitId: editP.unitId,
+          unitName: editP.unitName,
+          unit: editP.unit,
+          image: editP.image || "",
+          isNew: !editP.originalQuantity || editP.originalQuantity === 0,
+        };
+      }
+
+      const product =
+        products.find((p) => String(p.id) === sid || String(p.Product_Id) === sid) ||
+        allProducts.find((p) => String(p.id) === sid || String(p.Product_Id) === sid);
+      if (product && product.name) {
+        const packGet = parseFloat(product.packGet) || 1;
+        const editedPrice = getEditedPrice(productId);
+        const price = editedPrice !== null ? editedPrice : parseFloat(product.price) || 0;
+        const kgs = qty * packGet;
+        return {
+          id: productId,
+          name: product.name,
+          shortName: product.shortName || product.Short_Name || product.name,
           quantity: qty,
           originalQuantity: 0,
-          kgs: qty,
-          price: 0,
-          packGet: 1,
-          amount: 0,
-          Print_Name: `Product ${productId}`,
-          coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? liveProduct?.Coolie_Rate ?? liveProduct?.Coolie ?? 0,
-          hsn: "",
-          taxRate: 0,
+          kgs,
+          price,
+          packGet,
+          amount: price * kgs,
+          Print_Name: product.name,
+          coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? liveProduct?.Coolie_Rate ?? liveProduct?.Coolie ?? product.coolie ?? product.coolieRate ?? product.Coolie_Rate ?? product.Coolie ?? 0,
+          hsn: product.hsnCode || product.hsn || "",
+          taxRate: Number(product.taxRate) || 0,
+          unitId: product.unitId,
+          unitName: product.unitName,
+          unit: product.unit,
+          image: product.image || "",
           isNew: true,
         };
-      });
+      }
+
+      return {
+        id: productId,
+        name: `Product ${productId}`,
+        shortName: `Product ${productId}`,
+        quantity: qty,
+        originalQuantity: 0,
+        kgs: qty,
+        price: 0,
+        packGet: 1,
+        amount: 0,
+        Print_Name: `Product ${productId}`,
+        coolieRate: liveProduct?.coolie ?? liveProduct?.coolieRate ?? liveProduct?.Coolie_Rate ?? liveProduct?.Coolie ?? 0,
+        hsn: "",
+        taxRate: 0,
+        isNew: true,
+      };
+    });
   }, [cartItems, products, allProducts]);
 
   const totalItems = enhancedCartItems.reduce((s, i) => s + i.quantity, 0);
@@ -4152,23 +4663,24 @@ export default function CartPage() {
   const updateQty = (id, delta) => {
     const sid = String(id);
     setCartItems((prev) => {
-      const next = Math.max(0, (prev[id] || 0) + delta);
+      const current = prev[id] || prev[sid] || 0;
+      const next = Math.max(0, current + delta);
       let newCart;
       if (next === 0) {
-        const { [id]: _removed, ...rest } = prev;
+        const { [id]: _1, [sid]: _2, ...rest } = prev;
         newCart = rest;
       } else {
-        newCart = { ...prev, [id]: next };
+        newCart = { ...prev, [sid]: next };
       }
       localStorage.setItem("cartItems", JSON.stringify(newCart));
 
       let cartOrder = [];
-      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch(e) {}
-      const exists = cartOrder.includes(sid);
+      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch (e) { }
+      const exists = cartOrder.some(item => String(item) === sid);
       if (next > 0 && !exists) {
         cartOrder.push(sid);
       } else if (next === 0 && exists) {
-        cartOrder = cartOrder.filter(item => item !== sid);
+        cartOrder = cartOrder.filter(item => String(item) !== sid);
       }
       localStorage.setItem("cartItemOrder", JSON.stringify(cartOrder));
 
@@ -4182,20 +4694,20 @@ export default function CartPage() {
       const next = Math.max(0, qty);
       let newCart;
       if (next === 0) {
-        const { [id]: _removed, ...rest } = prev;
+        const { [id]: _1, [sid]: _2, ...rest } = prev;
         newCart = rest;
       } else {
-        newCart = { ...prev, [id]: next };
+        newCart = { ...prev, [sid]: next };
       }
       localStorage.setItem("cartItems", JSON.stringify(newCart));
 
       let cartOrder = [];
-      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch(e) {}
-      const exists = cartOrder.includes(sid);
+      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch (e) { }
+      const exists = cartOrder.some(item => String(item) === sid);
       if (next > 0 && !exists) {
         cartOrder.push(sid);
       } else if (next === 0 && exists) {
-        cartOrder = cartOrder.filter(item => item !== sid);
+        cartOrder = cartOrder.filter(item => String(item) !== sid);
       }
       localStorage.setItem("cartItemOrder", JSON.stringify(cartOrder));
 
@@ -4207,12 +4719,12 @@ export default function CartPage() {
     const sid = String(id);
     const product = enhancedCartItems.find((p) => String(p.id) === sid);
     setCartItems((prev) => {
-      const { [id]: _removed, ...rest } = prev;
+      const { [id]: _1, [sid]: _2, ...rest } = prev;
       localStorage.setItem("cartItems", JSON.stringify(rest));
 
       let cartOrder = [];
-      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch(e) {}
-      cartOrder = cartOrder.filter(item => item !== sid);
+      try { cartOrder = JSON.parse(localStorage.getItem("cartItemOrder")) || []; } catch (e) { }
+      cartOrder = cartOrder.filter(item => String(item) !== sid);
       localStorage.setItem("cartItemOrder", JSON.stringify(cartOrder));
 
       return rest;
@@ -4248,6 +4760,7 @@ export default function CartPage() {
       "cartPageShippingAddress",
       "cartPageDeliveryAddress",
       "cartPageDescription",
+      "cartItemOrder",
     ].forEach((key) => localStorage.removeItem(key));
     setOriginalProductIds(new Set());
     setCartItems({});
@@ -4302,6 +4815,7 @@ export default function CartPage() {
       "cartPageShippingAddress",
       "cartPageDeliveryAddress",
       "cartPageDescription",
+      "cartItemOrder",
     ].forEach((key) => localStorage.removeItem(key));
 
     setCartItems({});
@@ -4328,6 +4842,9 @@ export default function CartPage() {
   };
 
   const handleCheckout = async () => {
+    if (isSubmittingRef.current || isProcessing || cooldownRemaining > 0) {
+      return;
+    }
     if (!isLoggedIn) {
       toast.error("Sign in to place an order");
       setIsLoginPopupOpen(true);
@@ -4345,6 +4862,26 @@ export default function CartPage() {
       toast.error("Enter a contact number");
       return;
     }
+
+    // Immediately lock submission and start 10-second rate limiting cooldown
+    isSubmittingRef.current = true;
+    setIsProcessing(true);
+    setCooldownRemaining(10);
+
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    let secondsLeft = 10;
+    cooldownTimerRef.current = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+        setCooldownRemaining(0);
+        isSubmittingRef.current = false;
+        setIsProcessing(false);
+      } else {
+        setCooldownRemaining(secondsLeft);
+      }
+    }, 1000);
 
     const formattedDateTime = ISOStrings(new Date(), true);
     const formattedDateOnly = ISOStrings(new Date(), false);
@@ -4506,13 +5043,20 @@ export default function CartPage() {
     const loadingToast = toast.loading(isEditing ? "Updating order…" : "Placing order…");
 
     try {
-      const response = await fetchLink({
-        address: `sales/salesInvoice/Whatsapp`,
-        method: isEditing ? "PUT" : "POST",
-        bodyData: saleData,
+      const response = await orderQueue.enqueue(saleData, async () => {
+        return await fetchLink({
+          address: `sales/salesInvoice/Whatsapp`,
+          method: isEditing ? "PUT" : "POST",
+          bodyData: saleData,
+        });
       });
 
       toast.dismiss(loadingToast);
+
+      if (response?.isDuplicate) {
+        toast.warning(response.message);
+        return;
+      }
 
       if (!response?.success) {
         toast.error(response?.message || `Couldn't ${isEditing ? "update" : "place"} the order`);
@@ -4537,8 +5081,14 @@ export default function CartPage() {
           headerSelectedCustomer?.address ||
           "",
         City: headerSelectedCustomer?.city || selectedDetails?.city || "",
-        Mobile_No: contactNumber || headerSelectedCustomer?.mobile || selectedDetails?.mobileNo || "",
-        Land_Line: "",
+        Mobile_No: contactNumber || headerSelectedCustomer?.Mobile_No || headerSelectedCustomer?.mobile || selectedDetails?.Mobile_No || selectedDetails?.mobileNo || "",
+        A1: headerSelectedCustomer?.A1 || selectedDetails?.A1 || "",
+        Party_Mobile_1: headerSelectedCustomer?.Party_Mobile_1 || selectedDetails?.Party_Mobile_1 || "",
+        Party_Mobile_2: headerSelectedCustomer?.Party_Mobile_2 || selectedDetails?.Party_Mobile_2 || "",
+        mobile: contactNumber || headerSelectedCustomer?.mobile || selectedDetails?.mobileNo || "",
+        contactNumber: contactNumber || "",
+        Ord_Mobile_No: contactNumber || "",
+        Land_Line: headerSelectedCustomer?.Land_Line || selectedDetails?.Land_Line || "",
         Transporter: selectedTransporter?.name || "",
         Broker: selectedBroker?.name || "",
         Party_Mailing_Name:
@@ -4550,13 +5100,26 @@ export default function CartPage() {
         billName: selectedDetails?.billName || "",
       };
 
+      const orderIdVal = response.data?.mainOrder?.So_Id || response.data?.whatsapp?.Pre_Ord_Id || response.data?.So_Id || response.data?.OrderId || "";
+      const retailerIdVal = response.data?.mainOrder?.generalInfo?.[0]?.Retailer_Id || response.data?.whatsapp?.generalInfo?.Retailer_Id || headerSelectedCustomer?.id || selectedDetails?.id || customerData?.id || 0;
+
       setLastOrderData({
         saleData,
+        orderId: orderIdVal,
+        referenceId: orderIdVal,
+        retailerId: retailerIdVal,
         responseData: response.data,
-        customerData,
-        printCartItems: enhancedCartItems.map((item) => ({
+        customerData: {
+          ...customerData,
+          id: retailerIdVal,
+          retailerId: retailerIdVal,
+          Customer_Id: retailerIdVal,
+          So_Id: orderIdVal,
+        },
+        printCartItems: enhancedCartItems.map((item, index) => ({
           ...item,
-          Print_Name: item.name,
+          S_No: Number(item.S_No ?? item.Sno ?? item.sNo ?? index + 1),
+          Print_Name: item.shortName || item.Print_Name || item.name,
           kgs: item.kgs || 0,
           price: item.price || 0,
           packGet: item.packGet || 1,
@@ -4597,6 +5160,8 @@ export default function CartPage() {
           setShowSaleOrders(false);
           setShowDashboard(true);
         }}
+        isLoggedIn={isLoggedIn}
+        onLoginClick={() => setIsLoginPopupOpen(true)}
         onEditOrder={(editData) => {
           localStorage.setItem("editOrderData", JSON.stringify(editData));
           localStorage.setItem("isEditingOrder", "true");
@@ -4614,6 +5179,10 @@ export default function CartPage() {
           setCartItems(editData.cartItems || {});
           localStorage.setItem("cartItems", JSON.stringify(editData.cartItems || {}));
           localStorage.setItem("editProductsList", JSON.stringify(editData.productsList || []));
+          if (Array.isArray(editData.productsList) && editData.productsList.length > 0) {
+            const orderIds = editData.productsList.map(p => String(p.id || p.Product_Id)).filter(Boolean);
+            localStorage.setItem("cartItemOrder", JSON.stringify(orderIds));
+          }
 
           setCustomer(String(editData.customerId || ""));
           setContactNumber(editData.contactNumber || "");
@@ -4807,11 +5376,10 @@ export default function CartPage() {
       </div>
       <div style={fgStyle}>
         <label style={labelStyle}>Contact number</label>
-        <input
-          type="tel"
-          placeholder="Contact number"
+        <MobileNumberDropdown
+          customer={{ ...(selectedDetails || {}), ...(headerSelectedCustomer || {}) }}
           value={contactNumber}
-          onChange={(e) => setContactNumber(e.target.value)}
+          onChange={setContactNumber}
           style={inputStyle}
         />
       </div>
@@ -4945,6 +5513,9 @@ export default function CartPage() {
       onPrintAndSave={async () => true}
       onPrinted={finishOrderCleanup}
       autoPrint={Boolean(lastOrderData)}
+      orderId={lastOrderData?.orderId || lastOrderData?.responseData?.mainOrder?.So_Id || lastOrderData?.responseData?.whatsapp?.Pre_Ord_Id}
+      referenceId={lastOrderData?.referenceId || lastOrderData?.orderId || lastOrderData?.responseData?.mainOrder?.So_Id || lastOrderData?.responseData?.whatsapp?.Pre_Ord_Id}
+      retailerId={lastOrderData?.retailerId || lastOrderData?.responseData?.mainOrder?.generalInfo?.[0]?.Retailer_Id || lastOrderData?.responseData?.whatsapp?.generalInfo?.Retailer_Id}
     />
   );
 
@@ -5125,20 +5696,28 @@ export default function CartPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <button
               onClick={handleCheckout}
+              disabled={isProcessing || cooldownRemaining > 0}
               style={{
                 width: "100%",
                 padding: "18px 12px",
-                background: isEditingOrder ? ACCENT : BROWN,
-                color: isEditingOrder ? BROWN_DARK : "#fff",
+                background: isProcessing || cooldownRemaining > 0 ? "#999" : isEditingOrder ? ACCENT : BROWN,
+                color: isEditingOrder && !(isProcessing || cooldownRemaining > 0) ? BROWN_DARK : "#fff",
                 border: "none",
                 borderRadius: "50px",
                 fontSize: "18px",
                 fontWeight: "700",
-                cursor: "pointer",
+                cursor: isProcessing || cooldownRemaining > 0 ? "not-allowed" : "pointer",
+                opacity: isProcessing || cooldownRemaining > 0 ? 0.7 : 1,
                 boxShadow: "0 4px 12px rgba(74,44,26,0.2)",
               }}
             >
-              {isEditingOrder ? "Update order" : "Place order"}
+              {cooldownRemaining > 0
+                ? `Please wait (${cooldownRemaining}s)`
+                : isProcessing
+                ? (isEditingOrder ? "Updating order…" : "Placing order…")
+                : isEditingOrder
+                ? "Update order"
+                : "Place order"}
             </button>
 
             {isEditingOrder && (
@@ -5485,20 +6064,28 @@ export default function CartPage() {
               <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
                 <button
                   onClick={handleCheckout}
+                  disabled={isProcessing || cooldownRemaining > 0}
                   style={{
                     flex: 2,
                     padding: "18px",
-                    background: isEditingOrder ? ACCENT : BROWN,
-                    color: isEditingOrder ? BROWN_DARK : "#fff",
+                    background: isProcessing || cooldownRemaining > 0 ? "#999" : isEditingOrder ? ACCENT : BROWN,
+                    color: isEditingOrder && !(isProcessing || cooldownRemaining > 0) ? BROWN_DARK : "#fff",
                     border: "none",
                     borderRadius: "50px",
                     fontSize: "18px",
                     fontWeight: "700",
-                    cursor: "pointer",
+                    cursor: isProcessing || cooldownRemaining > 0 ? "not-allowed" : "pointer",
+                    opacity: isProcessing || cooldownRemaining > 0 ? 0.7 : 1,
                     boxShadow: "0 4px 12px rgba(74,44,26,0.2)",
                   }}
                 >
-                  {isEditingOrder ? "Update order" : "Place order"}
+                  {cooldownRemaining > 0
+                    ? `Please wait (${cooldownRemaining}s)`
+                    : isProcessing
+                    ? (isEditingOrder ? "Updating order…" : "Placing order…")
+                    : isEditingOrder
+                    ? "Update order"
+                    : "Place order"}
                 </button>
                 {isEditingOrder && (
                   <button
@@ -5632,11 +6219,10 @@ export default function CartPage() {
                   </div>
                   <div style={fgStyle}>
                     <label style={labelStyle}>Contact number</label>
-                    <input
-                      type="tel"
-                      placeholder="Contact number"
+                    <MobileNumberDropdown
+                      customer={{ ...(selectedDetails || {}), ...(headerSelectedCustomer || {}) }}
                       value={contactNumber}
-                      onChange={(e) => setContactNumber(e.target.value)}
+                      onChange={setContactNumber}
                       style={inputStyle}
                     />
                   </div>
@@ -5783,66 +6369,69 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, creat
           <div style={{ ...labelRowStyle, fontWeight: 900 }}>
             <span style={labelStyle}>PARTY NAME : </span>
             <span style={{ flex: 1, wordBreak: "break-word" }}>
-              {customer?.Party_Mailing_Name || customer?.billName || customer?.Billl_Name || "—"}
+              {customer?.Party_Mailing_Name || customer?.partyMailingName || customer?.billName || customer?.Billl_Name || customer?.Short_Name || customer?.name || customer?.customerName || "—"}
             </span>
           </div>
           <div style={labelRowStyle}>
             <span style={labelStyle}>LOCATION  : </span>
-            <span style={{ flex: 1 }}>{customer?.Party_Location || "—"}</span>
+            <span style={{ flex: 1 }}>{customer?.City || customer?.city || customer?.Party_Location || customer?.partyLocation || customer?.Location || customer?.Party_Mailing_Address || customer?.address || "—"}</span>
           </div>
           <div style={labelRowStyle}>
             <span style={labelStyle}>PH.NO     : </span>
-            <span style={{ flex: 1 }}>{customer?.Mobile_No || customer?.Land_Line || "—"}</span>
+            <span style={{ flex: 1 }}>{customer?.contactNumber || customer?.Mobile_No || customer?.mobile || customer?.mobileNo || customer?.A1 || customer?.Party_Mobile_1 || customer?.Party_Mobile_2 || customer?.Land_Line || "—"}</span>
           </div>
           <div style={labelRowStyle}>
             <span style={labelStyle}>TRANSPORT : </span>
-            <span style={{ flex: 1 }}>{customer?.Transporter || "—"}</span>
+            <span style={{ flex: 1 }}>{customer?.Transporter || customer?.transporter || customer?.transporterName || "—"}</span>
           </div>
           <div style={{ ...labelRowStyle, marginBottom: 0 }}>
             <span style={labelStyle}>BROKER    : </span>
-            <span style={{ flex: 1 }}>{customer?.Broker || "—"}</span>
+            <span style={{ flex: 1 }}>{customer?.Broker || customer?.broker || customer?.brokerName || "—"}</span>
           </div>
         </div>
 
-        <div style={{ border: "0.5px solid #000" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div style={{ border: "1px solid #000", boxSizing: "border-box" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", boxSizing: "border-box" }}>
             <thead>
               <tr>
                 <th
                   style={{
-                    border: "0.5px solid #000",
-                    padding: "0.5mm",
+                    border: "1px solid #000",
+                    padding: "2px",
                     textAlign: "center",
                     fontSize: "14px",
                     fontWeight: 900,
                     background: "#f5f5f5",
-                    width: "25mm",
+                    width: "25%",
+                    boxSizing: "border-box",
                   }}
                 >
                   RATE
                 </th>
                 <th
                   style={{
-                    border: "0.5px solid #000",
-                    padding: "0.5mm",
+                    border: "1px solid #000",
+                    padding: "2px 4px",
                     textAlign: "center",
                     fontSize: "14px",
                     fontWeight: 900,
                     background: "#f5f5f5",
-                    width: "45mm",
+                    width: "55%",
+                    boxSizing: "border-box",
                   }}
                 >
                   ITEM NAME
                 </th>
                 <th
                   style={{
-                    border: "0.5px solid #000",
-                    padding: "0.5mm",
+                    border: "1px solid #000",
+                    padding: "2px",
                     textAlign: "center",
                     fontSize: "14px",
                     fontWeight: 900,
                     background: "#f5f5f5",
-                    width: "10mm",
+                    width: "20%",
+                    boxSizing: "border-box",
                   }}
                 >
                   BAGS
@@ -5851,41 +6440,44 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, creat
             </thead>
             <tbody>
               {items.length > 0
-                ? [...items].sort((a, b) => (b.shortName || b.Print_Name || "").localeCompare(a.shortName || a.Print_Name || "")).map((item, i) => {
+                ? [...items].sort((a, b) => (Number(a.S_No ?? a.Sno ?? a.sNo ?? 0)) - (Number(b.S_No ?? b.Sno ?? b.sNo ?? 0))).map((item, i) => {
                   const pw = packWeightOf(item);
                   const bags = pw > 0 ? safeNum(item.kgs) / pw : 0;
                   return (
                     <tr key={i}>
                       <td
                         style={{
-                          border: "0.5px solid #000",
-                          padding: "2mm 1mm",
+                          border: "1px solid #000",
+                          padding: "3px 2px",
                           textAlign: "center",
                           verticalAlign: "middle",
                           fontSize: "14px",
+                          boxSizing: "border-box",
                         }}
                       >
                         ₹{rupee(item.price)}
                       </td>
                       <td
                         style={{
-                          border: "0.5px solid #000",
+                          border: "1px solid #000",
                           textAlign: "left",
-                          padding: "0 1.5mm",
+                          padding: "3px 4px",
                           verticalAlign: "middle",
                           fontSize: "12px",
                           wordBreak: "break-word",
+                          boxSizing: "border-box",
                         }}
                       >
                         {item.shortName || item.Print_Name || item.name || "—"}
                       </td>
                       <td
                         style={{
-                          border: "0.5px solid #000",
+                          border: "1px solid #000",
                           textAlign: "center",
-                          padding: "0.3mm",
+                          padding: "3px 2px",
                           verticalAlign: "middle",
                           fontSize: "14px",
+                          boxSizing: "border-box",
                         }}
                       >
                         {bags > 0 ? bags.toFixed(0) : "0"}
@@ -5895,9 +6487,9 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, creat
                 })
                 : Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    <td style={{ border: "0.5px solid #000", padding: "2px" }} />
-                    <td style={{ border: "0.5px solid #000", padding: "2px" }} />
-                    <td style={{ border: "0.5px solid #000", padding: "2px" }} />
+                    <td style={{ border: "1px solid #000", padding: "2px" }} />
+                    <td style={{ border: "1px solid #000", padding: "2px" }} />
+                    <td style={{ border: "1px solid #000", padding: "2px" }} />
                   </tr>
                 ))}
 
@@ -5943,12 +6535,13 @@ const QuotationPrint = forwardRef(({ customer, cartItems, totals, storage, creat
             style={{
               background: "#f0f0f0",
               borderTop: "1px solid #000",
-              padding: "1mm",
+              padding: "1mm 2mm",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
               fontSize: "14px",
               fontWeight: "bold",
+              boxSizing: "border-box",
             }}
           >
             <span>₹{rupee(totals?.total ?? totals?.subtotal)}</span>
@@ -5976,9 +6569,84 @@ const PrintPreviewModal = ({
   createdOn,
   orderDate,
   onPrinted,
+  orderId,
+  referenceId,
+  retailerId,
 }) => {
   const printRef = useRef(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [selectedPhone, setSelectedPhone] = useState("");
+  const [isCustomPhone, setIsCustomPhone] = useState(false);
+  const [fetchedCustomerMaster, setFetchedCustomerMaster] = useState(null);
+
+  useEffect(() => {
+    const custId = retailerId || customer?.id || customer?.Customer_Id || customer?.Retailer_Id || customer?.customerId;
+    if (open && custId) {
+      fetchLink({
+        address: `pos/retailerMasterOptRetailerId?Customer_Id=${custId}&limit=10000000&page=1`,
+      }).then((response) => {
+        if (response?.success && Array.isArray(response.data)) {
+          const found = response.data.find(c => String(c.Customer_Id || c.Retailer_Id) === String(custId)) || response.data[0];
+          if (found) {
+            setFetchedCustomerMaster(found);
+          }
+        }
+      }).catch(err => console.warn("Failed to fetch customer numbers for print modal:", err));
+    }
+  }, [open, retailerId, customer?.id, customer?.Customer_Id, customer?.Retailer_Id]);
+
+  const phoneOptions = useMemo(() => {
+    if (!customer && !fetchedCustomerMaster) return [];
+    const list = [];
+    const seen = new Set();
+    const addOpt = (label, val) => {
+      const clean = String(val || "").trim();
+      if (clean && clean !== "null" && clean !== "undefined" && clean !== "0" && !seen.has(clean)) {
+        list.push({ label, value: clean });
+        seen.add(clean);
+      }
+    };
+
+    const ordMobile = customer?.Ord_Mobile_No || customer?.ordMobileNo || customer?.Contact_No || fetchedCustomerMaster?.Last_Ord_Mobile_No || fetchedCustomerMaster?.Ord_Mobile_No;
+    if (ordMobile) {
+      addOpt("Order Mobile_No", ordMobile);
+    }
+
+    const custMobile = customer?.Customer_Mobile || fetchedCustomerMaster?.Mobile_No || (ordMobile !== customer?.Mobile_No ? customer?.Mobile_No : "") || customer?.mobile || customer?.contactNumber || customer?.mobileNo;
+    if (custMobile) {
+      addOpt("Customer Mobile_Number", custMobile);
+    }
+
+    addOpt("A1", customer?.A1 || customer?.a1 || customer?.lolA1 || customer?.A1_Phone || fetchedCustomerMaster?.A1);
+    addOpt("Party_Mobile_1", customer?.Party_Mobile_1 || customer?.party_mobile_1 || customer?.partyMobile1 || fetchedCustomerMaster?.Party_Mobile_1);
+    addOpt("Party_Mobile_2", customer?.Party_Mobile_2 || customer?.party_mobile_2 || customer?.partyMobile2 || fetchedCustomerMaster?.Party_Mobile_2);
+    addOpt("Land_Line", customer?.Land_Line || customer?.landline || customer?.Landline || customer?.A3 || fetchedCustomerMaster?.Land_Line);
+
+    return list;
+  }, [customer, fetchedCustomerMaster]);
+
+  useEffect(() => {
+    if (customer || fetchedCustomerMaster) {
+      const initial = customer?.Ord_Mobile_No || fetchedCustomerMaster?.Last_Ord_Mobile_No || fetchedCustomerMaster?.Ord_Mobile_No || customer?.Mobile_No || fetchedCustomerMaster?.Mobile_No || customer?.mobile || customer?.contactNumber || customer?.A1 || customer?.Party_Mobile_1 || customer?.Party_Mobile_2 || customer?.Land_Line || "";
+      setSelectedPhone(initial);
+      setIsCustomPhone(!initial);
+    } else {
+      setIsCustomPhone(true);
+    }
+  }, [customer, open, fetchedCustomerMaster]);
+
+  const displayCustomer = useMemo(() => {
+    if (!customer) return customer;
+    if (!selectedPhone) return customer;
+    return {
+      ...customer,
+      Mobile_No: selectedPhone,
+      contactNumber: selectedPhone,
+      mobile: selectedPhone,
+      mobileNo: selectedPhone,
+      Land_Line: selectedPhone,
+    };
+  }, [customer, selectedPhone]);
 
   const handleReactPrint = useReactToPrint({
     contentRef: printRef,
@@ -6020,18 +6688,561 @@ const PrintPreviewModal = ({
     }
   };
 
+  const generateWhatsAppMessage = () => {
+    const safeNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    const rupee = (n) => safeNum(n).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    const shopName = storage?.Company_Name || storage?.user?.Company_Name || "SM TRADERS";
+    const customerName = displayCustomer?.Billl_Name || displayCustomer?.Party_Mailing_Name || displayCustomer?.Short_Name || displayCustomer?.name || "Customer";
+    const contactNo = selectedPhone || displayCustomer?.Mobile_No || displayCustomer?.mobile || displayCustomer?.Land_Line || displayCustomer?.A1 || displayCustomer?.Party_Mobile_1 || displayCustomer?.Party_Mobile_2 || "";
+    const dateStr = orderDate || createdOn || new Date().toLocaleDateString("en-GB");
+
+    let msg = `*${shopName}*\n`;
+    msg += `*Quotation / Sale Order*\n`;
+    msg += `--------------------------\n`;
+    msg += `*Date:* ${dateStr}\n`;
+    msg += `*Customer:* ${customerName}\n`;
+    if (contactNo) msg += `*Contact:* ${contactNo}\n`;
+    if (displayCustomer?.Transporter) msg += `*Transporter:* ${displayCustomer.Transporter}\n`;
+    if (displayCustomer?.Broker) msg += `*Broker:* ${displayCustomer.Broker}\n`;
+    msg += `--------------------------\n`;
+    msg += `*Items:*\n`;
+
+    let totalKgs = 0;
+    let totalBags = 0;
+
+    const sortedItems = [...(cartItems || [])].sort((a, b) => (Number(a.S_No ?? a.Sno ?? a.sNo ?? 0)) - (Number(b.S_No ?? b.Sno ?? b.sNo ?? 0)));
+    sortedItems.forEach((item, idx) => {
+      const displayName = item.shortName || item.Print_Name || item.name || "";
+      const packWeight = parseFloat(displayName?.match(/(\d+(?:\.\d+)?)\s*KG/i)?.[1]) || 0;
+      const kgs = safeNum(item.kgs);
+      const bags = packWeight > 0 ? kgs / packWeight : (item.bags || 0);
+      totalKgs += kgs;
+      totalBags += bags;
+
+      const rate = safeNum(item.price);
+      const itemTotal = safeNum(item.amount || (kgs > 0 ? kgs * rate : (item.quantity || 1) * rate));
+
+      msg += `${idx + 1}. *${displayName}*\n`;
+      const details = [];
+      if (kgs > 0) details.push(`${kgs} KGS`);
+      if (bags > 0) details.push(`(${Math.round(bags)} Bags)`);
+      details.push(`@ ₹${rupee(rate)}`);
+      msg += `   ${details.join(" ")}${itemTotal > 0 ? ` = ₹${rupee(itemTotal)}` : ""}\n`;
+    });
+
+    const validExpenses = (Array.isArray(expenses) ? expenses : []).filter(
+      (exp) => exp && exp.Account_Name && Number(exp.Expence_Value) !== 0
+    );
+
+    if (validExpenses.length > 0) {
+      msg += `--------------------------\n`;
+      msg += `*Other Charges:*\n`;
+      validExpenses.forEach((exp) => {
+        const val = safeNum(exp.Expence_Value);
+        msg += `${exp.Account_Name}: ₹${rupee(val)}\n`;
+      });
+    }
+
+    msg += `--------------------------\n`;
+    const grandTotal = totals?.total ?? totals?.subtotal ?? 0;
+    msg += `*Total Amount: ₹${rupee(grandTotal)}*\n`;
+    if (totalKgs > 0) msg += `*Total Weight:* ${totalKgs.toFixed(2)} KGS\n`;
+    if (totalBags > 0) msg += `*Total Bags:* ${Math.round(totalBags)} BAGS\n`;
+    msg += `--------------------------\n`;
+    msg += `Thank you for your business!`;
+
+    return msg;
+  };
+
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+
+  const captureReceiptToImageBlob = async (printElement) => {
+    if (!printElement) return null;
+    try {
+      const scrollW = printElement.scrollWidth || 0;
+      const offsetW = printElement.offsetWidth || 0;
+      const clientW = printElement.clientWidth || 0;
+      const baseWidth = Math.max(scrollW, offsetW, clientW, 330);
+      const baseHeight = Math.max(printElement.scrollHeight || 0, printElement.offsetHeight || 0, 420);
+
+      const padding = 16;
+      const totalWidth = baseWidth + padding * 2;
+      const totalHeight = baseHeight + padding * 2;
+
+      const clone = printElement.cloneNode(true);
+      clone.style.width = `${baseWidth}px`;
+      clone.style.maxWidth = `${baseWidth}px`;
+      clone.style.margin = "0 auto";
+      clone.style.boxSizing = "border-box";
+
+      const origEls = printElement.querySelectorAll('*');
+      const cloneEls = clone.querySelectorAll('*');
+      origEls.forEach((orig, idx) => {
+        const cl = cloneEls[idx];
+        if (cl && orig) {
+          const comp = window.getComputedStyle(orig);
+          cl.style.color = comp.color || '#000000';
+          cl.style.fontSize = comp.fontSize || '14px';
+          cl.style.fontWeight = comp.fontWeight || 'normal';
+          cl.style.fontFamily = comp.fontFamily || "'Courier New', Courier, monospace";
+          cl.style.textAlign = comp.textAlign || 'left';
+
+          if (comp.borderTopWidth && comp.borderTopStyle !== 'none') {
+            cl.style.borderTop = `${comp.borderTopWidth} ${comp.borderTopStyle} ${comp.borderTopColor}`;
+          }
+          if (comp.borderBottomWidth && comp.borderBottomStyle !== 'none') {
+            cl.style.borderBottom = `${comp.borderBottomWidth} ${comp.borderBottomStyle} ${comp.borderBottomColor}`;
+          }
+          if (comp.borderLeftWidth && comp.borderLeftStyle !== 'none') {
+            cl.style.borderLeft = `${comp.borderLeftWidth} ${comp.borderLeftStyle} ${comp.borderLeftColor}`;
+          }
+          if (comp.borderRightWidth && comp.borderRightStyle !== 'none') {
+            cl.style.borderRight = `${comp.borderRightWidth} ${comp.borderRightStyle} ${comp.borderRightColor}`;
+          }
+
+          cl.style.borderCollapse = comp.borderCollapse || 'collapse';
+          cl.style.backgroundColor = comp.backgroundColor === 'rgba(0, 0, 0, 0)' ? 'transparent' : comp.backgroundColor;
+          cl.style.display = comp.display;
+          cl.style.justifyContent = comp.justifyContent;
+          cl.style.alignItems = comp.alignItems;
+          cl.style.boxSizing = 'border-box';
+          cl.style.padding = comp.padding;
+          cl.style.margin = comp.margin;
+          cl.style.lineHeight = comp.lineHeight;
+          cl.style.whiteSpace = comp.whiteSpace;
+          cl.style.wordBreak = comp.wordBreak;
+        }
+      });
+
+      const serializer = new XMLSerializer();
+      const xhtml = serializer.serializeToString(clone);
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}">
+        <foreignObject width="100%" height="100%">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="background:#ffffff;padding:${padding}px;box-sizing:border-box;width:${totalWidth}px;min-height:${totalHeight}px;">
+            ${xhtml}
+          </div>
+        </foreignObject>
+      </svg>`;
+
+      const svgBase64 = "data:image/svg+xml;base64," + window.btoa(unescape(encodeURIComponent(svg)));
+
+      const renderedBlob = await new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            const scale = 2;
+            canvas.width = totalWidth * scale;
+            canvas.height = totalHeight * scale;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((b) => resolve(b), "image/jpeg", 0.95);
+          } catch (e) {
+            console.error("Canvas draw error:", e);
+            resolve(null);
+          }
+        };
+        img.onerror = (err) => {
+          console.error("SVG Image load error:", err);
+          resolve(null);
+        };
+        img.src = svgBase64;
+      });
+
+      if (renderedBlob) return renderedBlob;
+
+      // Fallback: Direct 2D Canvas rendering
+      const canvas = document.createElement("canvas");
+      const cWidth = 480;
+      const lines = (printElement.innerText || "").split("\n").map(l => l.trim()).filter(Boolean);
+      const cHeight = Math.max(lines.length * 30 + 80, 400);
+      canvas.width = cWidth;
+      canvas.height = cHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, cWidth, cHeight);
+      ctx.fillStyle = "#000000";
+      ctx.font = "bold 16px 'Courier New', monospace";
+      let y = 35;
+      for (const line of lines) {
+        ctx.fillText(line, 20, y);
+        y += 26;
+      }
+      return await new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", 0.95));
+    } catch (e) {
+      console.error("Receipt capture error:", e);
+      return null;
+    }
+  };
+
+  const uploadReceiptImage = async (imageBlob, cleanPhone, customerName) => {
+    if (!imageBlob) return null;
+    const companyId = storage?.Company_id || storage?.user?.Company_id || storage?.Company_Id || 1;
+    const filename = `Sale_Order_${Date.now().toString().slice(-6)}.jpg`;
+
+    const formData = new FormData();
+    formData.append("Company_id", String(companyId));
+    formData.append("So_Inv_No", filename);
+    formData.append("filename", filename);
+    formData.append("Images", imageBlob, filename);
+
+    const endpoints = [
+      "masters/whatsapp/saleImages",
+      "masters/whatsapp/saleorderpdf",
+      "masters/whatsapp/uploadImage",
+    ];
+
+    for (const address of endpoints) {
+      try {
+        const resp = await fetchLink({
+          address,
+          method: "POST",
+          bodyData: formData,
+        });
+
+        const foundUrl = resp?.data?.url ||
+          resp?.data?.imageUrl ||
+          resp?.data?.Imageurl ||
+          resp?.data?.link ||
+          (typeof resp?.data === "string" ? resp.data : null) ||
+          resp?.url ||
+          resp?.imageUrl ||
+          (Array.isArray(resp?.data) && resp?.data[0]?.url ? resp.data[0].url : null);
+        if (resp?.success && foundUrl) {
+          const httpsUrl = String(foundUrl).replace(/^http:\/\//i, "https://");
+          return { url: httpsUrl, filename };
+        }
+        if (foundUrl) {
+          const httpsUrl = String(foundUrl).replace(/^http:\/\//i, "https://");
+          return { url: httpsUrl, filename };
+        }
+      } catch (err) {
+        console.warn("Upload endpoint " + address + " error:", err);
+      }
+    }
+    return null;
+  };
+
+  const handleSendWhatsApp = async () => {
+    if (isSendingWhatsApp) return;
+
+    const rawPhone = selectedPhone || displayCustomer?.contactNumber || displayCustomer?.Mobile_No || displayCustomer?.mobile || displayCustomer?.mobileNo || displayCustomer?.A1 || displayCustomer?.Party_Mobile_1 || displayCustomer?.Party_Mobile_2 || displayCustomer?.Land_Line || "";
+    let cleanPhone = String(rawPhone || "").replace(/\D/g, "");
+    if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast.error("Valid customer mobile number not found");
+      return;
+    }
+
+    setIsSendingWhatsApp(true);
+    const sendingToast = toast.loading("Sending sales order image via WhatsApp...");
+
+    const safeNum = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+    const rupee = (n) => safeNum(n).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    const shopName = storage?.Company_Name || storage?.user?.Company_Name || "SM TRADERS";
+    const customerName = displayCustomer?.Party_Mailing_Name || displayCustomer?.partyMailingName || displayCustomer?.billName || displayCustomer?.Billl_Name || displayCustomer?.Short_Name || displayCustomer?.customerName || displayCustomer?.name || "Customer";
+
+    let formattedDate = "";
+    try {
+      const rawDate = orderDate || createdOn;
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          const day = String(d.getDate()).padStart(2, "0");
+          const month = String(d.getMonth() + 1).padStart(2, "0");
+          const year = d.getFullYear();
+          formattedDate = `${day}-${month}-${year}`;
+        } else {
+          formattedDate = String(rawDate);
+        }
+      } else {
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, "0");
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const year = now.getFullYear();
+        formattedDate = `${day}-${month}-${year}`;
+      }
+    } catch (e) {
+      formattedDate = new Date().toLocaleDateString("en-GB");
+    }
+
+    const grandTotal = totals?.total ?? totals?.subtotal ?? totals?.Grand_Total ?? totals?.Total_Amount ?? totals?.totalAmount ?? 0;
+    const companyId = storage?.Company_id || storage?.user?.Company_id || storage?.Company_Id || 1;
+    const DEFAULT_FALLBACK_KEY = "47337cd0e3451ae93724841b8c73415a57bd9a34d3a0ebfaaaaeb1a8ceeff0b7880880da8342782cd2f4efc3f556f768d0828dcbd26d6b678649802cf32edcff";
+    let token = "";
+    let apiEndpoint = "https://backend.askeva.io/v1/message/send-message";
+
+    try {
+      const urlResp = await fetchLink({
+        address: `masters/company/url?Company_id=${companyId}`,
+      });
+
+      token = urlResp?.data?.Whatsapp_key || urlResp?.data?.token || "";
+      if (urlResp?.data?.Whatsapp_url || urlResp?.data?.url || urlResp?.data?.apiEndpoint) {
+        apiEndpoint = String(urlResp?.data?.Whatsapp_url || urlResp?.data?.url || urlResp?.data?.apiEndpoint).replace(/^http:\/\//i, "https://");
+      }
+    } catch (e) {
+      console.warn("masters/company/url API failed, using fallback key:", e);
+    }
+
+    if (!token) {
+      token = DEFAULT_FALLBACK_KEY;
+    }
+
+    try {
+      // Capture receipt print image / document
+      let documentUrl = null;
+      let documentFilename = `Sale_Order_${Date.now().toString().slice(-6)}.jpg`;
+      if (printRef.current) {
+        const imageBlob = await captureReceiptToImageBlob(printRef.current);
+        if (imageBlob) {
+          const uploadRes = await uploadReceiptImage(imageBlob, cleanPhone, customerName);
+          if (uploadRes?.url) {
+            documentUrl = String(uploadRes.url).replace(/^http:\/\//i, "https://");
+            if (uploadRes.filename) documentFilename = uploadRes.filename;
+          }
+        }
+      }
+
+      const templateName = "sale_order_english_img";
+      const isImageTemplate = /img|image/i.test(templateName);
+
+      const components = [];
+      if (documentUrl) {
+        if (isImageTemplate) {
+          components.push({
+            type: "header",
+            parameters: [
+              {
+                type: "image",
+                image: {
+                  link: documentUrl,
+                },
+              },
+            ],
+          });
+        } else {
+          components.push({
+            type: "header",
+            parameters: [
+              {
+                type: "document",
+                document: {
+                  filename: documentFilename,
+                  link: documentUrl,
+                },
+              },
+            ],
+          });
+        }
+      }
+
+      const bodyParams = [
+        shopName,
+        customerName,
+        formattedDate,
+        String(Number(grandTotal || 0).toFixed(2)),
+      ];
+
+      components.push({
+        type: "body",
+        parameters: bodyParams.map((text) => ({
+          type: "text",
+          text: String(text || "-"),
+        })),
+      });
+
+      const payload = {
+        to: cleanPhone,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { policy: "deterministic", code: "en" },
+          components: components,
+        },
+      };
+
+      const resp = await fetch(`${apiEndpoint}?token=${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await resp.json().catch(() => ({}));
+      toast.dismiss(sendingToast);
+
+      if (resp.ok && !data?.error) {
+        toast.success("Sales order sent to WhatsApp successfully!");
+
+        // Log WhatsApp Send to backend
+        try {
+          const logOrderId = orderId || referenceId || customer?.So_Id || customer?.orderId || customer?.Pre_Ord_Id || customer?.Pre_Id || "";
+          const logRetailerId = retailerId || customer?.Retailer_Id || customer?.id || customer?.Customer_Id || customer?.Custome_Id || customer?.retailerId || 0;
+          const logRetailerName = displayCustomer?.Party_Mailing_Name || displayCustomer?.Billl_Name || displayCustomer?.Short_Name || displayCustomer?.name || customerName || "";
+          const logMobile = cleanPhone || selectedPhone || customer?.Mobile_No || "Not Available";
+
+          await fetchLink({
+            address: "masters/whatsapp/logSend",
+            method: "POST",
+            bodyData: {
+              documentType: "SalesOrder",
+              messageTemplate: "sale_order",
+              mobileNo: logMobile,
+              referenceId: String(logOrderId),
+              retailerId: Number(logRetailerId),
+              retailerName: logRetailerName,
+            },
+          });
+        } catch (logErr) {
+          console.warn("masters/whatsapp/logSend error:", logErr);
+        }
+      } else {
+        toast.error(data?.message || data?.error || "Failed to send message via Askeva");
+      }
+    } catch (error) {
+      toast.dismiss(sendingToast);
+      console.error("Askeva send error:", error);
+      toast.error(error.message || "Failed to send message to Askeva");
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
+  };
+
   return (
     <Dialog
       open={open}
       onClose={(event, reason) => {
-        if (reason !== "backdropClick" || !isPrinting) onClose();
+        if (reason !== "backdropClick" || (!isPrinting && !isSendingWhatsApp)) onClose();
       }}
       maxWidth="sm"
       fullWidth
       PaperProps={{ style: { margin: "10px", width: "calc(100% - 20px)", maxWidth: "500px" } }}
     >
-      <DialogTitle style={{ fontWeight: "bold", fontSize: "20px" }}>
-        {isReprint ? "Reprint quotation" : "Quotation preview"}
+      <DialogTitle style={{
+        fontWeight: "bold",
+        fontSize: "18px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "10px",
+        padding: "16px 20px",
+        borderBottom: "1px solid #e8ddd4",
+        backgroundColor: "#fff",
+      }}>
+        <span>{isReprint ? "Reprint Quotation" : "Quotation Preview"}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "13px", fontWeight: "600", color: "#666" }}>
+            Mobile:
+          </span>
+          {isCustomPhone || phoneOptions.length === 0 ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <input
+                type="tel"
+                placeholder="Enter mobile number"
+                value={selectedPhone || ""}
+                onChange={(e) => setSelectedPhone(e.target.value)}
+                style={{
+                  padding: "6px 10px",
+                  fontSize: "13px",
+                  borderRadius: "6px",
+                  border: "1.5px solid #8c6d48",
+                  background: "#fff",
+                  color: "#3a1f0e",
+                  fontWeight: "600",
+                  outline: "none",
+                  width: "160px",
+                }}
+              />
+              {phoneOptions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomPhone(false);
+                    if (phoneOptions.length > 0) {
+                      setSelectedPhone(phoneOptions[0].value);
+                    }
+                  }}
+                  title="Choose from customer contact list"
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: "12px",
+                    borderRadius: "6px",
+                    border: "1px solid #8c6d48",
+                    background: "#faf6f2",
+                    color: "#8c6d48",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                  }}
+                >
+                  List
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <select
+                value={phoneOptions.some((opt) => opt.value === selectedPhone) ? selectedPhone : "__custom__"}
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") {
+                    setIsCustomPhone(true);
+                  } else {
+                    setSelectedPhone(e.target.value);
+                  }
+                }}
+                style={{
+                  padding: "6px 10px",
+                  fontSize: "13px",
+                  borderRadius: "6px",
+                  border: "1.5px solid #8c6d48",
+                  background: "#faf6f2",
+                  color: "#3a1f0e",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  outline: "none",
+                  maxWidth: "220px",
+                }}
+              >
+                {phoneOptions.map((opt, idx) => (
+                  <option key={idx} value={opt.value}>
+                    {opt.value}
+                  </option>
+                ))}
+                <option value="__custom__">✎ Enter new number...</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setIsCustomPhone(true)}
+                title="Type a custom mobile number"
+                style={{
+                  padding: "6px 8px",
+                  fontSize: "12px",
+                  borderRadius: "6px",
+                  border: "1px solid #8c6d48",
+                  background: "#faf6f2",
+                  color: "#8c6d48",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                ✎
+              </button>
+            </div>
+          )}
+        </div>
       </DialogTitle>
 
       <DialogContent
@@ -6047,7 +7258,7 @@ const PrintPreviewModal = ({
         <div style={{ backgroundColor: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", display: "inline-block" }}>
           <QuotationPrint
             ref={printRef}
-            customer={customer}
+            customer={displayCustomer}
             cartItems={cartItems}
             totals={totals}
             expenses={expenses}
@@ -6058,14 +7269,37 @@ const PrintPreviewModal = ({
         </div>
       </DialogContent>
 
-      <DialogActions style={{ padding: "16px" }}>
-        <Button onClick={onClose} variant="outlined" disabled={isPrinting}>
+      <DialogActions style={{ padding: "16px", display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <Button onClick={onClose} variant="outlined" disabled={isPrinting || isSendingWhatsApp}>
           Close
         </Button>
         <Button
           variant="contained"
+          onClick={handleSendWhatsApp}
+          disabled={isSendingWhatsApp}
+          style={{
+            fontWeight: "bold",
+            backgroundColor: "#25D366",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          {isSendingWhatsApp ? (
+            <CircularProgress size={18} color="inherit" />
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.699c.97.53 1.761.814 2.796.814 3.18 0 5.767-2.586 5.767-5.766.001-3.18-2.585-5.766-5.767-5.766zm3.393 8.305c-.143.403-.834.774-1.16.823-.306.046-.7.075-1.127-.061-.274-.087-.63-.223-1.077-.417-1.902-.824-3.136-2.766-3.23-2.893-.095-.127-.768-1.021-.768-1.947 0-.926.486-1.381.659-1.57.173-.189.378-.237.504-.237.126 0 .252.001.362.006.117.006.273-.044.426.323.158.38.539 1.317.587 1.412.048.095.079.206.016.332-.063.127-.095.206-.19.317-.095.111-.2.248-.286.333-.095.095-.195.198-.084.388.111.19.493.813 1.058 1.316.727.648 1.34.849 1.53.944.19.095.301.079.412-.048.111-.127.475-.554.602-.744.127-.19.253-.158.427-.095.174.063 1.107.522 1.297.617.19.095.317.143.364.222.047.079.047.459-.096.862z" />
+              <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2.054 22l4.98-1.307A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.05c-1.634 0-3.146-.465-4.43-1.267l-.317-.197-2.967.778.792-2.893-.217-.345A7.994 7.994 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z" />
+            </svg>
+          )}
+          {isSendingWhatsApp ? "Sending…" : "Send WhatsApp"}
+        </Button>
+        <Button
+          variant="contained"
           onClick={handlePrintClick}
-          disabled={isPrinting}
+          disabled={isPrinting || isSendingWhatsApp}
           style={{ fontWeight: "bold", backgroundColor: BROWN_DARK }}
         >
           {isPrinting ? "Printing…" : "Print"}
@@ -6185,19 +7419,27 @@ function Dashboard({
   const [showPendingBills, setShowPendingBills] = useState(false);
 
   const handleTransactionClick = () => {
+    if (!isLoggedIn) {
+      onLoginClick && onLoginClick();
+      return;
+    }
     setShowTransactionDetails(true);
   };
 
   const handlePendingBillsClick = () => {
+    if (!isLoggedIn) {
+      onLoginClick && onLoginClick();
+      return;
+    }
     setShowPendingBills(true);
   };
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = async (isCancelled = () => false) => {
     try {
       const userData = safeParse("user", {});
       const sessionData = safeParse("session", {});
       const userType = localStorage.getItem('userType');
-      
+
       let userId = null;
       if (userType === 'employee') {
         userId = userData.UserId || userData.user_id || userData.User_Id || '';
@@ -6208,18 +7450,26 @@ function Dashboard({
         userId = sessionData?.userId || sessionData?.Ret_Id || '';
       }
 
+      const usertypeid = String(
+        userData.UserTypeId ?? userData.user_type_id ?? userData.User_Type_Id ?? sessionData?.userTypeId ?? localStorage.getItem("userTypeId") ?? ""
+      );
+      const isFullAccessUser = usertypeid === "0" || usertypeid === "1";
+      const effectiveCreatedBy = isFullAccessUser ? "" : userId;
+
       const pendingResponse = await fetchLink({
-        address: `sales/pendingBills?Created_by=${userId}`,
+        address: `sales/pendingBills?Created_by=${encodeURIComponent(effectiveCreatedBy)}&UserTypeId=${encodeURIComponent(usertypeid)}`,
         method: 'GET',
       });
+      if (isCancelled()) return;
       if (pendingResponse?.success) {
         setPendingBills(pendingResponse.data?.count || 0);
       }
 
       const transactionResponse = await fetchLink({
-        address: `sales/transactions/count?Created_by=${userId}`,
+        address: `sales/transactions/count?Created_by=${encodeURIComponent(effectiveCreatedBy)}&UserTypeId=${encodeURIComponent(usertypeid)}`,
         method: 'GET',
       });
+      if (isCancelled()) return;
       if (transactionResponse?.success) {
         setTransactions(transactionResponse.data?.count || 0);
       }
@@ -6229,6 +7479,17 @@ function Dashboard({
   };
 
   useEffect(() => {
+    // Not logged in -> show 0 for every dashboard count and skip API calls
+    if (!isLoggedIn) {
+      setOrders([]);
+      setPendingBills(0);
+      setTransactions(0);
+      setShowTransactionDetails(false);
+      setShowPendingBills(false);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     const fetchTodayOrders = async () => {
@@ -6238,14 +7499,18 @@ function Dashboard({
         const sessionData = safeParse("session", {});
         const userId = userData.UserId || userData.user_id || userData.User_Id || "";
         const mobileNo = getStoredUsername();
-        const usertypeid =
-          userData.UserTypeId || userData.user_type_id || userData.User_Type_Id || sessionData?.userTypeId || "";
+        const usertypeid = String(
+          userData.UserTypeId ?? userData.user_type_id ?? userData.User_Type_Id ?? sessionData?.userTypeId ?? localStorage.getItem("userTypeId") ?? ""
+        );
+        const isFullAccessUser = usertypeid === "0" || usertypeid === "1";
+        const effectiveCreatedBy = isFullAccessUser ? "" : userId;
+        const effectiveMobileNo = isFullAccessUser ? "" : mobileNo;
         const today = toLocalYMD(new Date());
 
         const response = await fetchLink({
           address: `sales/salesOrder/list?Created_by=${encodeURIComponent(
-            userId
-          )}&Mobile_No=${encodeURIComponent(mobileNo)}&FromDate=${today}&ToDate=${today}&UserTypeId=${encodeURIComponent(
+            effectiveCreatedBy
+          )}&Mobile_No=${encodeURIComponent(effectiveMobileNo)}&FromDate=${today}&ToDate=${today}&UserTypeId=${encodeURIComponent(
             usertypeid
           )}`,
           method: "GET",
@@ -6265,11 +7530,11 @@ function Dashboard({
     };
 
     fetchTodayOrders();
-    fetchDashboardStats();
+    fetchDashboardStats(() => cancelled);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (allProducts && allProducts.length > 0) {
@@ -6334,10 +7599,14 @@ function Dashboard({
           zIndex: 100,
         }}
       >
-        <div>
-          <div style={{ fontSize: isMobile ? "13px" : "14px", opacity: 0.8 }}>Welcome back,</div>
-          <div style={{ fontSize: isMobile ? "18px" : "20px", fontWeight: "bold" }}>{userName || "User"}</div>
-        </div>
+        {isLoggedIn ? (
+          <div>
+            <div style={{ fontSize: isMobile ? "13px" : "14px", opacity: 0.8 }}>Welcome back,</div>
+            <div style={{ fontSize: isMobile ? "18px" : "20px", fontWeight: "bold" }}>{userName || "User"}</div>
+          </div>
+        ) : (
+          <div style={{ fontSize: isMobile ? "18px" : "20px", fontWeight: "bold" }}>Dashboard</div>
+        )}
 
         <ThreeDotMenu
           isLoggedIn={isLoggedIn}
@@ -6350,6 +7619,40 @@ function Dashboard({
       </div>
 
       <div style={{ padding: isMobile ? "16px" : "24px 32px", maxWidth: "1100px", margin: "0 auto" }}>
+        {!isLoggedIn ? (
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: "20px",
+              border: "1px solid #e8ddd4",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              padding: isMobile ? "40px 20px" : "56px 32px",
+              marginTop: isMobile ? "24px" : "40px",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: isMobile ? "40px" : "48px", marginBottom: "12px" }}>🔒</div>
+            <div style={{ fontSize: isMobile ? "17px" : "20px", fontWeight: "bold", color: BROWN_DARK, marginBottom: "20px" }}>
+              Please login to view the Dashboard details
+            </div>
+            <button
+              onClick={() => onLoginClick && onLoginClick()}
+              style={{
+                background: BROWN,
+                color: "#fff",
+                border: "none",
+                borderRadius: "10px",
+                padding: "10px 28px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              Login
+            </button>
+          </div>
+        ) : (
+        <>
         <div
           style={{
             background: `linear-gradient(135deg, ${BROWN} 0%, ${BROWN_DARK} 100%)`,
@@ -6442,6 +7745,8 @@ function Dashboard({
             </div>
           ))}
         </div>
+        </>
+        )}
       </div>
 
       {isMobile && (

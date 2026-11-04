@@ -66,6 +66,10 @@ export const useEditOrderHandler = (
           setQuantities(parsed.cartItems);
           localStorage.setItem('cartItems', JSON.stringify(parsed.cartItems));
         }
+        if (Array.isArray(parsed.productsList) && parsed.productsList.length > 0) {
+          const order = parsed.productsList.map(p => String(p.id || p.Product_Id)).filter(Boolean);
+          localStorage.setItem('cartItemOrder', JSON.stringify(order));
+        }
         
         // Restore customer
         let customerToSet = null;
@@ -126,25 +130,31 @@ export const useEditOrderHandler = (
       localStorage.setItem("selectedCustomerId", retailerId);
       
       // Fetch complete customer details
-      const response = await fetchLink({ 
-        address: `pos/retailerMasterOpt?limit=10000000&page=1` 
-      });
-      
       let completeCustomerDetails = null;
-      
-      if (response?.success && Array.isArray(response.data)) {
-        completeCustomerDetails = response.data.find(
-          c => String(c.Customer_Id) === String(retailerId)
-        );
+      if (retailerId) {
+        const response = await fetchLink({ 
+          address: `pos/retailerMasterOptRetailerId?Customer_Id=${retailerId}&limit=10000000&page=1` 
+        });
+        
+        if (response?.success && Array.isArray(response.data)) {
+          completeCustomerDetails = response.data.find(
+            c => String(c.Customer_Id || c.Retailer_Id) === String(retailerId)
+          ) || response.data[0];
+        }
       }
+
+      const orderMobile = (order.Ord_Mobile_No || order.Mobile_No || order.Contact_No || completeCustomerDetails?.Last_Ord_Mobile_No || completeCustomerDetails?.Ord_Mobile_No || completeCustomerDetails?.Mobile_No || "").trim();
       
+      const orderShippingAddress = order.Shipp_Address || order.Shipping_Address || order.Address || completeCustomerDetails?.Address || "";
+      const orderDeliveryAddress = order.Deliv_Address || order.Delivery_Address || order.Shipp_Address || order.Shipping_Address || order.Address || completeCustomerDetails?.Address || "";
+
       // Build edit data
       const editData = {
         customerId: order.Retailer_Id || order.Customer_Id || order.Party_Id,
         customerName: order.Retailer_Name || order.Customer_Name || order.Party_Name,
-        customerMobile: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || order.Mobile_No || "",
-        customerAddress: completeCustomerDetails?.Address || order.Shipp_Address || order.Shipping_Address || "",
-        customerCity: completeCustomerDetails?.City || order.City || "",
+        customerMobile: orderMobile || completeCustomerDetails?.Mobile_No || "",
+        customerAddress: orderShippingAddress || completeCustomerDetails?.Address || "",
+        customerCity: order.City || completeCustomerDetails?.City || "",
         orderId: orderId,
         orderNumber: order.So_Inv_No || order.So_No || order.OrderNumber,
         cartItems: {},
@@ -153,21 +163,29 @@ export const useEditOrderHandler = (
         brokerName: completeCustomerDetails?.Broker_Name || completeCustomerDetails?.Broker || order.Broker_Name || order.BrokerName || order.Broker || "",
         transporterId: completeCustomerDetails?.Transporter_Id || order.Transporter_Id || order.TransporterId || "",
         transporterName: completeCustomerDetails?.Transporter_Name || completeCustomerDetails?.Transporter || order.Transporter_Name || order.TransporterName || order.Transporter || "",
-        shippingAddress: completeCustomerDetails?.Address || order.Shipp_Address || order.Shipping_Address || order.Address || "",
-        deliveryAddress: completeCustomerDetails?.Address || order.Deliv_Address || order.Delivery_Address || order.Shipp_Address || order.Shipping_Address || "",
-        contactNumber: completeCustomerDetails?.Mobile_No || order.Ord_Mobile_No || order.Mobile_No || "",
+        shippingAddress: orderShippingAddress,
+        deliveryAddress: orderDeliveryAddress,
+        contactNumber: orderMobile || completeCustomerDetails?.Mobile_No || "",
         description: order.Narration || order.Description || "",
-        customerDetails: completeCustomerDetails ? {
-          id: completeCustomerDetails.Customer_Id,
-          name: (completeCustomerDetails.Short_Name || completeCustomerDetails.Billl_Name || "").replace(/\u0004/g, "").trim(),
-          mobile: completeCustomerDetails.Mobile_No || "",
-          address: completeCustomerDetails.Address || "",
-          city: completeCustomerDetails.City || "",
-          brokerId: completeCustomerDetails.Broker_Id || "",
-          brokerName: completeCustomerDetails.Broker_Name || completeCustomerDetails.Broker || "",
-          transporterId: completeCustomerDetails.Transporter_Id || "",
-          transporterName: completeCustomerDetails.Transporter_Name || completeCustomerDetails.Transporter || "",
-        } : null
+        customerDetails: {
+          id: retailerId,
+          name: (completeCustomerDetails?.Short_Name || completeCustomerDetails?.Billl_Name || order.Retailer_Name || order.Customer_Name || "").replace(/\u0004/g, "").trim(),
+          mobile: orderMobile || completeCustomerDetails?.Mobile_No || "",
+          Ord_Mobile_No: orderMobile,
+          Mobile_No: completeCustomerDetails?.Mobile_No || orderMobile || "",
+          A1: completeCustomerDetails?.A1 || "",
+          Party_Mobile_1: completeCustomerDetails?.Party_Mobile_1 || "",
+          Party_Mobile_2: completeCustomerDetails?.Party_Mobile_2 || "",
+          Land_Line: completeCustomerDetails?.Land_Line || "",
+          address: orderShippingAddress || completeCustomerDetails?.Address || "",
+          city: order.City || completeCustomerDetails?.City || "",
+          brokerId: completeCustomerDetails?.Broker_Id || order.Broker_Id || "",
+          brokerName: completeCustomerDetails?.Broker_Name || completeCustomerDetails?.Broker || order.Broker_Name || "",
+          transporterId: completeCustomerDetails?.Transporter_Id || order.Transporter_Id || "",
+          transporterName: completeCustomerDetails?.Transporter_Name || completeCustomerDetails?.Transporter || order.Transporter_Name || "",
+          billName: completeCustomerDetails?.Billl_Name || order.Retailer_Name || order.Customer_Name || "",
+          partyMailingName: completeCustomerDetails?.Party_Mailing_Name || order.Retailer_Name || order.Customer_Name || "",
+        }
       };
 
       // Process products list
@@ -201,6 +219,10 @@ export const useEditOrderHandler = (
       // Save edit data to localStorage
       localStorage.setItem('editOrderData', JSON.stringify(editData));
       localStorage.setItem('isEditingOrder', 'true');
+      if (Array.isArray(editData.productsList) && editData.productsList.length > 0) {
+        const order = editData.productsList.map(p => String(p.id || p.Product_Id)).filter(Boolean);
+        localStorage.setItem('cartItemOrder', JSON.stringify(order));
+      }
       
       // Backup current cart if exists
       const currentCart = localStorage.getItem('cartItems');
@@ -253,6 +275,7 @@ export const useEditOrderHandler = (
       localStorage.removeItem('selectedCustomerId');
       localStorage.removeItem('selectedCustomer');
       localStorage.removeItem('selectedCustomerData');
+      localStorage.removeItem('cartItemOrder');
       
       // Clear cart items
       setQuantities({});
@@ -280,6 +303,7 @@ export const useEditOrderHandler = (
     localStorage.removeItem('cartItemsBackup');
     localStorage.removeItem('productsBackup');
     localStorage.removeItem('selectedCustomerId');
+    localStorage.removeItem('cartItemOrder');
   };
 
   return {

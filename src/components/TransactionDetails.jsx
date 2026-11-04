@@ -53,11 +53,11 @@ function TransactionDetails({ onBack, isMobile = true, isModal = false }) {
   //   }
   // }, [isEmployee]);
 
-useEffect(() => {
-  if (userDropdownOpen && users.length === 0) {
-    fetchUsers();
-  }
-}, [userDropdownOpen]);
+  useEffect(() => {
+    if (userDropdownOpen && users.length === 0) {
+      fetchUsers();
+    }
+  }, [userDropdownOpen]);
 
 
   useEffect(() => {
@@ -66,7 +66,7 @@ useEffect(() => {
     }
   }, [selectedUser?.customerId]);
 
-  
+
   useEffect(() => {
     if (selectedUser && selectedUser.accountId) {
       fetchTransactions(selectedUser.accountId);
@@ -82,13 +82,13 @@ useEffect(() => {
         address: `pos/retailerMasterOptRetailerId?Customer_Id=${customerId}&limit=10000000&page=1`,
         method: 'GET'
       });
-      
+
       if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
         const user = response.data[0];
         const accountId = user.AC_Id || user.Account_Id;
         const name = user.Ledger_Name || user.Billl_Name || user.Short_Name || "Unknown";
         const location = user.Address || user.City || "";
-        
+
         if (accountId) {
           setAccountName(`${name}${location ? ` / ${location}` : ''}`);
           setSelectedUser(prev => ({
@@ -118,85 +118,85 @@ useEffect(() => {
   };
 
   useEffect(() => {
-  const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const isAdminUser =
-    loginUser?.UserTypeId === "0" ||
-    loginUser?.UserType === "DEVELOPER";
+    const isAdminUser =
+      loginUser?.UserTypeId === "0" ||
+      loginUser?.UserType === "DEVELOPER";
 
-  if (!isAdminUser) {
-    fetchUsers(); 
-  }
-}, []);
-
-
-useEffect(() => {
-  if (users.length > 0 && !selectedUser) {
-    const loginUser = JSON.parse(
-      localStorage.getItem("user") || "{}"
-    );
-
-    const customerId =
-      loginUser.Customer_Id ||
-      loginUser.Ret_Id;
-
-    const matchedUser = users.find(
-      u => String(u.customerId) === String(customerId)
-    );
-
-    if (matchedUser) {
-      handleUserSelect(matchedUser);
-    } else {
-      handleUserSelect(users[0]);
+    if (!isAdminUser) {
+      fetchUsers();
     }
-  }
-}, [users]);
+  }, []);
 
-const fetchUsers = async () => {
-  setLoadingUsers(true);
-  try {
-    if (isEmployee) {
-      
-      const response = await fetchLink({
-        address: `pos/retailerMasterOpt?limit=100000&page=1`,
-        method: "GET",
-      });
 
-      if (response?.success && Array.isArray(response.data)) {
-        const userList = response.data.map((user) => ({
-          id: user.Customer_Id || user.Ret_Id,
-          customerId: user.Customer_Id || user.Ret_Id,
-          name: user.Ledger_Name || user.Billl_Name || user.Short_Name || "Unknown",
-          ledgerName: user.Ledger_Name,
-          billName: user.Billl_Name,
-          location: user.Address || user.City || "",
-          city: user.City || "",
-          mobile: user.Mobile_No || "",
-        }));
-        setUsers(userList);
+  useEffect(() => {
+    if (users.length > 0 && !selectedUser) {
+      const loginUser = JSON.parse(
+        localStorage.getItem("user") || "{}"
+      );
+
+      const customerId =
+        loginUser.Customer_Id ||
+        loginUser.Ret_Id;
+
+      const matchedUser = users.find(
+        u => String(u.customerId) === String(customerId)
+      );
+
+      if (matchedUser) {
+        handleUserSelect(matchedUser);
       } else {
-        toast.error(response?.message || "Failed to fetch customer list");
-        setUsers([]);
-      }
-    } else {
-      // Customer login: only their own account, no dropdown needed
-      const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const customerId = loginUser.Ret_Id || loginUser.Customer_Id || loginUser.id;
-      if (customerId) {
-        setUsers([{
-          id: customerId,
-          customerId,
-          name: loginUser.Ledger_Name || loginUser.Name || "You",
-        }]);
+        handleUserSelect(users[0]);
       }
     }
-  } catch (error) {
-    console.error(error);
-    toast.error("Failed to load users");
-  } finally {
-    setLoadingUsers(false);
-  }
-};
+  }, [users]);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      if (isEmployee) {
+
+        const response = await fetchLink({
+          address: `pos/retailerMasterOpt?limit=100000&page=1`,
+          method: "GET",
+        });
+
+        if (response?.success && Array.isArray(response.data)) {
+          const userList = response.data.map((user) => ({
+            id: user.Customer_Id || user.Ret_Id,
+            customerId: user.Customer_Id || user.Ret_Id,
+            name: user.Ledger_Name || user.Billl_Name || user.Short_Name || "Unknown",
+            ledgerName: user.Ledger_Name,
+            billName: user.Billl_Name,
+            location: user.Address || user.City || "",
+            city: user.City || "",
+            mobile: user.Mobile_No || "",
+          }));
+          setUsers(userList);
+        } else {
+          toast.error(response?.message || "Failed to fetch customer list");
+          setUsers([]);
+        }
+      } else {
+        // Customer login: only their own account, no dropdown needed
+        const loginUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const customerId = loginUser.Ret_Id || loginUser.Customer_Id || loginUser.id;
+        if (customerId) {
+          setUsers([{
+            id: customerId,
+            customerId,
+            name: loginUser.Ledger_Name || loginUser.Name || "You",
+          }]);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load users");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   // const handleUserSelect = (user) => {
   //   setSelectedUser({
@@ -209,16 +209,16 @@ const fetchUsers = async () => {
   // };
 
 
-const handleUserSelect = React.useCallback((user) => {
-  setSelectedUser({
-    ...user,
-    accountId: null
-  });
+  const handleUserSelect = React.useCallback((user) => {
+    setSelectedUser({
+      ...user,
+      accountId: null
+    });
 
-  setAccountName("");
-  setUserDropdownOpen(false);
-  setUserSearch("");
-}, []);
+    setAccountName("");
+    setUserDropdownOpen(false);
+    setUserSearch("");
+  }, []);
 
   const fetchTransactions = async (accountId) => {
     if (!accountId) return;
@@ -226,7 +226,7 @@ const handleUserSelect = React.useCallback((user) => {
     try {
       const fromDateStr = fromDate.toISOString().split('T')[0];
       const toDateStr = toDate.toISOString().split('T')[0];
-      
+
       const response = await fetchLink({
         address: `payment/transactions?Acc_Id=${accountId}&fromDate=${fromDateStr}&toDate=${toDateStr}`,
         method: 'GET'
@@ -236,7 +236,7 @@ const handleUserSelect = React.useCallback((user) => {
         const data = response.data || [];
         setTransactions(Array.isArray(data) ? data : []);
         calculateTotals(data);
-        
+
         // Set account name from first transaction if available
         if (data.length > 0 && data[0].Account_name) {
           setAccountName(data[0].Account_name);
@@ -263,14 +263,14 @@ const handleUserSelect = React.useCallback((user) => {
     }
     let totalDebit = 0;
     let totalCredit = 0;
-    
+
     data.forEach(transaction => {
       const debit = parseFloat(transaction.Debit_Amt || transaction.Debit_Amount || 0);
       const credit = parseFloat(transaction.Credit_Amt || transaction.Credit_Amount || 0);
       totalDebit += debit;
       totalCredit += credit;
     });
-    
+
     const netBalance = totalDebit - totalCredit;
     setTotals({
       totalDebit: totalDebit,
@@ -314,44 +314,44 @@ const handleUserSelect = React.useCallback((user) => {
   };
 
   const getLedgerDescription = (transaction) => {
-    return transaction.Ledger_Desc || 
-           transaction.Ledger_Description || 
-           transaction.Narration || 
-           transaction.Line_Naration ||
-           "-";
+    return transaction.Ledger_Desc ||
+      transaction.Ledger_Description ||
+      transaction.Narration ||
+      transaction.Line_Naration ||
+      "-";
   };
 
   const getInvoiceNo = (transaction) => {
-    return transaction.invoice_no || 
-           transaction.Invoice_No || 
-           transaction.Voucher_No || 
-           "-";
+    return transaction.invoice_no ||
+      transaction.Invoice_No ||
+      transaction.Voucher_No ||
+      "-";
   };
 
   const getParticulars = (transaction) => {
-    return transaction.Particulars || 
-           transaction.Particular || 
-           "-";
+    return transaction.Particulars ||
+      transaction.Particular ||
+      "-";
   };
 
-const filteredUsers = useMemo(() => {
-  if (!userSearch.trim()) {
-    return users.slice(0, 100);
-  }
+  const filteredUsers = useMemo(() => {
+    if (!userSearch.trim()) {
+      return users.slice(0, 100);
+    }
 
-  const search = userSearch.toLowerCase().trim();
+    const search = userSearch.toLowerCase().trim();
 
-  return users
-    .filter(user =>
-      (user.name || '').toLowerCase().includes(search) ||
-      (user.ledgerName || '').toLowerCase().includes(search) ||
-      (user.billName || '').toLowerCase().includes(search) ||
-      (user.location || '').toLowerCase().includes(search) ||
-      (user.mobile || '').toLowerCase().includes(search) ||
-      (user.city || '').toLowerCase().includes(search)
-    )
-    .slice(0, 100);
-}, [users, userSearch]);
+    return users
+      .filter(user =>
+        (user.name || '').toLowerCase().includes(search) ||
+        (user.ledgerName || '').toLowerCase().includes(search) ||
+        (user.billName || '').toLowerCase().includes(search) ||
+        (user.location || '').toLowerCase().includes(search) ||
+        (user.mobile || '').toLowerCase().includes(search) ||
+        (user.city || '').toLowerCase().includes(search)
+      )
+      .slice(0, 100);
+  }, [users, userSearch]);
 
   const getUserDisplayName = () => {
     if (!selectedUser) return "Select User";
@@ -370,253 +370,253 @@ const filteredUsers = useMemo(() => {
       minHeight: isModal ? "auto" : "100vh",
       paddingBottom: isModal ? "0" : isMobile ? "20px" : "40px",
     }}>
-     {/* Header */}
-<div style={{
-  padding: isMobile ? "16px 20px" : "20px 24px",
-  backgroundColor: BROWN_DARK,
-  color: "#fff",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: "12px",
-  position: isModal ? "relative" : "sticky",
-  top: isModal ? "auto" : 0,
-  zIndex: isModal ? "auto" : 100,
-  flexWrap: isMobile ? "wrap" : "nowrap",
-  borderBottom: isModal ? `1px solid ${ACCENT}` : "none",
-  borderTopLeftRadius: isModal ? "16px" : "0",
-  borderTopRightRadius: isModal ? "16px" : "0",
-}}>
-  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-    {isMobile && !isModal && (
-      <button
-        onClick={onBack}
-        style={{
-          background: "transparent",
-          border: "none",
-          color: "#fff",
-          cursor: "pointer",
-          padding: "4px",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        <ArrowBackIcon style={{ fontSize: isMobile ? "20px" : "24px" }} />
-      </button>
-    )}
-    <div>
-      <div style={{ fontSize: isMobile ? "14px" : "16px", fontWeight: "bold" }}>
-        Transaction Details
-      </div>
-      {!isModal && (
-        <div style={{ fontSize: isMobile ? "11px" : "12px", opacity: 0.8 }}>
-          {accountName || (selectedUser ? `${getUserDisplayName()}${getUserLocation() ? ` / ${getUserLocation()}` : ''}` : "Select an account")}
-        </div>
-      )}
-    </div>
-  </div>
-
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: isMobile ? "8px" : "12px",
-    flexWrap: isMobile && !isModal ? "wrap" : "nowrap",
-    width: isMobile && !isModal ? "100%" : isModal ? "auto" : "100%",
-    maxWidth: isModal ? "600px" : "auto",
-  }}>
-    {/* User Dropdown - Only for Employees */}
-
- <div
-  style={{
-    position: "relative",
-    minWidth: isMobile ? "100%" : "220px",
-    width: isMobile ? "100%" : "auto",
-    flex: isMobile ? "0 0 100%" : "0 0 auto",
-  }}
->
-        <div
-          onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-          style={{
-            padding: isMobile ? "8px 12px" : "8px 14px",
-            background: "rgba(255,255,255,0.15)",
-            border: `1px solid ${userDropdownOpen ? ACCENT : "rgba(255,255,255,0.3)"}`,
-            borderRadius: "20px",
-            cursor: "pointer",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            color: "#fff",
-            fontSize: isMobile ? "12px" : "13px",
-            width: "100%",
-            boxSizing: "border-box",
-          }}
-        >
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {selectedUser ? getUserDisplayName() : "Select User"}
-          </span>
-          <span style={{ fontSize: "10px", marginLeft: "8px", flexShrink: 0 }}>▼</span>
-        </div>
-
-        {userDropdownOpen && (
-          <div style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            left: 0,
-            right: 0,
-            background: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-            zIndex: 2000,
-            maxHeight: "320px",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            width: isModal ? "300px" : "100%",
-            minWidth: isModal ? "300px" : "auto",
-          }}>
-            <div style={{
-              padding: "12px",
-              borderBottom: "1px solid #f0f0f0",
-              position: "sticky",
-              top: 0,
-              background: "#fff",
-            }}>
-              <div style={{
+      {/* Header */}
+      <div style={{
+        padding: isMobile ? "16px 20px" : "20px 24px",
+        backgroundColor: BROWN_DARK,
+        color: "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "12px",
+        position: isModal ? "relative" : "sticky",
+        top: isModal ? "auto" : 0,
+        zIndex: isModal ? "auto" : 100,
+        flexWrap: isMobile ? "wrap" : "nowrap",
+        borderBottom: isModal ? `1px solid ${ACCENT}` : "none",
+        borderTopLeftRadius: isModal ? "16px" : "0",
+        borderTopRightRadius: isModal ? "16px" : "0",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          {isMobile && !isModal && (
+            <button
+              onClick={onBack}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#fff",
+                cursor: "pointer",
+                padding: "4px",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                border: `1px solid ${ACCENT}`,
-                borderRadius: "8px",
-                padding: "4px 8px",
-                background: "#fff",
-              }}>
-                <SearchIcon style={{ fontSize: "18px", color: "#999" }} />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  autoFocus
-                  style={{
-                    flex: 1,
-                    border: "none",
-                    padding: "8px 4px",
-                    fontSize: "14px",
-                    outline: "none",
-                    color: "#000",         
-                    caretColor: "#000", 
-                    background: "transparent",
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                {userSearch && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setUserSearch(""); }}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "#aaa",
-                      fontSize: "16px",
-                      padding: "4px",
-                    }}
-                  >✕</button>
-                )}
-              </div>
+              }}
+            >
+              <ArrowBackIcon style={{ fontSize: isMobile ? "20px" : "24px" }} />
+            </button>
+          )}
+          <div>
+            <div style={{ fontSize: isMobile ? "14px" : "16px", fontWeight: "bold" }}>
+              Transaction Details
             </div>
-
-            {loadingUsers ? (
-              <div style={{ padding: "40px", textAlign: "center" }}>
-                <CircularProgress size={24} style={{ color: BROWN }} />
-              </div>
-            ) : filteredUsers.length === 0 ? (
-              <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
-                No users found
-              </div>
-            ) : (
-              <div style={{
-  overflowY: "auto",
-  flex: 1,
-  WebkitOverflowScrolling: "touch",
-  contain: "content",
-}}>
-                {filteredUsers.map(user => (
-                  <div
-                    key={user.id}
-                    onClick={() => handleUserSelect(user)}
-                    style={{
-                      padding: "12px 16px",
-                      borderBottom: "1px solid #f5f0eb",
-                      cursor: "pointer",
-                      background: selectedUser?.id === user.id ? "#f0e9e2" : "transparent",
-                      transition: "background 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedUser?.id !== user.id) {
-                        e.currentTarget.style.background = "#faf6f2";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = selectedUser?.id === user.id ? "#f0e9e2" : "transparent";
-                    }}
-                  >
-                    <div style={{ fontWeight: "600", color: BROWN_DARK, fontSize: "14px" }}>
-                      {user.ledgerName || user.name || user.billName}
-                    </div>
-                    <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-                      {user.mobile && <span>📱 {user.mobile}</span>}
-                      {user.city && <span> 📍 {user.city}</span>}
-                    </div>
-                  </div>
-                ))}
+            {!isModal && (
+              <div style={{ fontSize: isMobile ? "11px" : "12px", opacity: 0.8 }}>
+                {accountName || (selectedUser ? `${getUserDisplayName()}${getUserLocation() ? ` / ${getUserLocation()}` : ''}` : "Select an account")}
               </div>
             )}
           </div>
-        )}
+        </div>
+
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: isMobile ? "8px" : "12px",
+          flexWrap: isMobile && !isModal ? "wrap" : "nowrap",
+          width: isMobile && !isModal ? "100%" : isModal ? "auto" : "100%",
+          maxWidth: isModal ? "600px" : "auto",
+        }}>
+          {/* User Dropdown - Only for Employees */}
+
+          <div
+            style={{
+              position: "relative",
+              minWidth: isMobile ? "100%" : "220px",
+              width: isMobile ? "100%" : "auto",
+              flex: isMobile ? "0 0 100%" : "0 0 auto",
+            }}
+          >
+            <div
+              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              style={{
+                padding: isMobile ? "8px 12px" : "8px 14px",
+                background: "rgba(255,255,255,0.15)",
+                border: `1px solid ${userDropdownOpen ? ACCENT : "rgba(255,255,255,0.3)"}`,
+                borderRadius: "20px",
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                color: "#fff",
+                fontSize: isMobile ? "12px" : "13px",
+                width: "100%",
+                boxSizing: "border-box",
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {selectedUser ? getUserDisplayName() : "Select User"}
+              </span>
+              <span style={{ fontSize: "10px", marginLeft: "8px", flexShrink: 0 }}>▼</span>
+            </div>
+
+            {userDropdownOpen && (
+              <div style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                left: 0,
+                right: 0,
+                background: "#fff",
+                borderRadius: "12px",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+                zIndex: 2000,
+                maxHeight: "320px",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                width: isModal ? "300px" : "100%",
+                minWidth: isModal ? "300px" : "auto",
+              }}>
+                <div style={{
+                  padding: "12px",
+                  borderBottom: "1px solid #f0f0f0",
+                  position: "sticky",
+                  top: 0,
+                  background: "#fff",
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    border: `1px solid ${ACCENT}`,
+                    borderRadius: "8px",
+                    padding: "4px 8px",
+                    background: "#fff",
+                  }}>
+                    <SearchIcon style={{ fontSize: "18px", color: "#999" }} />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      autoFocus
+                      style={{
+                        flex: 1,
+                        border: "none",
+                        padding: "8px 4px",
+                        fontSize: "14px",
+                        outline: "none",
+                        color: "#000",
+                        caretColor: "#000",
+                        background: "transparent",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    {userSearch && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setUserSearch(""); }}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#aaa",
+                          fontSize: "16px",
+                          padding: "4px",
+                        }}
+                      >✕</button>
+                    )}
+                  </div>
+                </div>
+
+                {loadingUsers ? (
+                  <div style={{ padding: "40px", textAlign: "center" }}>
+                    <CircularProgress size={24} style={{ color: BROWN }} />
+                  </div>
+                ) : filteredUsers.length === 0 ? (
+                  <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
+                    No users found
+                  </div>
+                ) : (
+                  <div style={{
+                    overflowY: "auto",
+                    flex: 1,
+                    WebkitOverflowScrolling: "touch",
+                    contain: "content",
+                  }}>
+                    {filteredUsers.map(user => (
+                      <div
+                        key={user.id}
+                        onClick={() => handleUserSelect(user)}
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid #f5f0eb",
+                          cursor: "pointer",
+                          background: selectedUser?.id === user.id ? "#f0e9e2" : "transparent",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (selectedUser?.id !== user.id) {
+                            e.currentTarget.style.background = "#faf6f2";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = selectedUser?.id === user.id ? "#f0e9e2" : "transparent";
+                        }}
+                      >
+                        <div style={{ fontWeight: "600", color: BROWN_DARK, fontSize: "14px" }}>
+                          {user.ledgerName || user.name || user.billName}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
+                          {user.mobile && <span>📱 {user.mobile}</span>}
+                          {user.city && <span> 📍 {user.city}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Date Pickers */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              width: isMobile ? "100%" : "auto",
+              flexWrap: "nowrap",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                width: isMobile ? "50%" : "auto",
+              }}
+            >
+              <DatePicker
+                selected={fromDate}
+                onChange={(date) => setFromDate(date)}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="From"
+                className="date-picker-input"
+              />
+            </div>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", whiteSpace: "nowrap" }}>to</span>
+            <div
+              style={{
+                flex: 1,
+                width: isMobile ? "50%" : "auto",
+              }}
+            >
+              <DatePicker
+                selected={toDate}
+                onChange={(date) => setToDate(date)}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="To"
+                className="date-picker-input"
+              />
+            </div>
+          </div>
+        </div>
       </div>
-    
-    {/* Date Pickers */}
- <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    width: isMobile ? "100%" : "auto",
-    flexWrap: "nowrap",
-  }}
->
-     <div
-  style={{
-    flex: 1,
-    width: isMobile ? "50%" : "auto",
-  }}
->
-        <DatePicker
-          selected={fromDate}
-          onChange={(date) => setFromDate(date)}
-          dateFormat="dd/MM/yyyy"
-          placeholderText="From"
-          className="date-picker-input"
-        />
-      </div>
-      <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", whiteSpace: "nowrap" }}>to</span>
-     <div
-  style={{
-    flex: 1,
-    width: isMobile ? "50%" : "auto",
-  }}
->
-        <DatePicker
-          selected={toDate}
-          onChange={(date) => setToDate(date)}
-          dateFormat="dd/MM/yyyy"
-          placeholderText="To"
-          className="date-picker-input"
-        />
-      </div>
-    </div>
-  </div>
-</div>
       {/* Sub-header with account name - only show on mobile or when not in modal */}
       {!isModal && (
         <div style={{
@@ -715,7 +715,7 @@ const filteredUsers = useMemo(() => {
             flexWrap: "wrap",
             gap: "8px",
           }}>
-         
+
             {loading && <CircularProgress size={20} style={{ color: BROWN }} />}
           </div>
 
@@ -731,14 +731,14 @@ const filteredUsers = useMemo(() => {
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-             <table
-  style={{
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: "11px",
-    tableLayout: "auto"
-  }}
->
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: "11px",
+                  tableLayout: "auto"
+                }}
+              >
                 <thead>
                   <tr style={{
                     background: "#f9f4ef",
@@ -754,7 +754,7 @@ const filteredUsers = useMemo(() => {
                       Particulars
                     </th> */}
                     <th style={{ padding: "12px 16px", textAlign: "right", color: BROWN, fontWeight: "600", fontSize: isMobile ? "11px" : "12px" }}>
-                      Debit 
+                      Debit
                     </th>
                     <th style={{ padding: "12px 16px", textAlign: "right", color: BROWN, fontWeight: "600", fontSize: isMobile ? "11px" : "12px" }}>
                       Credit
@@ -778,48 +778,48 @@ const filteredUsers = useMemo(() => {
                         onMouseEnter={(e) => e.currentTarget.style.background = "#fdf8f3"}
                         onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                       >
-                       <td
-  style={{
-    padding: "8px 4px",
-    color: "#666",
-    whiteSpace: "nowrap"
-  }}
->
-  {formatDateDisplay(transaction.Ledger_Date || transaction.Date)}
-</td>
+                        <td
+                          style={{
+                            padding: "8px 4px",
+                            color: "#666",
+                            whiteSpace: "nowrap"
+                          }}
+                        >
+                          {formatDateDisplay(transaction.Ledger_Date || transaction.Date)}
+                        </td>
 
-<td
-  style={{
-    padding: "8px 4px",
-    color: BROWN_DARK,
-    fontWeight: "500",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    maxWidth: "100px"
-  }}
->
-  {getInvoiceNo(transaction)}
-</td>
+                        <td
+                          style={{
+                            padding: "8px 4px",
+                            color: BROWN_DARK,
+                            fontWeight: "500",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "100px"
+                          }}
+                        >
+                          {getInvoiceNo(transaction)}
+                        </td>
 
-<td
-  style={{
-    padding: "8px 4px",
-    textAlign: "right"
-  }}
->
-  {debit > 0 ? formatCurrency(debit) : "0.00"}
-</td>
+                        <td
+                          style={{
+                            padding: "8px 4px",
+                            textAlign: "right"
+                          }}
+                        >
+                          {debit > 0 ? formatCurrency(debit) : "0.00"}
+                        </td>
 
-<td
-  style={{
-    padding: "8px 4px",
-    textAlign: "right"
-  }}
->
-  {credit > 0 ? formatCurrency(credit) : "0.00"}
-</td>
-                     
+                        <td
+                          style={{
+                            padding: "8px 4px",
+                            textAlign: "right"
+                          }}
+                        >
+                          {credit > 0 ? formatCurrency(credit) : "0.00"}
+                        </td>
+
                       </tr>
                     );
                   })}
@@ -857,7 +857,7 @@ const filteredUsers = useMemo(() => {
         </div>
 
         {/* Mobile-friendly card view (alternative for small screens) */}
-   
+
       </div>
 
       <style>{`

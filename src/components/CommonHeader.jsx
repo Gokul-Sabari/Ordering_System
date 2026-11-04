@@ -2115,9 +2115,9 @@ const CommonHeader = ({
                             </div>
                           )}
                           
-                          {filteredCustomers.map((customer) => (
+                          {filteredCustomers.map((customer, idx) => (
                             <div
-                              key={customer.id}
+                              key={customer.id || customer.Customer_Id || idx}
                               onClick={() => handleCustomerSelect(customer)}
                               style={customerItemStyle(customer)}
                             >
@@ -2135,7 +2135,7 @@ const CommonHeader = ({
                                 )}
                                 <span style={{ wordBreak: "break-word" }}>{customer.name}</span>
                               </div>
-                              {customer.mobile && (
+                              {(customer.mobile || customer.Mobile_No || customer.A1 || customer.Party_Mobile_1 || customer.Party_Mobile_2) && (
                                 <div style={{ 
                                   fontSize: isMobile ? "13px" : "11px", 
                                   color: "#666",
@@ -2143,7 +2143,7 @@ const CommonHeader = ({
                                   alignItems: "center",
                                   gap: "4px",
                                 }}>
-                                  <span>📱</span> {customer.mobile}
+                                  <span>📱</span> {customer.Mobile_No || customer.mobile || customer.A1 || customer.Party_Mobile_1 || customer.Party_Mobile_2}
                                 </div>
                               )}
                               {customer.city && (

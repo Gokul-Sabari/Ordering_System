@@ -12,19 +12,28 @@ export const fetchLink = async ({
     loadingOff
 }) => {
 
-    const storage = JSON.parse(localStorage.getItem("user"));
+    let storage = null;
+    try {
+        storage = JSON.parse(localStorage.getItem("user") || "{}");
+    } catch (e) {
+        storage = null;
+    }
     const token = storage?.Autheticate_Id;
 
     const isFormData = bodyData instanceof FormData;
 
     const defaultHeaders = {
-        "Content-Type": "application/json",
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         'Authorization': token,
     }
 
     const finalHeaders = autoHeaders
         ? defaultHeaders
         : { ...defaultHeaders, ...headers };
+
+    if (isFormData && finalHeaders["Content-Type"]) {
+        delete finalHeaders["Content-Type"];
+    }
 
     // Construct URL with query parameters
     let url = api + address.replace(/\s+/g, '');
@@ -64,9 +73,14 @@ export const fetchLink = async ({
         
         const response = await fetch(url, options);
 
-        if (options.headers["Content-Type"] === "application/json") {
-            const json = await response.json();
-            return json;
+        const contentType = response.headers?.get?.("content-type") || "";
+        if (contentType.includes("application/json") || isFormData || finalHeaders["Content-Type"] === "application/json") {
+            try {
+                const json = await response.json();
+                return json;
+            } catch (err) {
+                return response;
+            }
         } else {
             return response;
         }
